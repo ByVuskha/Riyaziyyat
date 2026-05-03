@@ -146,15 +146,16 @@ class UpstashClient {
     }
 }
 
-// Configuration
-const UPSTASH_CONFIG = typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : {
-    url: 'https://enough-spider-40929.upstash.io',
-    token: 'AZ_hAAIgcDEwMjg5MmM0MTdkODY0ZjM5ODEyMGZjYTE5ODA3YzMwYQ',
-    enabled: true
-};
+// Create global instance immediately (before storage-wrapper.js loads)
+let upstash = null;
 
-// Create global instance
-const upstash = new UpstashClient(UPSTASH_CONFIG.url, UPSTASH_CONFIG.token);
+// Initialize after DOM loads or immediately if UPSTASH_CONFIG exists
+if (typeof UPSTASH_CONFIG !== 'undefined' && UPSTASH_CONFIG.enabled) {
+    upstash = new UpstashClient(UPSTASH_CONFIG.url, UPSTASH_CONFIG.token);
+    console.log('✅ Upstash client initialized');
+} else {
+    console.log('⚠️ UPSTASH_CONFIG not found or disabled');
+}
 
 // Cache Helper Functions
 const CacheHelper = {
