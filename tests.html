@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sınaqlar - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header {
+            background: linear-gradient(135deg, #065f46, var(--success));
+            color: white;
+            padding: 60px 0 40px;
+        }
+        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+        .page-header p { opacity: 0.85; font-size: 16px; }
+
+        .tests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding: 40px 0;
+        }
+        .test-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+            transition: all 0.3s;
+            border-left: 4px solid var(--border);
+        }
+        .test-card:hover { transform: translateY(-4px); box-shadow: 0 12px 35px rgba(0,0,0,0.12); }
+        .test-card.easy { border-left-color: var(--success); }
+        .test-card.medium { border-left-color: var(--warning); }
+        .test-card.hard { border-left-color: var(--danger); }
+
+        .test-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .test-emoji { font-size: 36px; }
+        .difficulty {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .diff-easy { background: #ecfdf5; color: var(--success); }
+        .diff-medium { background: #fffbeb; color: var(--warning); }
+        .diff-hard { background: #fef2f2; color: var(--danger); }
+
+        .test-card h3 { font-size: 17px; margin-bottom: 8px; }
+        .test-card p { color: var(--gray); font-size: 13px; margin-bottom: 15px; }
+        .test-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 18px;
+            font-size: 13px;
+            color: var(--gray);
+        }
+        .test-info span { display: flex; align-items: center; gap: 5px; }
+
+        /* Quiz modal */
+        .quiz-modal { max-width: 650px; width: 95%; }
+        .quiz-progress {
+            background: var(--border);
+            border-radius: 10px;
+            height: 8px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .quiz-progress-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 10px;
+            transition: width 0.4s;
+        }
+        .quiz-question { font-size: 18px; font-weight: 600; margin-bottom: 25px; line-height: 1.5; }
+        .quiz-options { display: flex; flex-direction: column; gap: 12px; }
+        .quiz-option {
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.2s;
+            text-align: left;
+            background: white;
+        }
+        .quiz-option:hover { border-color: var(--primary); background: #eef2ff; }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong { border-color: var(--danger); background: #fef2f2; color: #991b1b; }
+        .quiz-option:disabled { cursor: not-allowed; }
+        .quiz-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 25px; }
+        .quiz-counter { color: var(--gray); font-size: 14px; }
+
+        .result-screen { text-align: center; padding: 20px 0; }
+        .result-score { font-size: 72px; font-weight: 800; margin: 20px 0; }
+        .result-screen p { color: var(--gray); font-size: 16px; margin-bottom: 25px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html" class="active">Sınaqlar</a>
+                <a href="news.html">Xəbərlər</a>
+                <a href="success.html">Uğurlar</a>
+                <a href="faq.html">Suallar</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge">
+                    <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
+                </span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="container">
+        <h1>📝 Sınaqlar</h1>
+        <p>Bilikini yoxla, nəticəni analiz et</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="tests-grid" id="testsGrid"></div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal-overlay" id="quizModal">
+    <div class="modal quiz-modal">
+        <button class="modal-close" onclick="closeQuiz()">&times;</button>
+
+        <div id="quizScreen">
+            <h2 id="quizTitle" style="margin-bottom:5px;"></h2>
+            <p id="quizSubtitle" style="color:var(--gray);font-size:14px;margin-bottom:20px;"></p>
+            <div class="quiz-progress">
+                <div class="quiz-progress-bar" id="progressBar"></div>
+            </div>
+            <div class="quiz-counter" id="quizCounter"></div>
+            <div class="quiz-question" id="questionText"></div>
+            <div class="quiz-options" id="optionsContainer"></div>
+            <div class="quiz-footer">
+                <span id="feedbackText" style="font-weight:600;font-size:14px;"></span>
+                <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none;">
+                    Növbəti <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="resultScreen" class="result-screen" style="display:none;">
+            <div style="font-size:60px;" id="resultEmoji">🎉</div>
+            <div class="result-score" id="resultScore"></div>
+            <p id="resultMsg"></p>
+            <div style="display:flex;gap:15px;justify-content:center;">
+                <button class="btn btn-secondary" onclick="closeQuiz()">Bağla</button>
+                <button class="btn btn-primary" onclick="retryQuiz()">
+                    <i class="fas fa-redo"></i> Yenidən
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom">
+            <p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p>
+        </div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const TESTS = [
+    {
+        id: 1, title: 'Cəbr - Əsas Sınaq', emoji: '🔢', difficulty: 'easy',
+        questions: 5, time: 10, free: true,
+        desc: 'Xətti tənliklər və sadə cəbr əməliyyatları',
+        data: [
+            { q: '2x + 4 = 10 tənliyinin həlli nədir?', opts: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], ans: 1 },
+            { q: '3(x - 2) = 9 tənliyini həll edin.', opts: ['x = 3', 'x = 4', 'x = 5', 'x = 6'], ans: 2 },
+            { q: 'x² = 16 tənliyinin müsbət həlli nədir?', opts: ['2', '4', '8', '16'], ans: 1 },
+            { q: '|x - 3| = 5 tənliyinin həlləri hansılardır?', opts: ['x=8 və x=-2', 'x=8 və x=2', 'x=5 və x=-5', 'x=3 və x=-3'], ans: 0 },
+            { q: 'f(x) = 2x + 1 funksiyasında f(3) = ?', opts: ['5', '6', '7', '8'], ans: 2 },
+        ]
+    },
+    {
+        id: 2, title: 'Həndəsə - Orta Sınaq', emoji: '📐', difficulty: 'medium',
+        questions: 5, time: 15, free: true,
+        desc: 'Üçbucaq, dairə və sahə hesablamaları',
+        data: [
+            { q: 'Tərəfləri 3, 4, 5 olan üçbucağın sahəsi nəçədir?', opts: ['6', '7.5', '10', '12'], ans: 0 },
+            { q: 'Radiusu 7 olan dairənin sahəsi? (π≈3.14)', opts: ['43.96', '153.86', '21.98', '87.92'], ans: 1 },
+            { q: 'Düzbucaqlı üçbucaqda hipotenuz 10, bir katет 6 olarsa, digər katет nəçədir?', opts: ['6', '7', '8', '9'], ans: 2 },
+            { q: 'Kvadratın tərəfi 5 olarsa, diaqonalı nəçədir?', opts: ['5', '5√2', '10', '25'], ans: 1 },
+            { q: 'Üçbucağın daxili bucaqlarının cəmi nəçədir?', opts: ['90°', '180°', '270°', '360°'], ans: 1 },
+        ]
+    },
+    {
+        id: 3, title: 'Analiz - Çətin Sınaq', emoji: '∫', difficulty: 'hard',
+        questions: 5, time: 20, free: false,
+        desc: 'Limit, törəmə və inteqral məsələləri',
+        data: [
+            { q: 'lim(x→2) (x² - 4)/(x - 2) = ?', opts: ['0', '2', '4', '∞'], ans: 2 },
+            { q: 'f(x) = x³ funksiyasının törəməsi nədir?', opts: ['x²', '2x²', '3x²', '3x'], ans: 2 },
+            { q: '∫2x dx = ?', opts: ['x² + C', '2x² + C', 'x + C', '2 + C'], ans: 0 },
+            { q: 'f(x) = sin(x) funksiyasının törəməsi nədir?', opts: ['-cos(x)', 'cos(x)', '-sin(x)', 'tan(x)'], ans: 1 },
+            { q: 'lim(x→0) sin(x)/x = ?', opts: ['0', '∞', '1', '-1'], ans: 2 },
+        ]
+    },
+    {
+        id: 4, title: 'Ehtimal - Əsas Sınaq', emoji: '🎲', difficulty: 'easy',
+        questions: 4, time: 10, free: true,
+        desc: 'Klassik ehtimal məsələləri',
+        data: [
+            { q: 'Bir zər atıldıqda 3 gəlmə ehtimalı nədir?', opts: ['1/2', '1/3', '1/6', '1/4'], ans: 2 },
+            { q: '52 kartlı dəstdən bir kart çəkilir. Kral gəlmə ehtimalı?', opts: ['1/13', '1/52', '4/52', '1/4'], ans: 0 },
+            { q: 'İki zər atıldıqda cəmin 7 olma ehtimalı?', opts: ['1/6', '5/36', '6/36', '7/36'], ans: 2 },
+            { q: 'Bir sikkə 3 dəfə atılır. 3 yazı gəlmə ehtimalı?', opts: ['1/2', '1/4', '1/6', '1/8'], ans: 3 },
+        ]
+    },
+];
+
+function renderTests() {
+    const grid = document.getElementById('testsGrid');
+    grid.innerHTML = TESTS.map(t => `
+        <div class="test-card ${t.difficulty}">
+            <div class="test-header">
+                <span class="test-emoji">${t.emoji}</span>
+                <span class="difficulty diff-${t.difficulty}">
+                    ${t.difficulty === 'easy' ? 'Asan' : t.difficulty === 'medium' ? 'Orta' : 'Çətin'}
+                </span>
+            </div>
+            <h3>${t.title}</h3>
+            <p>${t.desc}</p>
+            <div class="test-info">
+                <span><i class="fas fa-question-circle"></i> ${t.questions} sual</span>
+                <span><i class="fas fa-clock"></i> ${t.time} dəq</span>
+                <span class="badge ${t.free ? 'badge-success' : 'badge-primary'}">${t.free ? 'Pulsuz' : 'Premium'}</span>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="startTest(${t.id})">
+                <i class="fas fa-play"></i> Sınağa Başla
+            </button>
+        </div>
+    `).join('');
+}
+
+// Quiz state
+let currentTest = null;
+let currentQ = 0;
+let score = 0;
+let answered = false;
+
+function startTest(id) {
+    const test = TESTS.find(t => t.id === id);
+    if (!test) return;
+    
+    // Giriş yoxlaması
+    if (!isLoggedIn()) {
+        if (confirm('Sınağa başlamaq üçün giriş etməlisiniz. Giriş səhifəsinə keçək?')) {
+            window.location.href = 'login.html';
+        }
+        return;
+    }
+
+    const user = getCurrentUser();
+    
+    // Pulsuz sınaq deyilsə, balans və ya demo yoxla
+    if (!test.free) {
+        const userBalance = user.balance || 0;
+        const userDemoTests = user.demoTests || 0;
+        
+        // Əgər balansta pul varsa, birbaşa başlat
+        if (userBalance >= TEST_PRICE) {
+            if (confirm(`Bu sınaq ${TEST_PRICE} ₼ başına olacaq. Balansınızdan çıxılsın?`)) {
+                // Balansdan çıx
+                updateUser({ balance: userBalance - TEST_PRICE });
+                startQuiz(test);
+            }
+        }
+        // Əgər balansta pul yoxdursa, demo təklif et
+        else {
+            const demoMsg = userDemoTests === 0 
+                ? 'Balansınızda kifayət qədər pul yoxdur.\n\n🎁 İLK DEMO SINAQ PULSUZ!\n\nDemo sınaqda nəticəniz saxlanılmayacaq, ancaq sualları görə biləcəksiniz.'
+                : `Balansınızda kifayət qədər pul yoxdur.\n\nDemo sınaq sayınız: ${userDemoTests}\n\nDemo sınaqda nəticəniz saxlanılmayacaq. Davam edək?`;
+            
+            if (confirm(demoMsg)) {
+                // Demo sayını artır
+                updateUser({ demoTests: userDemoTests + 1 });
+                startQuiz(test, true); // demo mode
+            } else {
+                if (confirm('Balans yükləmək istəyirsiniz?')) {
+                    window.location.href = 'payment.html';
+                }
+            }
+        }
+    } else {
+        // Pulsuz sınaq
+        startQuiz(test);
+    }
+}
+
+function startQuiz(test, isDemo = false) {
+    currentTest = test;
+    currentTest.isDemo = isDemo;
+    currentQ = 0;
+    score = 0;
+    answered = false;
+
+    const titleText = isDemo ? `${test.title} (DEMO)` : test.title;
+    const subtitleText = isDemo ? '⚠️ Demo rejim - Nəticə saxlanılmayacaq' : test.desc;
+    
+    document.getElementById('quizTitle').textContent = titleText;
+    document.getElementById('quizSubtitle').textContent = subtitleText;
+    document.getElementById('quizScreen').style.display = 'block';
+    document.getElementById('resultScreen').style.display = 'none';
+    document.getElementById('quizModal').classList.add('active');
+    renderQuestion();
+}
+
+function renderQuestion() {
+    const q = currentTest.data[currentQ];
+    const total = currentTest.data.length;
+
+    document.getElementById('progressBar').style.width = ((currentQ / total) * 100) + '%';
+    document.getElementById('quizCounter').textContent = `Sual ${currentQ + 1} / ${total}`;
+    document.getElementById('questionText').textContent = q.q;
+    document.getElementById('feedbackText').textContent = '';
+    document.getElementById('nextBtn').style.display = 'none';
+    answered = false;
+
+    document.getElementById('optionsContainer').innerHTML = q.opts.map((opt, i) => `
+        <button class="quiz-option" onclick="selectAnswer(${i})">${opt}</button>
+    `).join('');
+}
+
+function selectAnswer(idx) {
+    if (answered) return;
+    answered = true;
+    const q = currentTest.data[currentQ];
+    const btns = document.querySelectorAll('.quiz-option');
+
+    btns.forEach(b => b.disabled = true);
+    btns[idx].classList.add(idx === q.ans ? 'correct' : 'wrong');
+    if (idx !== q.ans) btns[q.ans].classList.add('correct');
+
+    if (idx === q.ans) {
+        score++;
+        document.getElementById('feedbackText').textContent = '✅ Düzgündür!';
+        document.getElementById('feedbackText').style.color = 'var(--success)';
+    } else {
+        document.getElementById('feedbackText').textContent = '❌ Yanlışdır';
+        document.getElementById('feedbackText').style.color = 'var(--danger)';
+    }
+
+    document.getElementById('nextBtn').style.display = 'inline-flex';
+    document.getElementById('nextBtn').textContent = currentQ + 1 < currentTest.data.length ? 'Növbəti →' : 'Nəticəni Gör';
+}
+
+function nextQuestion() {
+    currentQ++;
+    if (currentQ < currentTest.data.length) {
+        renderQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function showResult() {
+    const total = currentTest.data.length;
+    const pct = Math.round((score / total) * 100);
+    const isDemo = currentTest.isDemo || false;
+    
+    document.getElementById('quizScreen').style.display = 'none';
+    document.getElementById('resultScreen').style.display = 'block';
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('resultScore').textContent = `${score}/${total}`;
+    document.getElementById('resultScore').style.color = pct >= 60 ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('resultEmoji').textContent = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+    
+    let resultMsg = pct >= 80
+        ? 'Əla nəticə! Çox yaxşı işlədin.'
+        : pct >= 60
+        ? 'Yaxşı nəticə! Bir az daha çalış.'
+        : 'Daha çox məşq lazımdır. Dərslərə bax!';
+    
+    if (isDemo) {
+        resultMsg += '\n\n⚠️ Demo rejim - Nəticə saxlanılmadı. Tam versiya üçün balans yükləyin.';
+    }
+    
+    document.getElementById('resultMsg').textContent = resultMsg;
+}
+
+function retryQuiz() {
+    closeQuiz();
+    setTimeout(() => startTest(currentTest.id), 300);
+}
+
+function closeQuiz() {
+    document.getElementById('quizModal').classList.remove('active');
+}
+
+document.getElementById('quizModal').addEventListener('click', function(e) {
+    if (e.target === this) closeQuiz();
+});
+
+renderTests();
+</script>
+</body>
+</html>

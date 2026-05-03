@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiyazMath - Riyaziyyat Öyrən</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo">
+                <span>∑</span> RiyazMath
+            </a>
+            <div class="navbar-menu">
+                <a href="index.html" class="active">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="news.html">Xəbərlər</a>
+                <a href="success.html">Uğurlar</a>
+                <a href="faq.html">Suallar</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge">
+                    <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
+                </span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-badge">🎓 Azərbaycanın #1 Riyaziyyat Platforması</div>
+            <h1>Riyaziyyatı <span>Asan</span> Öyrən</h1>
+            <p>Peşəkar müəllimlərdən video dərslər, sınaqlar və interaktiv tapşırıqlarla riyaziyyatı mənimsə.</p>
+            <div class="hero-buttons">
+                <a href="register.html" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i> İndi Başla
+                </a>
+                <a href="tests.html" class="btn btn-lg" style="background:rgba(255,255,255,0.15);color:white;backdrop-filter:blur(10px);">
+                    <i class="fas fa-play"></i> Pulsuz Sınaq
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <h3>500+</h3>
+                    <p>Video Dərs</p>
+                </div>
+                <div class="hero-stat">
+                    <h3>10K+</h3>
+                    <p>Tələbə</p>
+                </div>
+                <div class="hero-stat">
+                    <h3>1000+</h3>
+                    <p>Sınaq Sualı</p>
+                </div>
+                <div class="hero-stat">
+                    <h3>98%</h3>
+                    <p>Məmnuniyyət</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" style="background:white;">
+    <div class="container">
+        <h2 class="section-title">Niyə RiyazMath?</h2>
+        <p class="section-subtitle">Hər şey bir platformada</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#eef2ff;">📹</div>
+                <h3>Video Dərslər</h3>
+                <p>HD keyfiyyətli, mövzu üzrə strukturlaşdırılmış video dərslər</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#ecfdf5;">📝</div>
+                <h3>Sınaqlar</h3>
+                <p>Vaxtlı və vaxtsız sınaqlar, detallı nəticə analizi</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fffbeb;">🏆</div>
+                <h3>Reytinq Sistemi</h3>
+                <p>Ən yaxşı tələbələr liderboard-da öz yerini tutur</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fef2f2;">💳</div>
+                <h3>Balans Sistemi</h3>
+                <p>Kartla balans yüklə, istədiyin kursa abunə ol</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#f0fdf4;">📱</div>
+                <h3>1 Cihaz Giriş</h3>
+                <p>Hesabın yalnız bir cihazda aktiv olur, tam təhlükəsizlik</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fdf4ff;">✅</div>
+                <h3>Cavab Analizi</h3>
+                <p>Sınaqdan sonra düzgün cavabları ətraflı izah ilə gör</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- POPULAR COURSES -->
+<section class="section">
+    <div class="container">
+        <h2 class="section-title">Populyar Kurslar</h2>
+        <p class="section-subtitle">Ən çox seçilən mövzular</p>
+        <div class="features-grid" id="popularCourses">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#eef2ff;">📐</div>
+                <h3>Həndəsə</h3>
+                <p>Müstəvi həndəsəsi, fəza həndəsəsi, triqonometriya</p>
+                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge badge-primary">45 video</span>
+                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#ecfdf5;">🔢</div>
+                <h3>Cəbr</h3>
+                <p>Tənliklər, bərabərsizliklər, funksiyalar</p>
+                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge badge-success">60 video</span>
+                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:#fffbeb;">∫</div>
+                <h3>Analiz</h3>
+                <p>Limitlər, törəmə, inteqral</p>
+                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge badge-warning">38 video</span>
+                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" style="background:white;">
+    <div class="container">
+        <h2 class="section-title">Abunəlik Planları</h2>
+        <p class="section-subtitle">Sənə uyğun planı seç</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;max-width:900px;margin:0 auto;">
+            
+            <div class="card" style="text-align:center;border:2px solid var(--border);">
+                <div style="font-size:40px;margin-bottom:15px;">🆓</div>
+                <h3 style="font-size:22px;margin-bottom:5px;">Pulsuz</h3>
+                <div style="font-size:36px;font-weight:800;color:var(--success);margin:15px 0;">0 ₼</div>
+                <ul style="list-style:none;text-align:left;margin-bottom:25px;">
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Pulsuz sınaqlar</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Nümunə videolar</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">❌ Premium videolar</li>
+                    <li style="padding:8px 0;">❌ Ödənişli sınaqlar</li>
+                </ul>
+                <a href="register.html" class="btn btn-secondary btn-block">Başla</a>
+
+            </div>
+
+            <div class="card" style="text-align:center;border:2px solid var(--primary);position:relative;">
+                <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:white;padding:4px 16px;border-radius:20px;font-size:13px;font-weight:600;">Ən Populyar</div>
+                <div style="font-size:40px;margin-bottom:15px;">⭐</div>
+                <h3 style="font-size:22px;margin-bottom:5px;">Aylıq</h3>
+                <div style="font-size:36px;font-weight:800;color:var(--primary);margin:15px 0;">15 ₼<span style="font-size:16px;color:var(--gray)">/ay</span></div>
+                <ul style="list-style:none;text-align:left;margin-bottom:25px;">
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Bütün videolar</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Bütün sınaqlar</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Nəticə analizi</li>
+                    <li style="padding:8px 0;">✅ Prioritet dəstək</li>
+                </ul>
+                <a href="payment.html" class="btn btn-primary btn-block">Abunə Ol</a>
+            </div>
+
+            <div class="card" style="text-align:center;border:2px solid var(--warning);">
+                <div style="font-size:40px;margin-bottom:15px;">🏆</div>
+                <h3 style="font-size:22px;margin-bottom:5px;">İllik</h3>
+                <div style="font-size:36px;font-weight:800;color:var(--warning);margin:15px 0;">120 ₼<span style="font-size:16px;color:var(--gray)">/il</span></div>
+                <ul style="list-style:none;text-align:left;margin-bottom:25px;">
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Hər şey daxil</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ 2 ay pulsuz</li>
+                    <li style="padding:8px 0;border-bottom:1px solid var(--border);">✅ Sertifikat</li>
+                    <li style="padding:8px 0;">✅ VIP dəstək</li>
+                </ul>
+                <a href="payment.html?plan=yearly" class="btn btn-warning btn-block">Abunə Ol</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="navbar-logo" style="color:white;">
+                    <span>∑</span> RiyazMath
+                </div>
+                <p>Azərbaycanın ən böyük riyaziyyat öyrənmə platforması. Hər yaşdan tələbə üçün.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Keçidlər</h4>
+                <ul>
+                    <li><a href="videos.html">Dərslər</a></li>
+                    <li><a href="tests.html">Sınaqlar</a></li>
+                    <li><a href="news.html">Xəbərlər</a></li>
+                    <li><a href="success.html">Uğurlar</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Hesab</h4>
+                <ul>
+                    <li><a href="login.html">Giriş</a></li>
+                    <li><a href="register.html">Qeydiyyat</a></li>
+                    <li><a href="dashboard.html">Kabinet</a></li>
+                    <li><a href="faq.html">Yardım</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Əlaqə</h4>
+                <ul>
+                    <li><a href="#">info@riyazmath.az</a></li>
+                    <li><a href="#">+994 50 000 00 00</a></li>
+                    <li><a href="#">Instagram</a></li>
+                    <li><a href="#">Telegram</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p>
+        </div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

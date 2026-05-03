@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tez-tez Soruşulan Suallar - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header { background: linear-gradient(135deg, #065f46, var(--success)); color: white; padding: 60px 0 40px; }
+        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+        .faq-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; padding: 40px 0; }
+        .faq-item { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+        .faq-question {
+            padding: 20px 25px; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; font-weight: 600; font-size: 15px; transition: background 0.2s;
+        }
+        .faq-question:hover { background: #f8fafc; }
+        .faq-question.open { color: var(--primary); background: #eef2ff; }
+        .faq-question i { transition: transform 0.3s; color: var(--gray); }
+        .faq-question.open i { transform: rotate(180deg); color: var(--primary); }
+        .faq-answer { display: none; padding: 0 25px 20px; color: var(--gray); font-size: 14px; line-height: 1.7; border-top: 1px solid var(--border); padding-top: 15px; }
+        .faq-answer.open { display: block; }
+        .faq-category { font-size: 13px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin: 25px 0 12px; }
+        .contact-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 25px; }
+        .contact-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 15px; }
+        .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .contact-item:last-child { border-bottom: none; }
+        .contact-item i { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        @media(max-width:768px) { .faq-layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="news.html">Xəbərlər</a>
+                <a href="success.html">Uğurlar</a>
+                <a href="faq.html" class="active">Suallar</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge"><i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼</span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm"><i class="fas fa-user"></i> <span id="navUserName"></span></a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="container">
+        <h1>❓ Tez-tez Soruşulan Suallar</h1>
+        <p>Ən çox verilən suallara cavablar</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="faq-layout">
+        <div>
+            <div class="faq-category">Hesab və Qeydiyyat</div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Qeydiyyat pulsuzdurmu? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Bəli, qeydiyyat tamamilə pulsuzdur. Pulsuz hesabla bəzi videolara və sınaqlarara daxil ola bilərsiniz. Premium məzmun üçün abunəlik lazımdır.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Şifrəmi unutdum, nə etməliyəm? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Giriş səhifəsindəki "Şifrəni unutdum" linkini klikləyin. Email ünvanınıza şifrə sıfırlama linki göndəriləcək.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Bir hesabla neçə cihazdan daxil ola bilərəm? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Təhlükəsizlik məqsədilə hesabınız yalnız 1 aktiv cihazda istifadə edilə bilər. Yeni cihazdan daxil olduqda əvvəlki cihazdan çıxış edilir.</div>
+            </div>
+
+            <div class="faq-category">Abunəlik və Ödəniş</div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Ödəniş necə edilir? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Visa, Mastercard və yerli bank kartları ilə ödəniş edə bilərsiniz. Əvvəlcə balansınıza pul yükləyir, sonra istədiyiniz plana abunə olursunuz.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Abunəliyi ləğv edə bilərəmmi? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Bəli, istənilən vaxt abunəliyi ləğv edə bilərsiniz. Ləğv etdikdən sonra mövcud abunəlik müddəti bitənə qədər premium məzmuna daxil ola bilərsiniz.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Geri qaytarma siyasəti nədir? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Ödənişdən sonra 7 gün ərzində istifadə edilməmiş balans geri qaytarıla bilər. Ətraflı məlumat üçün bizimlə əlaqə saxlayın.</div>
+            </div>
+
+            <div class="faq-category">Dərslər və Sınaqlar</div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Videolar offline izlənilə bilərmi? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Hazırda videolar yalnız online izlənilə bilər. Offline rejim mobil tətbiq ilə birlikdə əlavə ediləcək.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Sınaqda vaxt bitərsə nə olur? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Vaxt bitdikdə sınaq avtomatik tamamlanır və o ana qədər cavabladığınız suallar əsasında nəticəniz hesablanır.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Sertifikat almaq mümkündürmü? <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">Sertifikat sistemi hazırlanır. İllik abunəçilər hər mövzu üzrə sınaqları uğurla keçdikdən sonra rəsmi sertifikat ala biləcəklər.</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="contact-card">
+                <h4>📞 Bizimlə Əlaqə</h4>
+                <div class="contact-item">
+                    <i class="fas fa-envelope" style="background:#eef2ff;color:var(--primary);"></i>
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">Email</div>
+                        <div style="color:var(--gray);">info@riyazmath.az</div>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-phone" style="background:#ecfdf5;color:var(--success);"></i>
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">Telefon</div>
+                        <div style="color:var(--gray);">+994 50 000 00 00</div>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <i class="fab fa-telegram" style="background:#eff6ff;color:#2563eb;"></i>
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">Telegram</div>
+                        <div style="color:var(--gray);">@riyazmath</div>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <i class="fab fa-instagram" style="background:#fdf4ff;color:#9333ea;"></i>
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">Instagram</div>
+                        <div style="color:var(--gray);">@riyazmath.az</div>
+                    </div>
+                </div>
+                <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border);font-size:13px;color:var(--gray);">
+                    <i class="fas fa-clock"></i> İş saatları: 09:00 - 18:00
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom"><p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p></div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+function toggleFaq(el) {
+    const answer = el.nextElementSibling;
+    const isOpen = el.classList.contains('open');
+    document.querySelectorAll('.faq-question.open').forEach(q => {
+        q.classList.remove('open');
+        q.nextElementSibling.classList.remove('open');
+    });
+    if (!isOpen) {
+        el.classList.add('open');
+        answer.classList.add('open');
+    }
+}
+</script>
+</body>
+</html>

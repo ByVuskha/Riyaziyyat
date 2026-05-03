@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balans Yüklə - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header { background: linear-gradient(135deg, var(--dark), var(--primary)); color: white; padding: 60px 0 40px; }
+        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+        .payment-layout { display: grid; grid-template-columns: 1fr 360px; gap: 30px; padding: 40px 0; }
+
+        /* Amount selector */
+        .amount-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .amount-btn {
+            padding: 16px; border: 2px solid var(--border); border-radius: 10px;
+            background: white; cursor: pointer; font-size: 18px; font-weight: 700;
+            transition: all 0.2s; text-align: center;
+        }
+        .amount-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .amount-btn.selected { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+        .amount-btn small { display: block; font-size: 11px; font-weight: 400; color: var(--gray); margin-top: 2px; }
+        .amount-btn.selected small { color: var(--primary); }
+
+        /* Card form */
+        .card-form { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 30px; }
+        .card-form h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .card-number-input { position: relative; }
+        .card-number-input .card-type {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            font-size: 22px;
+        }
+        .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .secure-badge {
+            display: flex; align-items: center; gap: 8px;
+            background: #ecfdf5; color: #065f46; padding: 10px 14px;
+            border-radius: 8px; font-size: 13px; margin-bottom: 20px;
+        }
+
+        /* Order summary */
+        .summary-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 25px; position: sticky; top: 90px; }
+        .summary-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid var(--border); }
+        .summary-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; border-bottom: 1px solid var(--border); }
+        .summary-row:last-of-type { border-bottom: none; }
+        .summary-total { display: flex; justify-content: space-between; padding: 15px 0 0; font-size: 18px; font-weight: 800; }
+        .plan-card {
+            border: 2px solid var(--border); border-radius: 10px; padding: 15px;
+            cursor: pointer; margin-bottom: 10px; transition: all 0.2s;
+        }
+        .plan-card:hover, .plan-card.selected { border-color: var(--primary); background: #eef2ff; }
+        .plan-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        .plan-card p { font-size: 13px; color: var(--gray); margin: 0; }
+        .plan-card .plan-price { font-size: 20px; font-weight: 800; color: var(--primary); float: right; }
+
+        /* Steps */
+        .steps { display: flex; gap: 0; margin-bottom: 30px; }
+        .step { flex: 1; text-align: center; position: relative; }
+        .step::after { content: ''; position: absolute; top: 18px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+        .step:last-child::after { display: none; }
+        .step-circle {
+            width: 36px; height: 36px; border-radius: 50%; background: var(--border);
+            color: var(--gray); display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; margin: 0 auto 8px; position: relative; z-index: 1;
+        }
+        .step.active .step-circle { background: var(--primary); color: white; }
+        .step.done .step-circle { background: var(--success); color: white; }
+        .step p { font-size: 12px; color: var(--gray); }
+        .step.active p { color: var(--primary); font-weight: 600; }
+
+        @media(max-width:768px) { .payment-layout { grid-template-columns: 1fr; } .amount-grid { grid-template-columns: repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="dashboard.html">Kabinet</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge"><i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼</span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm"><i class="fas fa-user"></i> <span id="navUserName"></span></a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="container">
+        <h1>💳 Balans Yüklə</h1>
+        <p>Kart ilə balans yüklə, istədiyin kursa abunə ol</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="payment-layout">
+        <div>
+            <!-- Steps -->
+            <div class="steps">
+                <div class="step active" id="step1">
+                    <div class="step-circle">1</div>
+                    <p>Məbləğ</p>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-circle">2</div>
+                    <p>Kart</p>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-circle">3</div>
+                    <p>Təsdiq</p>
+                </div>
+            </div>
+
+            <!-- Step 1: Amount -->
+            <div id="panelAmount">
+                <div class="card" style="margin-bottom:20px;">
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:15px;">Abunəlik Planı Seç</h3>
+                    <div class="plan-card selected" id="planMonthly" onclick="selectPlan('monthly', 15)">
+                        <span class="plan-price">15 ₼</span>
+                        <h4>⭐ Aylıq Plan</h4>
+                        <p>Bütün videolar, sınaqlar, nəticə analizi</p>
+                    </div>
+                    <div class="plan-card" id="planYearly" onclick="selectPlan('yearly', 120)">
+                        <span class="plan-price">120 ₼</span>
+                        <h4>🏆 İllik Plan <span style="background:#ecfdf5;color:var(--success);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">2 ay pulsuz</span></h4>
+                        <p>Hər şey daxil + sertifikat + VIP dəstək</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:5px;">Və ya Xüsusi Məbləğ</h3>
+                    <p style="color:var(--gray);font-size:13px;margin-bottom:15px;">Balansınıza istənilən məbləğ əlavə edin</p>
+                    <div class="amount-grid">
+                        <button class="amount-btn" onclick="selectAmount(5)">5 ₼<small>Minimum</small></button>
+                        <button class="amount-btn" onclick="selectAmount(10)">10 ₼</button>
+                        <button class="amount-btn" onclick="selectAmount(15)">15 ₼<small>Aylıq</small></button>
+                        <button class="amount-btn" onclick="selectAmount(30)">30 ₼</button>
+                        <button class="amount-btn" onclick="selectAmount(50)">50 ₼</button>
+                        <button class="amount-btn" onclick="selectAmount(120)">120 ₼<small>İllik</small></button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="number" class="form-control" id="customAmount" placeholder="Xüsusi məbləğ (₼)" min="5" max="500" oninput="onCustomAmount(this.value)" style="flex:1;">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-block" style="margin-top:20px;" onclick="goToCard()">
+                    Davam Et <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Card -->
+            <div id="panelCard" style="display:none;">
+                <div class="card-form">
+                    <h3>💳 Kart Məlumatları</h3>
+                    <div class="secure-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        SSL şifrələmə ilə qorunur. Kart məlumatlarınız saxlanılmır.
+                    </div>
+                    <div class="form-group">
+                        <label>Kart Nömrəsi</label>
+                        <div class="card-number-input">
+                            <input type="text" class="form-control" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" oninput="formatCard(this)">
+                            <span class="card-type" id="cardType">💳</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Kart Sahibinin Adı</label>
+                        <input type="text" class="form-control" id="cardName" placeholder="AD SOYAD" style="text-transform:uppercase;">
+                    </div>
+                    <div class="card-row">
+                        <div class="form-group">
+                            <label>Son İstifadə Tarixi</label>
+                            <input type="text" class="form-control" id="cardExpiry" placeholder="MM/İİ" maxlength="5" oninput="formatExpiry(this)">
+                        </div>
+                        <div class="form-group">
+                            <label>CVV</label>
+                            <input type="password" class="form-control" id="cardCvv" placeholder="•••" maxlength="3">
+                        </div>
+                    </div>
+                    <div id="cardAlert"></div>
+                    <div style="display:flex;gap:12px;">
+                        <button class="btn btn-secondary" onclick="goBack()"><i class="fas fa-arrow-left"></i> Geri</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="processPayment()">
+                            <i class="fas fa-lock"></i> Ödəniş Et — <span id="payBtnAmount"></span> ₼
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="panelSuccess" style="display:none;">
+                <div class="card" style="text-align:center;padding:50px 30px;">
+                    <div style="font-size:80px;margin-bottom:20px;">🎉</div>
+                    <h2 style="font-size:26px;margin-bottom:10px;">Ödəniş Uğurlu Oldu!</h2>
+                    <p style="color:var(--gray);margin-bottom:10px;">Balansınıza <strong id="successAmount"></strong> ₼ əlavə edildi.</p>
+                    <p style="color:var(--gray);font-size:14px;margin-bottom:30px;">Yeni balansınız: <strong id="newBalance"></strong> ₼</p>
+                    <div style="display:flex;gap:12px;justify-content:center;">
+                        <a href="dashboard.html" class="btn btn-secondary">Kabinetə Qayıt</a>
+                        <a href="videos.html" class="btn btn-primary"><i class="fas fa-play"></i> Dərslərə Bax</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div>
+            <div class="summary-card">
+                <h3>📋 Sifariş Xülasəsi</h3>
+                <div class="summary-row">
+                    <span>Plan</span>
+                    <span id="summaryPlan">Aylıq</span>
+                </div>
+                <div class="summary-row">
+                    <span>Məbləğ</span>
+                    <span id="summaryAmount">15 ₼</span>
+                </div>
+                <div class="summary-row">
+                    <span>Cari Balans</span>
+                    <span id="summaryBalance">0 ₼</span>
+                </div>
+                <div class="summary-total">
+                    <span>Ödəniləcək</span>
+                    <span id="summaryTotal" style="color:var(--primary);">15 ₼</span>
+                </div>
+                <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border);">
+                    <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gray);margin-bottom:8px;">
+                        <i class="fas fa-check-circle" style="color:var(--success);"></i> Visa / Mastercard
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gray);margin-bottom:8px;">
+                        <i class="fas fa-check-circle" style="color:var(--success);"></i> Yerli bank kartları
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gray);">
+                        <i class="fas fa-check-circle" style="color:var(--success);"></i> SSL təhlükəsizlik
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom"><p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p></div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+let selectedAmount = 15;
+let selectedPlan = 'monthly';
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!isLoggedIn()) { window.location.href = 'login.html'; return; }
+    const user = getCurrentUser();
+    document.getElementById('summaryBalance').textContent = (user.balance || 0) + ' ₼';
+    updateSummary();
+    // Check URL param
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('plan') === 'yearly') selectPlan('yearly', 120);
+});
+
+function selectPlan(plan, amount) {
+    selectedPlan = plan;
+    selectedAmount = amount;
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('plan' + plan.charAt(0).toUpperCase() + plan.slice(1)).classList.add('selected');
+    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('customAmount').value = '';
+    updateSummary();
+}
+
+function selectAmount(amt) {
+    selectedAmount = amt;
+    selectedPlan = 'custom';
+    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+    event.target.classList.add('selected');
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('customAmount').value = '';
+    updateSummary();
+}
+
+function onCustomAmount(val) {
+    const n = parseInt(val);
+    if (n >= 5) {
+        selectedAmount = n;
+        selectedPlan = 'custom';
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+        document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+        updateSummary();
+    }
+}
+
+function updateSummary() {
+    const planNames = { monthly: 'Aylıq', yearly: 'İllik', custom: 'Xüsusi' };
+    document.getElementById('summaryPlan').textContent = planNames[selectedPlan] || 'Xüsusi';
+    document.getElementById('summaryAmount').textContent = selectedAmount + ' ₼';
+    document.getElementById('summaryTotal').textContent = selectedAmount + ' ₼';
+}
+
+function goToCard() {
+    if (!selectedAmount || selectedAmount < 5) {
+        alert('Minimum 5 ₼ seçin');
+        return;
+    }
+    document.getElementById('panelAmount').style.display = 'none';
+    document.getElementById('panelCard').style.display = 'block';
+    document.getElementById('payBtnAmount').textContent = selectedAmount;
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step1').classList.add('done');
+    document.getElementById('step1').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+    document.getElementById('step2').classList.add('active');
+}
+
+function goBack() {
+    document.getElementById('panelCard').style.display = 'none';
+    document.getElementById('panelAmount').style.display = 'block';
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step1').classList.remove('done');
+    document.getElementById('step1').classList.add('active');
+    document.getElementById('step1').querySelector('.step-circle').textContent = '1';
+}
+
+function formatCard(input) {
+    let v = input.value.replace(/\D/g, '').substring(0, 16);
+    input.value = v.replace(/(.{4})/g, '$1 ').trim();
+    const type = document.getElementById('cardType');
+    if (v.startsWith('4')) type.textContent = '💙';
+    else if (v.startsWith('5')) type.textContent = '🔴';
+    else type.textContent = '💳';
+}
+
+function formatExpiry(input) {
+    let v = input.value.replace(/\D/g, '').substring(0, 4);
+    if (v.length >= 2) v = v.substring(0,2) + '/' + v.substring(2);
+    input.value = v;
+}
+
+function processPayment() {
+    const num = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const name = document.getElementById('cardName').value.trim();
+    const expiry = document.getElementById('cardExpiry').value;
+    const cvv = document.getElementById('cardCvv').value;
+    const alertBox = document.getElementById('cardAlert');
+
+    if (num.length < 16) { alertBox.innerHTML = '<div class="alert alert-error">Kart nömrəsi düzgün deyil</div>'; return; }
+    if (!name) { alertBox.innerHTML = '<div class="alert alert-error">Kart sahibinin adını daxil edin</div>'; return; }
+    if (expiry.length < 5) { alertBox.innerHTML = '<div class="alert alert-error">Son istifadə tarixi düzgün deyil</div>'; return; }
+    if (cvv.length < 3) { alertBox.innerHTML = '<div class="alert alert-error">CVV kodu düzgün deyil</div>'; return; }
+
+    alertBox.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Ödəniş emal edilir...</div>';
+
+    setTimeout(() => {
+        // Update balance in localStorage
+        const user = getCurrentUser();
+        user.balance = (user.balance || 0) + selectedAmount;
+        Storage.set('currentUser', user);
+
+        document.getElementById('panelCard').style.display = 'none';
+        document.getElementById('panelSuccess').style.display = 'block';
+        document.getElementById('successAmount').textContent = selectedAmount;
+        document.getElementById('newBalance').textContent = user.balance;
+
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step2').classList.add('done');
+        document.getElementById('step2').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+        document.getElementById('step3').classList.add('active');
+        document.getElementById('step3').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+        document.getElementById('step3').classList.add('done');
+
+        // Update navbar balance
+        document.getElementById('balanceAmount').textContent = user.balance;
+    }, 2000);
+}
+</script>
+</body>
+</html>

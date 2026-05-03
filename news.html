@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xəbərlər - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; padding: 60px 0 40px; }
+        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+        .page-header p { opacity: 0.85; font-size: 16px; }
+        .news-layout { display: grid; grid-template-columns: 1fr 320px; gap: 30px; padding: 40px 0; }
+        .news-main {}
+        .news-card {
+            background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+            overflow: hidden; margin-bottom: 25px; display: flex; transition: all 0.3s;
+        }
+        .news-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+        .news-img {
+            width: 200px; min-height: 150px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 60px;
+        }
+        .news-body { padding: 20px; flex: 1; }
+        .news-body h3 { font-size: 18px; margin-bottom: 8px; line-height: 1.4; }
+        .news-body p { color: var(--gray); font-size: 14px; margin-bottom: 12px; line-height: 1.6; }
+        .news-meta { display: flex; gap: 15px; font-size: 12px; color: var(--gray); }
+        .news-meta span { display: flex; align-items: center; gap: 4px; }
+        .sidebar-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px; }
+        .sidebar-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+        .sidebar-news { display: flex; gap: 12px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .sidebar-news:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .sidebar-news-emoji { font-size: 28px; flex-shrink: 0; }
+        .sidebar-news h5 { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+        .sidebar-news span { font-size: 11px; color: var(--gray); }
+        @media(max-width:768px) { .news-layout { grid-template-columns: 1fr; } .news-img { width: 100px; } }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="news.html" class="active">Xəbərlər</a>
+                <a href="success.html">Uğurlar</a>
+                <a href="faq.html">Suallar</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge"><i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼</span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm"><i class="fas fa-user"></i> <span id="navUserName"></span></a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="container">
+        <h1>📰 Xəbərlər</h1>
+        <p>Platformamızdakı son yeniliklər və elanlar</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="news-layout">
+        <div class="news-main" id="newsList"></div>
+        <div class="news-sidebar">
+            <div class="sidebar-card">
+                <h4>🔥 Son Xəbərlər</h4>
+                <div id="sidebarNews"></div>
+            </div>
+            <div class="sidebar-card">
+                <h4>📊 Statistika</h4>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--gray);font-size:14px;">Ümumi tələbə</span><strong>10,240</strong></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--gray);font-size:14px;">Video sayı</span><strong>500+</strong></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--gray);font-size:14px;">Sınaq sayı</span><strong>1,000+</strong></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--gray);font-size:14px;">Bu ay yeni</span><strong>45 video</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom"><p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p></div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const NEWS = [
+    { id:1, emoji:'🎉', color:'#eef2ff', date:'1 May 2024', author:'RiyazMath Komandası', views:342,
+      title:'Yeni 50 Analiz Videosu Əlavə Edildi!',
+      text:'Limit, törəmə və inteqral mövzularını əhatə edən 50 yeni video platformamıza əlavə edildi. Hər video detallı izah və nümunə məsələlərlə zəngindir. Premium abunəçilər dərhal izləyə bilər.' },
+    { id:2, emoji:'🏆', color:'#fffbeb', date:'25 Aprel 2024', author:'RiyazMath Komandası', views:218,
+      title:'Aprel Ayının Ən Yaxşı Tələbələri Açıqlandı',
+      text:'Bu ay ən çox sınaq həll edən və ən yüksək bal toplayan tələbələrimiz müəyyənləşdi. Uğurlar səhifəsindən tam siyahıya baxa bilərsiniz. Qalib tələbələrə 1 aylıq pulsuz premium hədiyyə edildi.' },
+    { id:3, emoji:'💳', color:'#ecfdf5', date:'20 Aprel 2024', author:'RiyazMath Komandası', views:189,
+      title:'Yeni Ödəniş Sistemi İstifadəyə Verildi',
+      text:'Artıq kart ilə balans yükləmək daha asan! Visa, Mastercard və yerli kartlarla ödəniş edə bilərsiniz. Minimum yükləmə məbləği 5 ₼-dən başlayır. Balansınızı istənilən vaxt yoxlaya bilərsiniz.' },
+    { id:4, emoji:'📱', color:'#fdf4ff', date:'15 Aprel 2024', author:'RiyazMath Komandası', views:156,
+      title:'Mobil Versiya Yaxında!',
+      text:'RiyazMath mobil tətbiqi hazırlanır. iOS və Android üçün tətbiq tezliklə App Store və Google Play-də yayımlanacaq. Bildiriş almaq üçün email-inizi qeydiyyatdan keçirin.' },
+    { id:5, emoji:'🎓', color:'#fef2f2', date:'10 Aprel 2024', author:'RiyazMath Komandası', views:134,
+      title:'Sertifikat Sistemi Tezliklə',
+      text:'İllik abunəçilər üçün kurs tamamlama sertifikatı sistemi hazırlanır. Hər mövzu üzrə sınaqları uğurla keçən tələbələr rəsmi sertifikat ala biləcək.' },
+];
+
+document.getElementById('newsList').innerHTML = NEWS.map(n => `
+    <div class="news-card">
+        <div class="news-img" style="background:${n.color}">${n.emoji}</div>
+        <div class="news-body">
+            <h3>${n.title}</h3>
+            <p>${n.text}</p>
+            <div class="news-meta">
+                <span><i class="fas fa-calendar"></i> ${n.date}</span>
+                <span><i class="fas fa-user"></i> ${n.author}</span>
+                <span><i class="fas fa-eye"></i> ${n.views} baxış</span>
+            </div>
+        </div>
+    </div>
+`).join('');
+
+document.getElementById('sidebarNews').innerHTML = NEWS.slice(0,4).map(n => `
+    <div class="sidebar-news">
+        <div class="sidebar-news-emoji">${n.emoji}</div>
+        <div>
+            <h5>${n.title}</h5>
+            <span>${n.date}</span>
+        </div>
+    </div>
+`).join('');
+</script>
+</body>
+</html>
