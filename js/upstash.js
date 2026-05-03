@@ -148,9 +148,9 @@ class UpstashClient {
 
 // Configuration
 const UPSTASH_CONFIG = typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : {
-    url: 'https://your-database.upstash.io',
-    token: 'your-token-here',
-    enabled: false
+    url: 'https://enough-spider-40929.upstash.io',
+    token: 'AZ_hAAIgcDEwMjg5MmM0MTdkODY0ZjM5ODEyMGZjYTE5ODA3YzMwYQ',
+    enabled: true
 };
 
 // Create global instance
