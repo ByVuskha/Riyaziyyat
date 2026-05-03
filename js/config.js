@@ -5,6 +5,13 @@ const CONFIG = {
     DOMAIN: 'bizimriyaziyyat.work.gd'
 };
 
+// Upstash Configuration (Backend olmadan cloud storage)
+const UPSTASH_CONFIG = {
+    url: 'https://your-database.upstash.io', // Buraya öz URL-ni yaz
+    token: 'your-token-here', // Buraya öz token-ni yaz
+    enabled: false // true olarsa Upstash, false olarsa LocalStorage
+};
+
 // LocalStorage helpers
 const Storage = {
     get: (key) => {
@@ -13,6 +20,45 @@ const Storage = {
     set: (key, value) => localStorage.setItem(key, JSON.stringify(value)),
     remove: (key) => localStorage.removeItem(key),
     clear: () => localStorage.clear()
+};
+
+// Hybrid Storage Helper - Upstash və ya LocalStorage
+const StorageHelper = {
+    async get(key) {
+        if (UPSTASH_CONFIG.enabled && typeof upstash !== 'undefined') {
+            try {
+                return await upstash.get(key);
+            } catch (error) {
+                console.error('Upstash error, using LocalStorage:', error);
+                return Storage.get(key);
+            }
+        }
+        return Storage.get(key);
+    },
+    
+    async set(key, value, ttl = 86400) {
+        if (UPSTASH_CONFIG.enabled && typeof upstash !== 'undefined') {
+            try {
+                await upstash.set(key, value, ttl);
+            } catch (error) {
+                console.error('Upstash error, using LocalStorage:', error);
+                Storage.set(key, value);
+            }
+        } else {
+            Storage.set(key, value);
+        }
+    },
+    
+    async remove(key) {
+        if (UPSTASH_CONFIG.enabled && typeof upstash !== 'undefined') {
+            try {
+                await upstash.delete(key);
+            } catch (error) {
+                console.error('Upstash error:', error);
+            }
+        }
+        Storage.remove(key);
+    }
 };
 
 // Simple mock data (backend hazır olana qədər)
