@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sınaqlar - Bizim Riyaziyyat</title>
+    <title>Sınaqlar - RiyazMath</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -101,7 +101,7 @@
 <nav class="navbar">
     <div class="container">
         <div class="navbar-inner">
-            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
             <div class="navbar-menu">
                 <a href="index.html">Ana Səhifə</a>
                 <a href="videos.html">Dərslər</a>
@@ -181,7 +181,7 @@
 <footer class="footer">
     <div class="container">
         <div class="footer-bottom">
-            <p>&copy; 2024 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p>
+            <p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p>
         </div>
     </div>
 </footer>
@@ -189,7 +189,8 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script>
-const TESTS = [
+// Mock tests - backend hazır olana qədər
+const MOCK_TESTS = [
     {
         id: 1, title: 'Cəbr - Əsas Sınaq', emoji: '🔢', difficulty: 'easy',
         questions: 5, time: 10, free: true,
@@ -198,6 +199,220 @@ const TESTS = [
             { q: '2x + 4 = 10 tənliyinin həlli nədir?', opts: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], ans: 1 },
             { q: '3(x - 2) = 9 tənliyini həll edin.', opts: ['x = 3', 'x = 4', 'x = 5', 'x = 6'], ans: 2 },
             { q: 'x² = 16 tənliyinin müsbət həlli nədir?', opts: ['2', '4', '8', '16'], ans: 1 },
+            { q: '5x - 3 = 2x + 9 tənliyini həll edin.', opts: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], ans: 2 },
+            { q: '(x + 3)(x - 2) = 0 tənliyinin həlləri nədir?', opts: ['x = -3, x = 2', 'x = 3, x = -2', 'x = -3, x = -2', 'x = 3, x = 2'], ans: 0 }
+        ]
+    },
+    {
+        id: 2, title: 'Həndəsə - Üçbucaqlar', emoji: '📐', difficulty: 'medium',
+        questions: 4, time: 8, free: true,
+        desc: 'Üçbucaqların xassələri və bucaqlar',
+        data: [
+            { q: 'Üçbucağın daxili bucaqlarının cəmi neçə dərəcədir?', opts: ['90°', '180°', '270°', '360°'], ans: 1 },
+            { q: 'Düzbucaqlı üçbucaqda hipotenuz hansı tərəfdir?', opts: ['Ən kiçik tərəf', 'Ən böyük tərəf', 'Orta tərəf', 'İstənilən tərəf'], ans: 1 },
+            { q: 'Bərabərtərəfli üçbucaqda hər bucaq neçə dərəcədir?', opts: ['45°', '60°', '90°', '120°'], ans: 1 },
+            { q: 'Pifaqor teoremi hansı üçbucaqda işləyir?', opts: ['Bütün üçbucaqlarda', 'Düzbucaqlı üçbucaqda', 'Bərabərtərəfli üçbucaqda', 'Bərabəryanlı üçbucaqda'], ans: 1 }
+        ]
+    },
+    {
+        id: 3, title: 'Analiz - Limitlər', emoji: '∫', difficulty: 'hard',
+        questions: 3, time: 6, free: false,
+        desc: 'Limit anlayışı və hesablamalar',
+        data: [
+            { q: 'lim(x→0) sin(x)/x = ?', opts: ['0', '1', '∞', 'Mövcud deyil'], ans: 1 },
+            { q: 'lim(x→∞) 1/x = ?', opts: ['-∞', '0', '1', '∞'], ans: 1 },
+            { q: 'lim(x→2) (x²-4)/(x-2) = ?', opts: ['0', '2', '4', 'Mövcud deyil'], ans: 2 }
+        ]
+    }
+];
+
+// Load tests from localStorage and merge with mock
+function getAllTests() {
+    const uploadedTests = Storage.get('tests') || [];
+    
+    // Convert uploaded tests to display format
+    const formattedTests = uploadedTests.map(t => ({
+        id: 'uploaded_' + t.id,
+        title: t.title,
+        emoji: getCategoryEmoji(t.category),
+        difficulty: getDifficulty(t.questions?.length || 0),
+        questions: t.questions?.length || 0,
+        time: t.duration || 10,
+        free: !t.isDemo,
+        desc: t.description || '',
+        data: t.questions || []
+    }));
+    
+    return [...formattedTests, ...MOCK_TESTS];
+}
+
+function getCategoryEmoji(category) {
+    const emojis = {
+        'Cəbr': '🔢',
+        'Həndəsə': '📐',
+        'Analiz': '∫',
+        'Triqonometriya': '📊',
+        'Ədəd Nəzəriyyəsi': '🔢',
+        'Statistika': '📈'
+    };
+    return emojis[category] || '📝';
+}
+
+function getDifficulty(questionCount) {
+    if (questionCount <= 5) return 'easy';
+    if (questionCount <= 10) return 'medium';
+    return 'hard';
+}
+
+let currentFilter = 'all';
+let currentTest = null;
+let currentQuestionIndex = 0;
+let score = 0;
+let answers = [];
+
+function renderTests() {
+    const TESTS = getAllTests();
+    const grid = document.getElementById('testsGrid');
+    const filtered = TESTS.filter(t => 
+        currentFilter === 'all' || 
+        (currentFilter === 'free' ? t.free : t.difficulty === currentFilter)
+    );
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--gray);">Sınaq tapılmadı</div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(t => `
+        <div class="test-card">
+            <div class="test-emoji">${t.emoji}</div>
+            <h3 class="test-title">${t.title}</h3>
+            <p class="test-desc">${t.desc}</p>
+            <div class="test-meta">
+                <span><i class="fas fa-question-circle"></i> ${t.questions} sual</span>
+                <span><i class="fas fa-clock"></i> ${t.time} dəq</span>
+                <span class="badge badge-${t.difficulty === 'easy' ? 'success' : t.difficulty === 'medium' ? 'warning' : 'danger'}">
+                    ${t.difficulty === 'easy' ? 'Asan' : t.difficulty === 'medium' ? 'Orta' : 'Çətin'}
+                </span>
+            </div>
+            ${!t.free ? '<div class="premium-badge"><i class="fas fa-crown"></i> Premium</div>' : ''}
+            ${typeof t.id === 'string' && t.id.includes('uploaded') ? '<div class="uploaded-badge"><i class="fas fa-edit"></i> Yüklənmiş</div>' : ''}
+            <button class="btn btn-primary btn-block" onclick="startTest(${typeof t.id === 'string' ? "'" + t.id + "'" : t.id})">
+                <i class="fas fa-play"></i> Başla
+            </button>
+        </div>
+    `).join('');
+}
+
+function filterTests(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderTests();
+}
+
+function startTest(id) {
+    const TESTS = getAllTests();
+    currentTest = TESTS.find(t => t.id === id);
+    if (!currentTest) return;
+
+    const user = getCurrentUser();
+    if (!currentTest.free && (!user || user.balance < 5)) {
+        alert('Bu sınaq premium-dur. Balans yükləyin və ya abunə olun.');
+        return;
+    }
+
+    currentQuestionIndex = 0;
+    score = 0;
+    answers = [];
+
+    document.getElementById('testsSection').style.display = 'none';
+    document.getElementById('quizModal').classList.add('active');
+    document.getElementById('quizScreen').style.display = 'block';
+    document.getElementById('resultScreen').style.display = 'none';
+
+    document.getElementById('quizTitle').textContent = currentTest.title;
+    document.getElementById('quizSubtitle').textContent = `${currentTest.questions} sual • ${currentTest.time} dəqiqə`;
+
+    showQuestion();
+}
+
+function showQuestion() {
+    const q = currentTest.data[currentQuestionIndex];
+    document.getElementById('quizCounter').textContent = `Sual ${currentQuestionIndex + 1}/${currentTest.questions}`;
+    document.getElementById('questionText').textContent = q.q;
+    
+    const progress = ((currentQuestionIndex + 1) / currentTest.questions) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+
+    const container = document.getElementById('optionsContainer');
+    container.innerHTML = q.opts.map((opt, i) => `
+        <div class="quiz-option" onclick="selectAnswer(${i})">${opt}</div>
+    `).join('');
+
+    document.getElementById('nextBtn').style.display = 'none';
+    document.getElementById('feedbackText').textContent = '';
+}
+
+function selectAnswer(index) {
+    const q = currentTest.data[currentQuestionIndex];
+    const options = document.querySelectorAll('.quiz-option');
+    
+    options.forEach(opt => opt.style.pointerEvents = 'none');
+    
+    if (index === q.ans) {
+        options[index].classList.add('correct');
+        score++;
+        document.getElementById('feedbackText').textContent = '✓ Düzgün!';
+        document.getElementById('feedbackText').style.color = 'var(--success)';
+    } else {
+        options[index].classList.add('wrong');
+        options[q.ans].classList.add('correct');
+        document.getElementById('feedbackText').textContent = '✗ Səhv';
+        document.getElementById('feedbackText').style.color = 'var(--danger)';
+    }
+
+    answers.push({ question: currentQuestionIndex, selected: index, correct: q.ans });
+    document.getElementById('nextBtn').style.display = 'block';
+}
+
+function nextQuestion() {
+    currentQuestionIndex++;
+    if (currentQuestionIndex < currentTest.questions) {
+        showQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function showResult() {
+    document.getElementById('quizScreen').style.display = 'none';
+    document.getElementById('resultScreen').style.display = 'block';
+
+    const percentage = Math.round((score / currentTest.questions) * 100);
+    document.getElementById('resultScore').textContent = `${score}/${currentTest.questions}`;
+    
+    let emoji = '🎉';
+    let msg = 'Əla nəticə!';
+    if (percentage < 50) { emoji = '😔'; msg = 'Daha çox məşq lazımdır'; }
+    else if (percentage < 70) { emoji = '😊'; msg = 'Yaxşı nəticə!'; }
+    else if (percentage < 90) { emoji = '🎊'; msg = 'Çox yaxşı!'; }
+    
+    document.getElementById('resultEmoji').textContent = emoji;
+    document.getElementById('resultMsg').textContent = msg + ` (${percentage}%)`;
+}
+
+function closeQuiz() {
+    document.getElementById('quizModal').classList.remove('active');
+    document.getElementById('testsSection').style.display = 'block';
+}
+
+function retryQuiz() {
+    startTest(currentTest.id);
+}
+
+document.addEventListener('DOMContentLoaded', renderTests);
+</script>
             { q: '|x - 3| = 5 tənliyinin həlləri hansılardır?', opts: ['x=8 və x=-2', 'x=8 və x=2', 'x=5 və x=-5', 'x=3 və x=-3'], ans: 0 },
             { q: 'f(x) = 2x + 1 funksiyasında f(3) = ?', opts: ['5', '6', '7', '8'], ans: 2 },
         ]

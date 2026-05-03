@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sınaq Redaktəsi - Bizim Riyaziyyat</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .editor-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .editor-header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+        .editor-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .test-info {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+        .questions-list {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+        .question-item {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+        .question-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        }
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .question-number {
+            background: var(--primary);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .question-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .option {
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .option.correct {
+            border-color: var(--success);
+            background: #ecfdf5;
+        }
+        .explanation-box {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .explanation-box strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 8px;
+        }
+        .video-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #dc2626;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .add-question-btn {
+            width: 100%;
+            padding: 20px;
+            border: 2px dashed var(--primary);
+            background: #eef2ff;
+            color: var(--primary);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .add-question-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-style: solid;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            margin-bottom: 25px;
+            font-size: 22px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo">
+                <span>BR</span> Bizim Riyaziyyat
+            </a>
+            <div class="navbar-actions">
+                <a href="admin.html" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Admin Panelə Qayıt
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="editor-container">
+    <div class="editor-header">
+        <h1><i class="fas fa-edit"></i> Sınaq Redaktəsi</h1>
+        <p style="color:var(--gray);margin-top:5px;">Sınaq məlumatlarını və sualları redaktə edin</p>
+    </div>
+
+    <div class="test-info">
+        <h3 style="margin-bottom:20px;">Sınaq Məlumatları</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Sınaq Adı</label>
+                <input type="text" class="form-control" id="testTitle" placeholder="Məs: Cəbr Sınağı">
+            </div>
+            <div class="form-group">
+                <label>Kateqoriya</label>
+                <input type="text" class="form-control" id="testCategory" placeholder="Məs: Cəbr">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Müddət (dəqiqə)</label>
+                <input type="number" class="form-control" id="testDuration" placeholder="45">
+            </div>
+            <div class="form-group">
+                <label>Qiymət (₼)</label>
+                <input type="number" class="form-control" id="testPrice" placeholder="5">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Təsvir</label>
+            <textarea class="form-control" id="testDescription" rows="3" placeholder="Sınaq haqqında qısa məlumat"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveTestInfo()">
+            <i class="fas fa-save"></i> Məlumatları Yadda Saxla
+        </button>
+    </div>
+
+    <div class="questions-list">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+            <h3>Suallar (<span id="questionCount">0</span>)</h3>
+            <button class="btn btn-primary btn-sm" onclick="openAddQuestionModal()">
+                <i class="fas fa-plus"></i> Yeni Sual
+            </button>
+        </div>
+        
+        <div id="questionsList">
+            <!-- Questions will be loaded here -->
+        </div>
+        
+        <button class="add-question-btn" onclick="openAddQuestionModal()">
+            <i class="fas fa-plus-circle"></i> Yeni Sual Əlavə Et
+        </button>
+    </div>
+</div>
+
+<!-- Add/Edit Question Modal -->
+<div class="modal-overlay" id="questionModal">
+    <div class="modal">
+        <h2 id="modalTitle">Yeni Sual Əlavə Et</h2>
+        
+        <div class="form-group">
+            <label>Sual Mətni *</label>
+            <textarea class="form-control" id="questionText" rows="3" placeholder="Sualı daxil edin"></textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>A Variantı *</label>
+                <input type="text" class="form-control" id="optionA" placeholder="A variantı">
+            </div>
+            <div class="form-group">
+                <label>B Variantı *</label>
+                <input type="text" class="form-control" id="optionB" placeholder="B variantı">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>C Variantı *</label>
+                <input type="text" class="form-control" id="optionC" placeholder="C variantı">
+            </div>
+            <div class="form-group">
+                <label>D Variantı *</label>
+                <input type="text" class="form-control" id="optionD" placeholder="D variantı">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Düzgün Cavab *</label>
+            <select class="form-control" id="correctAnswer">
+                <option value="">Seçin</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>İzah</label>
+            <textarea class="form-control" id="explanation" rows="3" placeholder="Cavabın izahı (istəyə bağlı)"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>İzah Videosu (YouTube Link)</label>
+            <input type="url" class="form-control" id="explanationVideo" placeholder="https://youtube.com/watch?v=...">
+            <small style="color:var(--gray);font-size:12px;">Sınaq bitdikdən sonra istifadəçiyə tövsiyə olunacaq</small>
+        </div>
+        
+        <div style="display:flex;gap:10px;margin-top:25px;">
+            <button class="btn btn-primary" onclick="saveQuestion()">
+                <i class="fas fa-save"></i> Yadda Saxla
+            </button>
+            <button class="btn btn-secondary" onclick="closeQuestionModal()">
+                <i class="fas fa-times"></i> Ləğv Et
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+let questions = [];
+let editingQuestionIndex = -1;
+
+// Load test data
+document.addEventListener('DOMContentLoaded', () => {
+    const testId = new URLSearchParams(window.location.search).get('id');
+    if (testId) {
+        loadTestData(testId);
+    }
+});
+
+function loadTestData(testId) {
+    // Mock data - backend-dən gələcək
+    const testData = {
+        id: testId,
+        title: 'Cəbr Sınağı',
+        category: 'Cəbr',
+        duration: 45,
+        price: 5,
+        description: 'Cəbr mövzusu üzrə ümumi sınaq',
+        questions: [
+            {
+                text: '2x + 5 = 15 tənliyində x-in qiyməti nədir?',
+                optionA: '5',
+                optionB: '10',
+                optionC: '7',
+                optionD: '8',
+                correctAnswer: 'A',
+                explanation: 'Tənliyi həll edək: 2x = 15 - 5, 2x = 10, x = 5',
+                explanationVideo: 'https://youtube.com/watch?v=example1'
+            }
+        ]
+    };
+    
+    document.getElementById('testTitle').value = testData.title;
+    document.getElementById('testCategory').value = testData.category;
+    document.getElementById('testDuration').value = testData.duration;
+    document.getElementById('testPrice').value = testData.price;
+    document.getElementById('testDescription').value = testData.description;
+    
+    questions = testData.questions;
+    renderQuestions();
+}
+
+function renderQuestions() {
+    const container = document.getElementById('questionsList');
+    document.getElementById('questionCount').textContent = questions.length;
+    
+    if (questions.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Hələ sual əlavə edilməyib</p>';
+        return;
+    }
+    
+    container.innerHTML = questions.map((q, index) => `
+        <div class="question-item">
+            <div class="question-header">
+                <div class="question-number">${index + 1}</div>
+                <div class="question-actions">
+                    <button class="btn-icon btn-edit" onclick="editQuestion(${index})" title="Redaktə">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="deleteQuestion(${index})" title="Sil">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="question-text">${q.text}</div>
+            
+            <div class="options-grid">
+                <div class="option ${q.correctAnswer === 'A' ? 'correct' : ''}">
+                    <strong>A)</strong> ${q.optionA}
+                </div>
+                <div class="option ${q.correctAnswer === 'B' ? 'correct' : ''}">
+                    <strong>B)</strong> ${q.optionB}
+                </div>
+                <div class="option ${q.correctAnswer === 'C' ? 'correct' : ''}">
+                    <strong>C)</strong> ${q.optionC}
+                </div>
+                <div class="option ${q.correctAnswer === 'D' ? 'correct' : ''}">
+                    <strong>D)</strong> ${q.optionD}
+                </div>
+            </div>
+            
+            ${q.explanation || q.explanationVideo ? `
+                <div class="explanation-box">
+                    <strong><i class="fas fa-lightbulb"></i> İzah:</strong>
+                    ${q.explanation || 'İzah əlavə edilməyib'}
+                    ${q.explanationVideo ? `
+                        <a href="${q.explanationVideo}" target="_blank" class="video-link">
+                            <i class="fab fa-youtube"></i> Video İzah
+                        </a>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+function openAddQuestionModal() {
+    editingQuestionIndex = -1;
+    document.getElementById('modalTitle').textContent = 'Yeni Sual Əlavə Et';
+    clearQuestionForm();
+    document.getElementById('questionModal').classList.add('active');
+}
+
+function editQuestion(index) {
+    editingQuestionIndex = index;
+    const q = questions[index];
+    
+    document.getElementById('modalTitle').textContent = 'Sualı Redaktə Et';
+    document.getElementById('questionText').value = q.text;
+    document.getElementById('optionA').value = q.optionA;
+    document.getElementById('optionB').value = q.optionB;
+    document.getElementById('optionC').value = q.optionC;
+    document.getElementById('optionD').value = q.optionD;
+    document.getElementById('correctAnswer').value = q.correctAnswer;
+    document.getElementById('explanation').value = q.explanation || '';
+    document.getElementById('explanationVideo').value = q.explanationVideo || '';
+    
+    document.getElementById('questionModal').classList.add('active');
+}
+
+function saveQuestion() {
+    const question = {
+        text: document.getElementById('questionText').value,
+        optionA: document.getElementById('optionA').value,
+        optionB: document.getElementById('optionB').value,
+        optionC: document.getElementById('optionC').value,
+        optionD: document.getElementById('optionD').value,
+        correctAnswer: document.getElementById('correctAnswer').value,
+        explanation: document.getElementById('explanation').value,
+        explanationVideo: document.getElementById('explanationVideo').value
+    };
+    
+    if (!question.text || !question.optionA || !question.optionB || !question.optionC || !question.optionD || !question.correctAnswer) {
+        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
+        return;
+    }
+    
+    if (editingQuestionIndex >= 0) {
+        questions[editingQuestionIndex] = question;
+    } else {
+        questions.push(question);
+    }
+    
+    renderQuestions();
+    closeQuestionModal();
+    alert('Sual yadda saxlanıldı!');
+}
+
+function deleteQuestion(index) {
+    if (confirm('Bu sualı silmək istədiyinizdən əminsiniz?')) {
+        questions.splice(index, 1);
+        renderQuestions();
+    }
+}
+
+function closeQuestionModal() {
+    document.getElementById('questionModal').classList.remove('active');
+    clearQuestionForm();
+}
+
+function clearQuestionForm() {
+    document.getElementById('questionText').value = '';
+    document.getElementById('optionA').value = '';
+    document.getElementById('optionB').value = '';
+    document.getElementById('optionC').value = '';
+    document.getElementById('optionD').value = '';
+    document.getElementById('correctAnswer').value = '';
+    document.getElementById('explanation').value = '';
+    document.getElementById('explanationVideo').value = '';
+}
+
+function saveTestInfo() {
+    const testData = {
+        title: document.getElementById('testTitle').value,
+        category: document.getElementById('testCategory').value,
+        duration: document.getElementById('testDuration').value,
+        price: document.getElementById('testPrice').value,
+        description: document.getElementById('testDescription').value,
+        questions: questions
+    };
+    
+    console.log('Test data:', testData);
+    alert('Sınaq məlumatları yadda saxlanıldı!');
+    // Backend-ə göndəriləcək
+}
+</script>
+
+</body>
+</html>

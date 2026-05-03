@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Bizim Riyaziyyat</title>
+    <title>Admin Panel - RiyazMath</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -224,8 +224,8 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar">
         <div class="admin-logo">
-            <span>BR</span>
-            <div>Bizim Riyaziyyat Admin</div>
+            <span>∑</span>
+            <div>RiyazMath Admin</div>
         </div>
         <nav class="admin-menu">
             <div class="admin-menu-item active" onclick="showSection('dashboard')">
@@ -235,6 +235,10 @@
             <div class="admin-menu-item" onclick="showSection('users')">
                 <i class="fas fa-users"></i>
                 <span>İstifadəçilər</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('teachers')">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span>Müəllimlər</span>
             </div>
             <div class="admin-menu-item" onclick="showSection('videos')">
                 <i class="fas fa-video"></i>
@@ -274,7 +278,7 @@
             <div class="admin-user">
                 <div>
                     <div style="font-weight:600;font-size:14px;">Admin</div>
-                    <div style="font-size:12px;color:var(--gray);">admin@Bizim Riyaziyyat.az</div>
+                    <div style="font-size:12px;color:var(--gray);">admin@riyazmath.az</div>
                 </div>
                 <div class="admin-avatar">A</div>
             </div>
@@ -354,16 +358,84 @@
                     </tbody>
                 </table>
             </div>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-top:25px;">
+                <a href="javascript:showSection('videos')" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);text-align:center;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fas fa-video" style="font-size:30px;color:var(--primary);margin-bottom:10px;"></i>
+                    <h4 style="font-size:14px;margin-bottom:5px;">Video İdarəetməsi</h4>
+                    <p style="font-size:12px;color:var(--gray);">Videolar</p>
+                </a>
+                <a href="video-upload.html" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);text-align:center;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fab fa-youtube" style="font-size:30px;color:#dc2626;margin-bottom:10px;"></i>
+                    <h4 style="font-size:14px;margin-bottom:5px;">Video Yüklə</h4>
+                    <p style="font-size:12px;color:var(--gray);">YouTube Link</p>
+                </a>
+                <a href="javascript:showSection('tests')" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);text-align:center;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fas fa-clipboard-list" style="font-size:30px;color:var(--warning);margin-bottom:10px;"></i>
+                    <h4 style="font-size:14px;margin-bottom:5px;">Sınaq İdarəetməsi</h4>
+                    <p style="font-size:12px;color:var(--gray);">Testlər</p>
+                </a>
+                <a href="test-editor.html" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);text-align:center;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fas fa-edit" style="font-size:30px;color:var(--success);margin-bottom:10px;"></i>
+                    <h4 style="font-size:14px;margin-bottom:5px;">Sınaq Redaktəsi</h4>
+                    <p style="font-size:12px;color:var(--gray);">Sual Əlavə Et</p>
+                </a>
+            </div>
         </div>
 
         <!-- Users Section -->
         <div id="users" class="admin-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <h2 style="margin:0;border:none;padding:0;">İstifadəçilər</h2>
-                <button class="btn btn-primary btn-sm" onclick="showAddUserModal()">
+                <button class="btn btn-primary btn-sm" onclick="toggleUserForm()">
                     <i class="fas fa-plus"></i> Yeni İstifadəçi
                 </button>
             </div>
+            
+            <!-- Add User Form -->
+            <div id="addUserForm" style="display:none;background:#f8fafc;border-radius:12px;padding:25px;margin-bottom:25px;">
+                <h3 style="margin-bottom:20px;font-size:18px;">
+                    <i class="fas fa-user-plus"></i> Yeni İstifadəçi Əlavə Et
+                </h3>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                    <div class="form-group">
+                        <label>Ad *</label>
+                        <input type="text" class="form-control" id="newUserName" placeholder="Ad Soyad">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" class="form-control" id="newUserEmail" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Şifrə *</label>
+                        <input type="password" class="form-control" id="newUserPassword" placeholder="Minimum 6 simvol">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" class="form-control" id="newUserPhone" placeholder="+994 XX XXX XX XX">
+                    </div>
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <select class="form-control" id="newUserRole">
+                            <option value="user">İstifadəçi</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Balans (₼)</label>
+                        <input type="number" class="form-control" id="newUserBalance" value="0" min="0">
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn btn-primary" onclick="saveNewUser()">
+                        <i class="fas fa-save"></i> Yadda Saxla
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleUserForm()">
+                        <i class="fas fa-times"></i> Ləğv Et
+                    </button>
+                </div>
+            </div>
+            
             <table class="data-table">
                 <thead>
                     <tr>
@@ -371,6 +443,7 @@
                         <th>Ad</th>
                         <th>Email</th>
                         <th>Rol</th>
+                        <th>Tip</th>
                         <th>Balans</th>
                         <th>Qeydiyyat</th>
                         <th>Əməliyyatlar</th>
@@ -378,7 +451,82 @@
                 </thead>
                 <tbody id="usersTable">
                     <tr>
-                        <td colspan="7" style="text-align:center;color:var(--gray);">Yüklənir...</td>
+                        <td colspan="8" style="text-align:center;color:var(--gray);">Yüklənir...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Teachers Section -->
+        <div id="teachers" class="admin-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="margin:0;border:none;padding:0;">Müəllimlər</h2>
+                <button class="btn btn-primary btn-sm" onclick="toggleTeacherForm()">
+                    <i class="fas fa-plus"></i> Yeni Müəllim
+                </button>
+            </div>
+            
+            <!-- Add Teacher Form -->
+            <div id="addTeacherForm" style="display:none;background:#f8fafc;border-radius:12px;padding:25px;margin-bottom:25px;">
+                <h3 style="margin-bottom:20px;font-size:18px;">
+                    <i class="fas fa-chalkboard-teacher"></i> Yeni Müəllim Əlavə Et
+                </h3>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                    <div class="form-group">
+                        <label>Ad Soyad *</label>
+                        <input type="text" class="form-control" id="newTeacherName" placeholder="Dr. Əli Məmmədov">
+                    </div>
+                    <div class="form-group">
+                        <label>Vəzifə *</label>
+                        <input type="text" class="form-control" id="newTeacherTitle" placeholder="Riyaziyyat Müəllimi">
+                    </div>
+                    <div class="form-group">
+                        <label>İxtisas (vergüllə ayırın) *</label>
+                        <input type="text" class="form-control" id="newTeacherSubjects" placeholder="Cəbr, Həndəsə, Analiz">
+                    </div>
+                    <div class="form-group">
+                        <label>Təcrübə (il)</label>
+                        <input type="number" class="form-control" id="newTeacherExperience" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" class="form-control" id="newTeacherEmail" placeholder="teacher@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" class="form-control" id="newTeacherPhone" placeholder="+994 XX XXX XX XX">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea class="form-control" id="newTeacherBio" rows="3" placeholder="Müəllim haqqında qısa məlumat"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn btn-primary" onclick="saveNewTeacher()">
+                        <i class="fas fa-save"></i> Yadda Saxla
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleTeacherForm()">
+                        <i class="fas fa-times"></i> Ləğv Et
+                    </button>
+                </div>
+            </div>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Ad</th>
+                        <th>Vəzifə</th>
+                        <th>İxtisas</th>
+                        <th>Təcrübə</th>
+                        <th>Tələbə</th>
+                        <th>Reytinq</th>
+                        <th>Əməliyyatlar</th>
+                    </tr>
+                </thead>
+                <tbody id="teachersTable">
+                    <tr>
+                        <td colspan="8" style="text-align:center;color:var(--gray);">Müəllim yoxdur</td>
                     </tr>
                 </tbody>
             </table>
@@ -388,9 +536,14 @@
         <div id="videos" class="admin-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <h2 style="margin:0;border:none;padding:0;">Video Dərslər</h2>
-                <button class="btn btn-primary btn-sm" onclick="showAddVideoModal()">
-                    <i class="fas fa-plus"></i> Yeni Video
-                </button>
+                <div style="display:flex;gap:10px;">
+                    <a href="video-upload.html" class="btn btn-success btn-sm">
+                        <i class="fab fa-youtube"></i> Video Yüklə
+                    </a>
+                    <button class="btn btn-primary btn-sm" onclick="showAddVideoModal()">
+                        <i class="fas fa-plus"></i> Yeni Video
+                    </button>
+                </div>
             </div>
             <table class="data-table">
                 <thead>
@@ -496,7 +649,7 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label>Sayt Adı</label>
-                    <input type="text" class="form-control" value="Bizim Riyaziyyat" id="siteName">
+                    <input type="text" class="form-control" value="RiyazMath" id="siteName">
                 </div>
                 <div class="form-group">
                     <label>Domen</label>
@@ -512,7 +665,7 @@
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" class="form-control" value="info@Bizim Riyaziyyat.az" id="siteEmail">
+                    <input type="email" class="form-control" value="info@riyazmath.az" id="siteEmail">
                 </div>
                 <div class="form-group">
                     <label>Telefon</label>

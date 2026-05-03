@@ -54,7 +54,10 @@ function updateNavbar() {
 
 // Login function
 function login(email, password) {
-    const user = MOCK_USERS.find(u => u.email === email && u.password === password);
+    // Get all users from storage
+    const allUsers = Storage.get('allUsers') || MOCK_USERS;
+    
+    const user = allUsers.find(u => u.email === email && u.password === password);
     if (user) {
         const { password: _, ...safeUser } = user;
         Storage.set('currentUser', safeUser);
@@ -64,16 +67,34 @@ function login(email, password) {
 }
 
 // Register function
-function register(name, email, password) {
-    const exists = MOCK_USERS.find(u => u.email === email);
+function register(name, email, password, userType = 'student') {
+    // Get all users from storage
+    const allUsers = Storage.get('allUsers') || MOCK_USERS;
+    
+    const exists = allUsers.find(u => u.email === email);
     if (exists) return { success: false, message: 'Bu email artıq qeydiyyatdadır' };
 
     const newUser = {
-        id: MOCK_USERS.length + 1,
-        name, email, role: 'user', balance: 0, demoTests: 0
+        id: allUsers.length + 1,
+        name, 
+        email, 
+        role: 'user', 
+        userType: userType, // 'student' or 'teacher'
+        balance: 0, 
+        demoTests: 0,
+        emailVerified: true,
+        registeredAt: new Date().toISOString()
     };
-    MOCK_USERS.push({ ...newUser, password });
+    
+    // Add to users list with password
+    allUsers.push({ ...newUser, password });
+    
+    // Save all users to storage
+    Storage.set('allUsers', allUsers);
+    
+    // Set current user (without password)
     Storage.set('currentUser', newUser);
+    
     return { success: true, user: newUser };
 }
 

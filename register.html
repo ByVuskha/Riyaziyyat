@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Qeydiyyat - Bizim Riyaziyyat</title>
+    <title>Qeydiyyat - RiyazMath</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -47,7 +47,7 @@
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-logo">
-            <a href="index.html"><span>BR</span> Bizim Riyaziyyat</a>
+            <a href="index.html"><span>∑</span> RiyazMath</a>
         </div>
         <h2 class="auth-title">Hesab Yarat</h2>
         <p class="auth-subtitle">Pulsuz qeydiyyatdan keç</p>
@@ -67,6 +67,19 @@
                 <div class="input-icon">
                     <i class="fas fa-envelope"></i>
                     <input type="email" class="form-control" id="email" placeholder="email@example.com" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>İstifadəçi Tipi</label>
+                <div style="display:flex;gap:15px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;padding:12px;border:2px solid var(--border);border-radius:8px;transition:all 0.2s;">
+                        <input type="radio" name="userType" value="student" checked onchange="updateUserTypeStyle(this)">
+                        <i class="fas fa-user-graduate" style="color:var(--primary);"></i> Şagird
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;padding:12px;border:2px solid var(--border);border-radius:8px;transition:all 0.2s;">
+                        <input type="radio" name="userType" value="teacher" onchange="updateUserTypeStyle(this)">
+                        <i class="fas fa-chalkboard-teacher" style="color:var(--success);"></i> Müəllim
+                    </label>
                 </div>
             </div>
             <div class="form-group">
@@ -100,6 +113,20 @@
 <script>
     if (isLoggedIn()) window.location.href = 'dashboard.html';
 
+    // Update user type style
+    function updateUserTypeStyle(radio) {
+        document.querySelectorAll('input[name="userType"]').forEach(r => {
+            const label = r.parentElement;
+            if (r.checked) {
+                label.style.borderColor = 'var(--primary)';
+                label.style.background = '#eef2ff';
+            } else {
+                label.style.borderColor = 'var(--border)';
+                label.style.background = 'white';
+            }
+        });
+    }
+
     // Password strength indicator
     document.getElementById('password').addEventListener('input', function() {
         const bar = document.getElementById('strengthBar');
@@ -110,12 +137,20 @@
         else { bar.style.width = '100%'; bar.style.background = 'var(--success)'; }
     });
 
+    // Email verification simulation
+    function sendVerificationEmail(email) {
+        // In production, this would send actual email
+        const code = Math.floor(100000 + Math.random() * 900000);
+        return code;
+    }
+
     document.getElementById('registerForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const name = document.getElementById('name').value.trim();
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const confirm = document.getElementById('confirmPassword').value;
+        const userType = document.querySelector('input[name="userType"]:checked').value;
         const btn = document.getElementById('submitBtn');
         const alertBox = document.getElementById('alertBox');
 
@@ -125,20 +160,49 @@
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yüklənir...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Email doğrulanır...';
 
+        // Simulate email verification
         setTimeout(() => {
-            const result = register(name, email, password);
-            if (result.success) {
-                alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Qeydiyyat uğurlu oldu!</div>';
-                setTimeout(() => window.location.href = 'dashboard.html', 800);
-            } else {
-                alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
+            const verificationCode = sendVerificationEmail(email);
+            
+            // Show verification code in alert
+            alert(`📧 Email Doğrulama\n\nEmail ünvanınıza doğrulama kodu göndərildi.\n\n🔑 Doğrulama Kodu: ${verificationCode}\n\n(Demo rejimində kod burada göstərilir)`);
+            
+            const userCode = prompt('Doğrulama kodunu daxil edin:');
+            
+            if (!userCode) {
+                alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Email doğrulanmadı</div>';
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+                return;
             }
-        }, 600);
+
+            if (userCode != verificationCode) {
+                alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Yanlış doğrulama kodu</div>';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Qeydiyyat tamamlanır...';
+
+            setTimeout(() => {
+                const result = register(name, email, password, userType);
+                if (result.success) {
+                    alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Qeydiyyat uğurlu oldu! Email doğrulandı.</div>';
+                    setTimeout(() => window.location.href = 'dashboard.html', 800);
+                } else {
+                    alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+                }
+            }, 600);
+        }, 800);
     });
+
+    // Initialize user type style
+    updateUserTypeStyle(document.querySelector('input[name="userType"]:checked'));
 </script>
 </body>
 </html>

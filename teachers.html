@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müəllimlər - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .teachers-hero {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        .teachers-hero h1 {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+        .teachers-hero p {
+            font-size: 18px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .teachers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .teacher-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+        }
+        .teacher-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        
+        .teacher-image {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .teacher-image::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        .teacher-info {
+            padding: 25px;
+        }
+        .teacher-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        .teacher-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .teacher-bio {
+            color: var(--gray);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .teacher-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+        .teacher-stat {
+            flex: 1;
+            text-align: center;
+        }
+        .teacher-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .teacher-stat-label {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 3px;
+        }
+        
+        .teacher-subjects {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .subject-badge {
+            background: #eef2ff;
+            color: var(--primary);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .teacher-contact {
+            display: flex;
+            gap: 10px;
+        }
+        .contact-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .contact-btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .contact-btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        .contact-btn-secondary {
+            background: #f1f5f9;
+            color: var(--dark);
+        }
+        .contact-btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .stats-section {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            margin-bottom: 50px;
+        }
+        .stats-section h2 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 40px;
+        }
+        .overall-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+        .overall-stat {
+            text-align: center;
+        }
+        .overall-stat-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin: 0 auto 15px;
+        }
+        .overall-stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+        .overall-stat-label {
+            color: var(--gray);
+            font-size: 14px;
+        }
+        
+        .join-team {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 50px;
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .join-team h2 {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+        .join-team p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 25px;
+        }
+        .join-team .btn {
+            background: white;
+            color: var(--primary);
+        }
+        .join-team .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo">
+                <span>∑</span> RiyazMath
+            </a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="teachers.html" class="active">Müəllimlər</a>
+                <a href="news.html">Xəbərlər</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge">
+                    <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
+                </span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="teachers-hero">
+    <div class="container">
+        <h1>Peşəkar Müəllim Heyətimiz</h1>
+        <p>Təcrübəli və peşəkar müəllimlərimizlə riyaziyyatı asan və maraqlı öyrənin</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        
+        <div class="stats-section">
+            <h2>Komandamız Haqqında</h2>
+            <div class="overall-stats">
+                <div class="overall-stat">
+                    <div class="overall-stat-icon" style="background:#eef2ff;color:var(--primary);">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div class="overall-stat-value" style="color:var(--primary);">15+</div>
+                    <div class="overall-stat-label">Peşəkar Müəllim</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-stat-icon" style="background:#ecfdf5;color:var(--success);">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div class="overall-stat-value" style="color:var(--success);">10K+</div>
+                    <div class="overall-stat-label">Məzun Tələbə</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-stat-icon" style="background:#fffbeb;color:var(--warning);">
+                        <i class="fas fa-award"></i>
+                    </div>
+                    <div class="overall-stat-value" style="color:var(--warning);">25+</div>
+                    <div class="overall-stat-label">İl Təcrübə</div>
+                </div>
+                <div class="overall-stat">
+                    <div class="overall-stat-icon" style="background:#fef2f2;color:var(--danger);">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="overall-stat-value" style="color:var(--danger);">4.9/5</div>
+                    <div class="overall-stat-label">Orta Reytinq</div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Müəllimlərimiz</h2>
+        <p class="section-subtitle">Hər biri öz sahəsində mütəxəssis</p>
+
+        <div class="teachers-grid" id="teachersGrid">
+            <!-- Teachers will be loaded here -->
+        </div>
+
+        <div class="join-team">
+            <h2>Komandamıza Qoşul</h2>
+            <p>Riyaziyyat müəllimisinizsə və bizimlə işləmək istəyirsinizsə, müraciət edin</p>
+            <a href="mailto:hr@riyazmath.az" class="btn btn-lg">
+                <i class="fas fa-envelope"></i> Müraciət Et
+            </a>
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="navbar-logo" style="color:white;">
+                    <span>∑</span> RiyazMath
+                </div>
+                <p>Azərbaycanın ən böyük riyaziyyat öyrənmə platforması.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Keçidlər</h4>
+                <ul>
+                    <li><a href="videos.html">Dərslər</a></li>
+                    <li><a href="tests.html">Sınaqlar</a></li>
+                    <li><a href="teachers.html">Müəllimlər</a></li>
+                    <li><a href="news.html">Xəbərlər</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Hesab</h4>
+                <ul>
+                    <li><a href="login.html">Giriş</a></li>
+                    <li><a href="register.html">Qeydiyyat</a></li>
+                    <li><a href="dashboard.html">Kabinet</a></li>
+                    <li><a href="faq.html">Yardım</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Əlaqə</h4>
+                <ul>
+                    <li><a href="#">info@riyazmath.az</a></li>
+                    <li><a href="#">+994 50 000 00 00</a></li>
+                    <li><a href="#">Instagram</a></li>
+                    <li><a href="#">Telegram</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p>
+        </div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+// Mock teacher data
+const MOCK_TEACHERS = [
+    {
+        id: 1,
+        name: 'Dr. Əli Məmmədov',
+        title: 'Riyaziyyat üzrə Professor',
+        icon: '👨‍🏫',
+        bio: '25 il təcrübəyə malik riyaziyyat professoru. Cəbr və Analiz sahəsində mütəxəssis.',
+        subjects: ['Cəbr', 'Analiz', 'Diferensial Tənliklər'],
+        students: 2500,
+        videos: 150,
+        rating: 4.9,
+        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    },
+    {
+        id: 2,
+        name: 'Leyla Həsənova',
+        title: 'Həndəsə Müəllimi',
+        icon: '👩‍🏫',
+        bio: '15 il təcrübə. Həndəsə və Triqonometriya üzrə mütəxəssis. Sadə izah üslubu ilə tanınır.',
+        subjects: ['Həndəsə', 'Triqonometriya', 'Stereometriya'],
+        students: 1800,
+        videos: 120,
+        rating: 4.8,
+        gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+    },
+    {
+        id: 3,
+        name: 'Rəşad Əliyev',
+        title: 'Riyazi Analiz Mütəxəssisi',
+        icon: '👨‍💼',
+        bio: '20 il təcrübə. Limit, Törəmə və İnteqral mövzularında ekspert. Praktik yanaşma.',
+        subjects: ['Limit', 'Törəmə', 'İnteqral', 'Sıra'],
+        students: 2200,
+        videos: 180,
+        rating: 4.9,
+        gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    },
+    {
+        id: 4,
+        name: 'Günel Quliyeva',
+        title: 'Ədəd Nəzəriyyəsi Müəllimi',
+        icon: '👩‍💻',
+        bio: '12 il təcrübə. Ədəd Nəzəriyyəsi və Kombinatorika üzrə mütəxəssis. Olimpiada hazırlığı.',
+        subjects: ['Ədəd Nəzəriyyəsi', 'Kombinatorika', 'Ehtimal'],
+        students: 1500,
+        videos: 95,
+        rating: 4.7,
+        gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+    },
+    {
+        id: 5,
+        name: 'Elçin Bayramov',
+        title: 'Tətbiqi Riyaziyyat Mütəxəssisi',
+        icon: '👨‍🔬',
+        bio: '18 il təcrübə. Tətbiqi Riyaziyyat və Statistika sahəsində ekspert. Real həyat nümunələri.',
+        subjects: ['Statistika', 'Ehtimal', 'Tətbiqi Riyaziyyat'],
+        students: 1900,
+        videos: 110,
+        rating: 4.8,
+        gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+    },
+    {
+        id: 6,
+        name: 'Səbinə Məmmədova',
+        title: 'Məktəb Riyaziyyatı Müəllimi',
+        icon: '👩‍🎓',
+        bio: '10 il təcrübə. 5-11-ci sinif riyaziyyatı üzrə mütəxəssis. Uşaqlarla işləmək təcrübəsi.',
+        subjects: ['Məktəb Riyaziyyatı', 'Əsaslar', 'DİM Hazırlığı'],
+        students: 3000,
+        videos: 200,
+        rating: 5.0,
+        gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+    }
+];
+
+// Load teachers from localStorage and merge
+function getAllTeachers() {
+    const uploadedTeachers = Storage.get('teachers') || [];
+    
+    // Convert uploaded teachers to display format
+    const formattedTeachers = uploadedTeachers.map(t => ({
+        id: 'uploaded_' + t.id,
+        name: t.name,
+        title: t.title,
+        icon: '👨‍🏫',
+        bio: t.bio || 'Peşəkar müəllim',
+        subjects: t.subjects?.split(',').map(s => s.trim()) || [],
+        students: t.students || 0,
+        videos: 0,
+        rating: t.rating || 5.0,
+        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    }));
+    
+    return [...formattedTeachers, ...MOCK_TEACHERS];
+}
+
+// Load teachers
+function loadTeachers() {
+    const teachers = getAllTeachers();
+    const grid = document.getElementById('teachersGrid');
+    grid.innerHTML = teachers.map(teacher => `
+        <div class="teacher-card">
+            <div class="teacher-image" style="background:${teacher.gradient};">
+                <span style="font-size:100px;">${teacher.icon}</span>
+            </div>
+            <div class="teacher-info">
+                <div class="teacher-name">${teacher.name}</div>
+                <div class="teacher-title">${teacher.title}</div>
+                <div class="teacher-bio">${teacher.bio}</div>
+                
+                <div class="teacher-subjects">
+                    ${teacher.subjects.map(s => `<span class="subject-badge">${s}</span>`).join('')}
+                </div>
+                
+                <div class="teacher-stats">
+                    <div class="teacher-stat">
+                        <div class="teacher-stat-value">${teacher.students}</div>
+                        <div class="teacher-stat-label">Tələbə</div>
+                    </div>
+                    <div class="teacher-stat">
+                        <div class="teacher-stat-value">${teacher.videos}</div>
+                        <div class="teacher-stat-label">Video</div>
+                    </div>
+                    <div class="teacher-stat">
+                        <div class="teacher-stat-value">${teacher.rating}</div>
+                        <div class="teacher-stat-label">Reytinq</div>
+                    </div>
+                </div>
+                
+                <div class="teacher-contact">
+                    <button class="contact-btn contact-btn-primary" onclick="viewTeacherVideos(${teacher.id})">
+                        <i class="fas fa-play"></i> Dərsləri
+                    </button>
+                    <button class="contact-btn contact-btn-secondary" onclick="contactTeacher(${teacher.id})">
+                        <i class="fas fa-envelope"></i> Əlaqə
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function viewTeacherVideos(teacherId) {
+    window.location.href = `videos.html?teacher=${teacherId}`;
+}
+
+function contactTeacher(teacherId) {
+    const teacher = teachers.find(t => t.id === teacherId);
+    alert(`${teacher.name} ilə əlaqə: info@riyazmath.az`);
+}
+
+document.addEventListener('DOMContentLoaded', loadTeachers);
+</script>
+
+</body>
+</html>

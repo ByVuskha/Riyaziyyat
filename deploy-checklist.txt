@@ -1,0 +1,126 @@
+═══════════════════════════════════════════════════════════
+    RIYAZMATH DEPLOYMENT CHECKLIST
+    Domain: bizimriyaziyyat.work.gd
+═══════════════════════════════════════════════════════════
+
+📋 PRE-DEPLOYMENT
+═══════════════════════════════════════════════════════════
+☐ Bütün faylları yoxla
+☐ Config.js-də domain yenilənib
+☐ .htaccess faylı mövcuddur
+☐ Admin şifrəsi dəyişdirilib
+☐ Test məlumatları hazırdır
+
+📤 HOSTING SETUP
+═══════════════════════════════════════════════════════════
+☐ InfinityFree hesabı yaradıldı
+☐ Domain: bizimriyaziyyat.work.gd seçildi
+☐ FTP məlumatları alındı
+☐ File Manager-ə giriş edildi
+
+📁 FILE UPLOAD
+═══════════════════════════════════════════════════════════
+☐ index.html
+☐ login.html
+☐ register.html
+☐ dashboard.html
+☐ admin.html
+☐ videos.html
+☐ tests.html
+☐ news.html
+☐ payment.html
+☐ success.html
+☐ faq.html
+☐ .htaccess
+☐ css/main.css
+☐ js/config.js
+☐ js/auth.js
+☐ js/admin.js
+
+🔐 SSL SETUP
+═══════════════════════════════════════════════════════════
+☐ SSL sertifikatı quraşdırıldı
+☐ HTTPS redirect aktivləşdirildi
+☐ Mixed content problemləri həll edildi
+
+✅ TESTING
+═══════════════════════════════════════════════════════════
+☐ Ana səhifə açılır
+☐ Login işləyir
+☐ Register işləyir
+☐ Dashboard açılır
+☐ Admin panel işləyir (admin@riyazmath.az / admin123)
+☐ Video səhifəsi açılır
+☐ Test səhifəsi açılır
+☐ Xəbərlər səhifəsi açılır
+☐ Ödəniş səhifəsi açılır
+☐ Mobil versiya düzgün görünür
+
+🎨 DESIGN CHECK
+═══════════════════════════════════════════════════════════
+☐ CSS düzgün yüklənir
+☐ Font Awesome iconlar görünür
+☐ Responsive dizayn işləyir
+☐ Rənglər düzgündür
+☐ Animasiyalar işləyir
+
+🔧 FUNCTIONALITY TEST
+═══════════════════════════════════════════════════════════
+☐ Qeydiyyat sistemi
+☐ Giriş sistemi
+☐ Çıxış funksiyası
+☐ Balans göstərilməsi
+☐ Navigation menyu
+☐ Modal pəncərələr
+☐ Form validasiyası
+
+📊 ADMIN PANEL TEST
+═══════════════════════════════════════════════════════════
+☐ Dashboard statistikaları
+☐ İstifadəçi cədvəli
+☐ Video idarəetməsi
+☐ Test idarəetməsi
+☐ Xəbər idarəetməsi
+☐ Ödəniş cədvəli
+☐ Tənzimləmələr
+
+🚀 POST-DEPLOYMENT
+═══════════════════════════════════════════════════════════
+☐ Google Analytics əlavə edildi
+☐ Favicon əlavə edildi
+☐ Meta tags yoxlandı
+☐ SEO optimizasiyası
+☐ Performance test
+☐ Security scan
+
+📱 BROWSER TEST
+═══════════════════════════════════════════════════════════
+☐ Chrome
+☐ Firefox
+☐ Safari
+☐ Edge
+☐ Mobile Chrome
+☐ Mobile Safari
+
+🎉 LAUNCH
+═══════════════════════════════════════════════════════════
+☐ Final test
+☐ Backup yaradıldı
+☐ Monitoring quruldu
+☐ İstifadəçilərə elan edildi
+
+═══════════════════════════════════════════════════════════
+    DEPLOYMENT TAMAMLANDI! 🎊
+═══════════════════════════════════════════════════════════
+
+📞 SUPPORT:
+   Email: info@riyazmath.az
+   Domain: bizimriyaziyyat.work.gd
+
+⚠️ IMPORTANT NOTES:
+   1. Admin şifrəsini dərhal dəyişdirin!
+   2. Backend hazır olduqda API URL-i yeniləyin
+   3. Regular backup edin
+   4. Security updates izləyin
+
+═══════════════════════════════════════════════════════════

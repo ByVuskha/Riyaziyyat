@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Yükləmə - Bizim Riyaziyyat</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .upload-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .upload-card {
+            background: white;
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: var(--shadow);
+        }
+        .upload-card h1 {
+            font-size: 26px;
+            margin-bottom: 10px;
+        }
+        .upload-card p {
+            color: var(--gray);
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: #eef2ff;
+        }
+        .upload-placeholder {
+            display: block;
+        }
+        .upload-progress {
+            display: none;
+        }
+        .youtube-preview {
+            background: #f8fafc;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .youtube-preview.has-video {
+            border-color: var(--success);
+            background: #ecfdf5;
+        }
+        .youtube-preview iframe {
+            width: 100%;
+            height: 400px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .video-list {
+            margin-top: 40px;
+        }
+        .video-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        .video-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        }
+        .video-thumbnail {
+            width: 160px;
+            height: 90px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-thumbnail video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-info {
+            flex: 1;
+        }
+        .video-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .video-meta {
+            color: var(--gray);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .video-actions {
+            display: flex;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo">
+                <span>BR</span> Bizim Riyaziyyat
+            </a>
+            <div class="navbar-actions">
+                <a href="admin.html" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Admin Panelə Qayıt
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="upload-container">
+    <div class="upload-card">
+        <h1><i class="fab fa-youtube"></i> Video Yükləmə</h1>
+        <p>YouTube video linkini daxil edin və ya yeni video yükləyin</p>
+        
+        <div class="form-group">
+            <label>Video Başlığı *</label>
+            <input type="text" class="form-control" id="videoTitle" placeholder="Məs: Cəbr - Tənliklər">
+        </div>
+        
+        <div class="form-row" style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+            <div class="form-group">
+                <label>Kateqoriya *</label>
+                <select class="form-control" id="videoCategory">
+                    <option value="">Seçin</option>
+                    <option value="Cəbr">Cəbr</option>
+                    <option value="Həndəsə">Həndəsə</option>
+                    <option value="Analiz">Analiz</option>
+                    <option value="Triqonometriya">Triqonometriya</option>
+                    <option value="Ədəd Nəzəriyyəsi">Ədəd Nəzəriyyəsi</option>
+                    <option value="Statistika">Statistika</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Müəllim</label>
+                <select class="form-control" id="videoTeacher">
+                    <option value="">Seçin</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Təsvir</label>
+            <textarea class="form-control" id="videoDescription" rows="3" placeholder="Video haqqında qısa məlumat"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Video Mənbəyi</label>
+            <div style="display:flex;gap:15px;margin-bottom:15px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="radio" name="videoSource" value="youtube" checked onchange="toggleVideoSource()">
+                    <i class="fab fa-youtube" style="color:#dc2626;"></i> YouTube Link
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="radio" name="videoSource" value="upload" onchange="toggleVideoSource()">
+                    <i class="fas fa-upload" style="color:var(--primary);"></i> Öz Videom
+                </label>
+            </div>
+        </div>
+        
+        <div id="youtubeSection">
+            <div class="form-group">
+                <label>YouTube Video Linki *</label>
+                <input type="url" class="form-control" id="youtubeUrl" placeholder="https://youtube.com/watch?v=..." onchange="previewVideo()">
+                <small style="color:var(--gray);font-size:12px;">
+                    <i class="fas fa-info-circle"></i> YouTube video linkini buraya yapışdırın
+                </small>
+            </div>
+        </div>
+        
+        <div id="uploadSection" style="display:none;">
+            <div class="form-group">
+                <label>Video Faylı Yüklə *</label>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="videoFile" accept="video/*" style="display:none;" onchange="handleVideoUpload(event)">
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:50px;color:var(--primary);margin-bottom:15px;"></i>
+                        <p style="font-weight:600;margin-bottom:5px;">Video faylını buraya sürüşdürün</p>
+                        <p style="font-size:14px;color:var(--gray);margin-bottom:15px;">və ya</p>
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('videoFile').click()">
+                            <i class="fas fa-folder-open"></i> Fayl Seç
+                        </button>
+                        <p style="font-size:12px;color:var(--gray);margin-top:15px;">
+                            Dəstəklənən formatlar: MP4, AVI, MOV, MKV (Max: 500MB)
+                        </p>
+                    </div>
+                    <div class="upload-progress" id="uploadProgress" style="display:none;">
+                        <div style="margin-bottom:15px;">
+                            <i class="fas fa-video" style="font-size:40px;color:var(--primary);"></i>
+                        </div>
+                        <p id="fileName" style="font-weight:600;margin-bottom:10px;"></p>
+                        <div style="width:100%;background:#e2e8f0;border-radius:10px;height:8px;margin-bottom:10px;">
+                            <div id="progressBar" style="width:0%;background:var(--primary);height:100%;border-radius:10px;transition:width 0.3s;"></div>
+                        </div>
+                        <p id="progressText" style="font-size:14px;color:var(--gray);">0%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="youtube-preview" id="videoPreview">
+            <i class="fab fa-youtube" style="font-size:60px;color:var(--gray);opacity:0.3;"></i>
+            <p style="margin-top:15px;color:var(--gray);">Video önizləməsi burada görünəcək</p>
+        </div>
+        
+        <div class="form-row" style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isPremium"> Premium Video
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isActive" checked> Aktiv
+                </label>
+            </div>
+        </div>
+        
+        <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="saveVideo()">
+                <i class="fas fa-save"></i> Yadda Saxla
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='admin.html'">
+                <i class="fas fa-times"></i> Ləğv Et
+            </button>
+        </div>
+    </div>
+    
+    <div class="video-list">
+        <h3 style="margin-bottom:20px;">Son Yüklənən Videolar</h3>
+        <div id="videosList">
+            <!-- Videos will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+let uploadedVideoFile = null;
+let uploadedVideoUrl = null;
+
+// Load teachers into select
+function loadTeachersSelect() {
+    const teachers = Storage.get('teachers') || [];
+    const select = document.getElementById('videoTeacher');
+    
+    // Keep default option
+    select.innerHTML = '<option value="">Seçin</option>';
+    
+    // Add teachers from localStorage
+    teachers.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.id;
+        option.textContent = t.name;
+        select.appendChild(option);
+    });
+    
+    // Add default teachers if no teachers in storage
+    if (teachers.length === 0) {
+        const defaultTeachers = [
+            { id: 1, name: 'Dr. Əli Məmmədov' },
+            { id: 2, name: 'Leyla Həsənova' },
+            { id: 3, name: 'Rəşad Əliyev' }
+        ];
+        defaultTeachers.forEach(t => {
+            const option = document.createElement('option');
+            option.value = t.id;
+            option.textContent = t.name;
+            select.appendChild(option);
+        });
+    }
+}
+
+// Toggle between YouTube and Upload
+function toggleVideoSource() {
+    const source = document.querySelector('input[name="videoSource"]:checked').value;
+    const youtubeSection = document.getElementById('youtubeSection');
+    const uploadSection = document.getElementById('uploadSection');
+    const preview = document.getElementById('videoPreview');
+    
+    if (source === 'youtube') {
+        youtubeSection.style.display = 'block';
+        uploadSection.style.display = 'none';
+    } else {
+        youtubeSection.style.display = 'none';
+        uploadSection.style.display = 'block';
+        preview.innerHTML = `
+            <i class="fas fa-video" style="font-size:60px;color:var(--gray);opacity:0.3;"></i>
+            <p style="margin-top:15px;color:var(--gray);">Video önizləməsi burada görünəcək</p>
+        `;
+        preview.classList.remove('has-video');
+    }
+}
+
+// Drag and drop
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleVideoFile(files[0]);
+    }
+});
+
+// Handle video upload
+function handleVideoUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        handleVideoFile(file);
+    }
+}
+
+function handleVideoFile(file) {
+    // Check file type
+    if (!file.type.startsWith('video/')) {
+        alert('Zəhmət olmasa video faylı seçin!');
+        return;
+    }
+    
+    // Check file size (500MB max)
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    if (file.size > maxSize) {
+        alert('Video faylı 500MB-dan böyük ola bilməz!');
+        return;
+    }
+    
+    uploadedVideoFile = file;
+    
+    // Show progress
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    document.getElementById('uploadProgress').style.display = 'block';
+    document.getElementById('fileName').textContent = file.name;
+    
+    // Simulate upload progress
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += 5;
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressText').textContent = progress + '%';
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+                showVideoPreview(file);
+            }, 500);
+        }
+    }, 100);
+}
+
+function showVideoPreview(file) {
+    const preview = document.getElementById('videoPreview');
+    uploadedVideoUrl = URL.createObjectURL(file);
+    
+    preview.innerHTML = `
+        <p style="color:var(--success);font-weight:600;margin-bottom:10px;">
+            <i class="fas fa-check-circle"></i> Video yükləndi!
+        </p>
+        <video controls style="width:100%;max-height:400px;border-radius:12px;margin-top:10px;">
+            <source src="${uploadedVideoUrl}" type="${file.type}">
+            Brauzeriniz video təqdimatını dəstəkləmir.
+        </video>
+        <p style="margin-top:10px;font-size:14px;color:var(--gray);">
+            <i class="fas fa-info-circle"></i> Fayl: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+        </p>
+    `;
+    preview.classList.add('has-video');
+}
+
+function previewVideo() {
+    const url = document.getElementById('youtubeUrl').value;
+    const preview = document.getElementById('videoPreview');
+    
+    if (!url) {
+        preview.innerHTML = `
+            <i class="fab fa-youtube" style="font-size:60px;color:var(--gray);opacity:0.3;"></i>
+            <p style="margin-top:15px;color:var(--gray);">Video önizləməsi burada görünəcək</p>
+        `;
+        preview.classList.remove('has-video');
+        return;
+    }
+    
+    // Extract video ID from YouTube URL
+    let videoId = '';
+    if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('v=')[1].split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0];
+    }
+    
+    if (videoId) {
+        preview.innerHTML = `
+            <p style="color:var(--success);font-weight:600;margin-bottom:10px;">
+                <i class="fas fa-check-circle"></i> Video tapıldı!
+            </p>
+            <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" style="width:100%;border-radius:12px;margin-bottom:15px;" alt="Video thumbnail">
+            <iframe 
+                src="https://www.youtube.com/embed/${videoId}" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen
+                style="width:100%;height:400px;border-radius:12px;">
+            </iframe>
+        `;
+        preview.classList.add('has-video');
+    } else {
+        alert('Düzgün YouTube linki daxil edin!');
+    }
+}
+
+function saveVideo() {
+    const source = document.querySelector('input[name="videoSource"]:checked').value;
+    
+    const videoData = {
+        title: document.getElementById('videoTitle').value,
+        category: document.getElementById('videoCategory').value,
+        description: document.getElementById('videoDescription').value,
+        teacherId: document.getElementById('videoTeacher').value,
+        isPremium: document.getElementById('isPremium').checked,
+        isActive: document.getElementById('isActive').checked,
+        source: source
+    };
+    
+    if (!videoData.title || !videoData.category) {
+        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
+        return;
+    }
+    
+    let videoDuration = '00:00';
+    
+    if (source === 'youtube') {
+        videoData.youtubeUrl = document.getElementById('youtubeUrl').value;
+        if (!videoData.youtubeUrl) {
+            alert('YouTube linki daxil edin!');
+            return;
+        }
+        // For YouTube, we'll estimate duration or set default
+        videoDuration = '15:30'; // Default for YouTube videos
+    } else {
+        if (!uploadedVideoFile) {
+            alert('Video faylı yükləyin!');
+            return;
+        }
+        videoData.videoFile = uploadedVideoFile.name;
+        videoData.videoSize = uploadedVideoFile.size;
+        videoData.videoUrl = uploadedVideoUrl;
+        
+        // Get actual video duration
+        const video = document.createElement('video');
+        video.src = uploadedVideoUrl;
+        video.onloadedmetadata = function() {
+            const duration = Math.floor(video.duration);
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            videoDuration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Save video with actual duration
+            saveVideoToStorage(videoData, videoDuration);
+        };
+        return; // Wait for metadata to load
+    }
+    
+    // Save immediately for YouTube
+    saveVideoToStorage(videoData, videoDuration);
+}
+
+function saveVideoToStorage(videoData, duration) {
+    // Save to localStorage
+    const videos = Storage.get('videos') || [];
+    videos.push({
+        id: videos.length + 1,
+        ...videoData,
+        views: 0,
+        duration: duration,
+        createdAt: new Date().toISOString()
+    });
+    Storage.set('videos', videos);
+    
+    alert('Video uğurla yadda saxlanıldı!');
+    
+    // Reset form
+    document.getElementById('videoTitle').value = '';
+    document.getElementById('videoCategory').value = '';
+    document.getElementById('videoDescription').value = '';
+    document.getElementById('videoTeacher').value = '';
+    document.getElementById('youtubeUrl').value = '';
+    document.getElementById('uploadPlaceholder').style.display = 'block';
+    document.getElementById('uploadProgress').style.display = 'none';
+    uploadedVideoFile = null;
+    uploadedVideoUrl = null;
+    
+    const preview = document.getElementById('videoPreview');
+    preview.innerHTML = `
+        <i class="fab fa-youtube" style="font-size:60px;color:var(--gray);opacity:0.3;"></i>
+        <p style="margin-top:15px;color:var(--gray);">Video önizləməsi burada görünəcək</p>
+    `;
+    preview.classList.remove('has-video');
+    
+    loadVideos();
+}
+
+function loadVideos() {
+    const videos = Storage.get('videos') || [];
+    const teachers = Storage.get('teachers') || [];
+    
+    const container = document.getElementById('videosList');
+    
+    if (videos.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Hələ video yüklənməyib</p>';
+        return;
+    }
+    
+    container.innerHTML = videos.map(v => {
+        const teacher = teachers.find(t => t.id == v.teacherId);
+        let thumbnailHtml = '';
+        
+        if (v.source === 'youtube' && v.youtubeUrl) {
+            const videoId = extractYouTubeId(v.youtubeUrl);
+            if (videoId) {
+                thumbnailHtml = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" alt="${v.title}">`;
+            }
+        } else if (v.videoUrl) {
+            thumbnailHtml = `<video src="${v.videoUrl}" style="width:100%;height:100%;object-fit:cover;"></video>`;
+        }
+        
+        return `
+        <div class="video-item">
+            <div class="video-thumbnail">
+                ${thumbnailHtml || '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f1f5f9;"><i class="fas fa-video" style="font-size:30px;color:var(--gray);"></i></div>'}
+            </div>
+            <div class="video-info">
+                <div class="video-title">${v.title}</div>
+                <div class="video-meta">
+                    <span class="badge badge-primary">${v.category}</span>
+                    ${teacher ? `<span style="margin-left:10px;"><i class="fas fa-chalkboard-teacher"></i> ${teacher.name}</span>` : ''}
+                    <span style="margin-left:10px;"><i class="fas fa-clock"></i> ${v.duration}</span>
+                    <span style="margin-left:10px;"><i class="fas fa-eye"></i> ${v.views || 0}</span>
+                    <span style="margin-left:10px;">
+                        ${v.source === 'youtube' ? 
+                            '<i class="fab fa-youtube" style="color:#dc2626;"></i> YouTube' : 
+                            '<i class="fas fa-video" style="color:var(--primary);"></i> Yüklənmiş'
+                        }
+                    </span>
+                </div>
+                <div class="video-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editVideo(${v.id})">
+                        <i class="fas fa-edit"></i> Redaktə
+                    </button>
+                    <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteVideo(${v.id})">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+function extractYouTubeId(url) {
+    if (!url) return null;
+    if (url.includes('youtube.com/watch?v=')) {
+        return url.split('v=')[1].split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        return url.split('youtu.be/')[1].split('?')[0];
+    }
+    return null;
+}
+
+function editVideo(id) {
+    alert('Video redaktəsi: ID ' + id);
+}
+
+function deleteVideo(id) {
+    if (confirm('Bu videonu silmək istədiyinizdən əminsiniz?')) {
+        const videos = Storage.get('videos') || [];
+        const filtered = videos.filter(v => v.id !== id);
+        Storage.set('videos', filtered);
+        alert('Video silindi!');
+        loadVideos();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadVideos();
+    loadTeachersSelect();
+});
+</script>
+
+</body>
+</html>
