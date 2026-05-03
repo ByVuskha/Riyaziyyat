@@ -7,9 +7,10 @@ const CONFIG = {
 
 // Upstash Configuration (Backend olmadan cloud storage)
 const UPSTASH_CONFIG = {
-    url: 'https://your-database.upstash.io', // Buraya öz URL-ni yaz
-    token: 'your-token-here', // Buraya öz token-ni yaz
-    enabled: false // true olarsa Upstash, false olarsa LocalStorage
+    url: 'https://enough-spider-40929.upstash.io', // Buraya öz URL-ni yaz
+    token: 'AZ_hAAIgcDEwMjg5MmM0MTdkODY0ZjM5ODEyMGZjYTE5ODA3YzMwYQ', // Buraya öz token-ni yaz
+    enabled: true, // true olarsa Upstash, false olarsa LocalStorage
+    autoSync: true // Səhifə yüklənəndə avtomatik sinxronizasiya
 };
 
 // LocalStorage helpers
