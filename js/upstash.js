@@ -147,10 +147,10 @@ class UpstashClient {
 }
 
 // Configuration
-const UPSTASH_CONFIG = {
-    // Replace with your Upstash credentials
+const UPSTASH_CONFIG = typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : {
     url: 'https://your-database.upstash.io',
-    token: 'your-token-here'
+    token: 'your-token-here',
+    enabled: false
 };
 
 // Create global instance
