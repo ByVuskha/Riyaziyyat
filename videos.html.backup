@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dərslər - RiyazMath</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header {
+            background: linear-gradient(135deg, var(--dark), var(--primary));
+            color: white;
+            padding: 60px 0 40px;
+        }
+        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+        .page-header p { opacity: 0.85; font-size: 16px; }
+
+        .filters {
+            background: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 70px;
+            z-index: 100;
+        }
+        .filters-inner {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: var(--gray);
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .search-box {
+            margin-left: auto;
+            position: relative;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+        .search-box input {
+            padding: 8px 16px 8px 36px;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            width: 220px;
+            transition: border-color 0.2s;
+        }
+        .search-box input:focus { border-color: var(--primary); }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            padding: 40px 0;
+        }
+        .video-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .video-card:hover { transform: translateY(-5px); box-shadow: 0 12px 35px rgba(0,0,0,0.12); }
+        .video-thumb {
+            position: relative;
+            background: linear-gradient(135deg, var(--dark), var(--primary));
+            height: 175px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .video-thumb .play-btn {
+            width: 55px; height: 55px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            color: var(--primary);
+            transition: transform 0.2s;
+        }
+        .video-thumb:hover .play-btn { transform: scale(1.1); }
+        .video-thumb .duration {
+            position: absolute;
+            bottom: 10px; right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .video-thumb .lock-badge {
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .video-thumb .topic-emoji {
+            position: absolute;
+            top: 10px; left: 10px;
+            font-size: 28px;
+        }
+        .video-body { padding: 18px; }
+        .video-body h3 { font-size: 16px; margin-bottom: 8px; line-height: 1.4; }
+        .video-body p { color: var(--gray); font-size: 13px; margin-bottom: 12px; }
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .video-meta span { font-size: 12px; color: var(--gray); }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html" class="active">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="news.html">Xəbərlər</a>
+                <a href="success.html">Uğurlar</a>
+                <a href="faq.html">Suallar</a>
+            </div>
+            <div class="navbar-actions">
+                <span class="balance-badge" id="balanceBadge">
+                    <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
+                </span>
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="container">
+        <h1>📹 Video Dərslər</h1>
+        <p>500+ video ilə riyaziyyatı addım-addım öyrən</p>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="container">
+        <div class="filters-inner">
+            <button class="filter-btn active" onclick="filterVideos('all', this)">Hamısı</button>
+            <button class="filter-btn" onclick="filterVideos('hendese', this)">📐 Həndəsə</button>
+            <button class="filter-btn" onclick="filterVideos('cebr', this)">🔢 Cəbr</button>
+            <button class="filter-btn" onclick="filterVideos('analiz', this)">∫ Analiz</button>
+            <button class="filter-btn" onclick="filterVideos('ehtimal', this)">🎲 Ehtimal</button>
+            <button class="filter-btn" onclick="filterVideos('free', this)">🆓 Pulsuz</button>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Mövzu axtar..." oninput="searchVideos(this.value)">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="videos-grid" id="videosGrid"></div>
+</div>
+
+<!-- Video Modal -->
+<div class="modal-overlay" id="videoModal">
+    <div class="modal" style="max-width:900px;">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2 id="modalTitle">Video</h2>
+        <div id="videoPlayerContainer" style="background:#000;border-radius:10px;margin:20px 0;">
+            <!-- Video player will be inserted here -->
+        </div>
+        <p id="modalDesc" style="color:var(--gray);font-size:14px;"></p>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom">
+            <p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p>
+        </div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+// Mock data - backend hazır olana qədər
+const MOCK_VIDEOS = [
+    { id:1, title:'Üçbucaqda bucaqların cəmi', topic:'hendese', emoji:'📐', duration:'18:24', views:1240, free:true, desc:'Üçbucağın daxili bucaqlarının cəminin 180° olduğunu isbat edirik.', source:'youtube' },
+    { id:2, title:'Pifaqor teoremi', topic:'hendese', emoji:'📐', duration:'22:10', views:980, free:true, desc:'Düzbucaqlı üçbucaqda a²+b²=c² əlaqəsi.', source:'youtube' },
+    { id:3, title:'Dairə və onun elementləri', topic:'hendese', emoji:'📐', duration:'15:40', views:760, free:false, desc:'Radius, diametr, vətər, yay anlayışları.', source:'youtube' },
+    { id:4, title:'Fəza həndəsəsinə giriş', topic:'hendese', emoji:'📐', duration:'28:05', views:540, free:false, desc:'3 ölçülü fəzada nöqtə, düz xətt, müstəvi.', source:'youtube' },
+    { id:5, title:'Xətti tənliklər', topic:'cebr', emoji:'🔢', duration:'20:15', views:1560, free:true, desc:'ax+b=0 formasında tənliklərin həlli.', source:'youtube' },
+    { id:6, title:'Kvadrat tənliklər', topic:'cebr', emoji:'🔢', duration:'25:30', views:1320, free:true, desc:'Diskriminant düsturu ilə həll.', source:'youtube' },
+    { id:7, title:'Funksiyalar və qrafiklər', topic:'cebr', emoji:'🔢', duration:'32:00', views:890, free:false, desc:'Funksiya anlayışı, sahə, dəyərlər çoxluğu.', source:'youtube' },
+    { id:8, title:'Bərabərsizliklər', topic:'cebr', emoji:'🔢', duration:'19:45', views:670, free:false, desc:'Xətti və kvadrat bərabərsizliklərin həlli.', source:'youtube' },
+    { id:9, title:'Limitlərə giriş', topic:'analiz', emoji:'∫', duration:'35:20', views:430, free:true, desc:'Limitin anlayışı, sadə limit hesablamaları.', source:'youtube' },
+    { id:10, title:'Törəmə anlayışı', topic:'analiz', emoji:'∫', duration:'40:10', views:380, free:false, desc:'Diferensiallaşma qaydaları.', source:'youtube' },
+    { id:11, title:'İnteqral hesabı', topic:'analiz', emoji:'∫', duration:'45:00', views:290, free:false, desc:'Qeyri-müəyyən inteqral, əsas düsturlar.', source:'youtube' },
+    { id:12, title:'Ehtimal nəzəriyyəsi', topic:'ehtimal', emoji:'🎲', duration:'22:30', views:510, free:true, desc:'Hadisə, ehtimal, klassik tərif.', source:'youtube' },
+    { id:13, title:'Kombinatorika', topic:'ehtimal', emoji:'🎲', duration:'18:50', views:440, free:false, desc:'Permutasiya, kombinasiya, yerləşdirmə.', source:'youtube' },
+];
+
+let currentFilter = 'all';
+let currentSearch = '';
+
+// Load videos from localStorage and merge with mock data
+function getAllVideos() {
+    const uploadedVideos = Storage.get('videos') || [];
+    
+    // Convert uploaded videos to display format
+    const formattedUploaded = uploadedVideos.map(v => {
+        // Get teacher info
+        const teachers = Storage.get('teachers') || [];
+        const teacher = teachers.find(t => t.id == v.teacherId);
+        
+        return {
+            id: 'uploaded_' + v.id,
+            title: v.title,
+            topic: v.category?.toLowerCase() || 'cebr',
+            emoji: getCategoryEmoji(v.category),
+            duration: v.duration || '00:00',
+            views: v.views || 0,
+            free: !v.isPremium,
+            desc: v.description || '',
+            source: v.source || 'youtube',
+            videoUrl: v.videoUrl,
+            youtubeUrl: v.youtubeUrl,
+            teacherName: teacher ? teacher.name : 'Müəllim təyin edilməyib',
+            teacherId: v.teacherId
+        };
+    });
+    
+    // Merge mock and uploaded videos
+    return [...formattedUploaded, ...MOCK_VIDEOS];
+}
+
+function getCategoryEmoji(category) {
+    const emojis = {
+        'Cəbr': '🔢',
+        'Həndəsə': '📐',
+        'Analiz': '∫',
+        'Triqonometriya': '📊',
+        'Ədəd Nəzəriyyəsi': '🔢',
+        'Statistika': '📈',
+        'Ehtimal': '🎲'
+    };
+    return emojis[category] || '📚';
+}
+
+function renderVideos() {
+    const VIDEOS = getAllVideos();
+    const grid = document.getElementById('videosGrid');
+    let filtered = VIDEOS.filter(v => {
+        const matchFilter = currentFilter === 'all' || 
+                           (currentFilter === 'free' ? v.free : v.topic === currentFilter);
+        const matchSearch = v.title.toLowerCase().includes(currentSearch.toLowerCase());
+        return matchFilter && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--gray);"><i class="fas fa-video" style="font-size:50px;opacity:0.3;margin-bottom:15px;"></i><p>Video tapılmadı</p></div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(v => {
+        let thumbnailHtml = '';
+        
+        // Get YouTube thumbnail if available
+        if (v.youtubeUrl) {
+            const videoId = extractYouTubeId(v.youtubeUrl);
+            if (videoId) {
+                thumbnailHtml = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.3;" alt="${v.title}">`;
+            }
+        }
+        
+        return `
+        <div class="video-card">
+            <div class="video-thumb" onclick="openVideo(${typeof v.id === 'string' ? "'" + v.id + "'" : v.id})">
+                ${thumbnailHtml}
+                <span class="topic-emoji">${v.emoji}</span>
+                <div class="play-btn"><i class="fas fa-play"></i></div>
+                <span class="duration">${v.duration}</span>
+                ${!v.free ? '<span class="lock-badge"><i class="fas fa-lock"></i> Premium</span>' : ''}
+            </div>
+            <div class="video-body">
+                <h3>${v.title}</h3>
+                <p>${v.desc}</p>
+                ${v.teacherName ? `<p style="font-size:12px;color:var(--primary);margin-bottom:8px;"><i class="fas fa-chalkboard-teacher"></i> ${v.teacherName}</p>` : ''}
+                <div class="video-meta">
+                    <span><i class="fas fa-eye"></i> ${v.views.toLocaleString()} baxış</span>
+                    <span class="badge ${v.free ? 'badge-success' : 'badge-primary'}">${v.free ? 'Pulsuz' : 'Premium'}</span>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+function filterVideos(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderVideos();
+}
+
+function searchVideos() {
+    currentSearch = document.getElementById('searchInput').value;
+    renderVideos();
+}
+
+function openVideo(id) {
+    const VIDEOS = getAllVideos();
+    const video = VIDEOS.find(v => v.id === id);
+    if (!video) return;
+    
+    const user = getCurrentUser();
+    if (!video.free && (!user || user.balance < 5)) {
+        alert('Bu video premium-dur. Balans yükləyin və ya abunə olun.');
+        return;
+    }
+    
+    document.getElementById('modalTitle').textContent = video.title;
+    document.getElementById('modalDesc').innerHTML = `
+        ${video.desc}
+        ${video.teacherName ? `<br><strong style="color:var(--primary);"><i class="fas fa-chalkboard-teacher"></i> Müəllim: ${video.teacherName}</strong>` : ''}
+        <br><span style="color:var(--gray);"><i class="fas fa-clock"></i> Müddət: ${video.duration}</span>
+    `;
+    
+    // Show video player based on source
+    const playerContainer = document.getElementById('videoPlayerContainer');
+    
+    if (video.source === 'upload' && video.videoUrl) {
+        playerContainer.innerHTML = `
+            <video controls style="width:100%;border-radius:10px;background:#000;" autoplay>
+                <source src="${video.videoUrl}" type="video/mp4">
+                Brauzeriniz video təqdimatını dəstəkləmir.
+            </video>
+        `;
+    } else if (video.youtubeUrl) {
+        const videoId = extractYouTubeId(video.youtubeUrl);
+        if (videoId) {
+            playerContainer.innerHTML = `
+                <iframe 
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                    style="width:100%;aspect-ratio:16/9;border-radius:10px;"
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            `;
+        } else {
+            playerContainer.innerHTML = `
+                <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:white;">
+                    <div style="text-align:center;">
+                        <i class="fas fa-exclamation-circle" style="font-size:50px;margin-bottom:15px;"></i>
+                        <p>Video yüklənə bilmədi</p>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        playerContainer.innerHTML = `
+            <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:white;">
+                <div style="text-align:center;">
+                    <i class="fas fa-play-circle" style="font-size:60px;opacity:0.6;"></i>
+                    <p style="margin-top:15px;opacity:0.6;">Video mövcud deyil</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    document.getElementById('videoModal').classList.add('active');
+}
+
+function extractYouTubeId(url) {
+    if (!url) return null;
+    if (url.includes('youtube.com/watch?v=')) {
+        return url.split('v=')[1].split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        return url.split('youtu.be/')[1].split('?')[0];
+    }
+    return null;
+}
+
+function closeModal() {
+    document.getElementById('videoModal').classList.remove('active');
+}
+
+document.addEventListener('DOMContentLoaded', renderVideos);
+</script>
+        return matchFilter && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="loading"><p>Heç bir video tapılmadı</p></div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(v => `
+        <div class="video-card">
+            <div class="video-thumb" onclick="openVideo(${v.id})">
+                <span class="topic-emoji">${v.emoji}</span>
+                <div class="play-btn"><i class="fas fa-play"></i></div>
+                <span class="duration">${v.duration}</span>
+                ${!v.free ? '<span class="lock-badge"><i class="fas fa-lock"></i> Premium</span>' : ''}
+            </div>
+            <div class="video-body">
+                <h3>${v.title}</h3>
+                <p>${v.desc}</p>
+                <div class="video-meta">
+                    <span><i class="fas fa-eye"></i> ${v.views.toLocaleString()} baxış</span>
+                    <span class="badge ${v.free ? 'badge-success' : 'badge-primary'}">${v.free ? 'Pulsuz' : 'Premium'}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterVideos(topic, btn) {
+    currentFilter = topic;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderVideos();
+}
+
+function searchVideos(val) {
+    currentSearch = val;
+    renderVideos();
+}
+
+function openVideo(id) {
+    const v = VIDEOS.find(x => x.id === id);
+    if (!v) return;
+    if (!v.free && !isLoggedIn()) {
+        window.location.href = 'login.html';
+        return;
+    }
+    document.getElementById('modalTitle').textContent = v.title;
+    document.getElementById('modalDesc').textContent = v.desc;
+    document.getElementById('videoModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('videoModal').classList.remove('active');
+}
+
+document.getElementById('videoModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+renderVideos();
+</script>
+</body>
+</html>
