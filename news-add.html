@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xəbər Əlavə Et - Bizim Riyaziyyat</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo">
+                <span>BR</span> Bizim Riyaziyyat
+            </a>
+            <div class="navbar-actions">
+                <a href="admin.html" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Admin Panelə Qayıt
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container" style="max-width:800px;padding:40px 20px;">
+    <div style="background:white;border-radius:16px;padding:35px;box-shadow:var(--shadow);">
+        <h1 style="margin-bottom:10px;"><i class="fas fa-newspaper"></i> Xəbər Əlavə Et</h1>
+        <p style="color:var(--gray);margin-bottom:30px;">Yeni xəbər əlavə edin və bütün istifadəçilərə göstərin</p>
+        
+        <div id="alertBox"></div>
+        
+        <form id="newsForm">
+            <div class="form-group">
+                <label>Xəbər Başlığı *</label>
+                <input type="text" class="form-control" id="newsTitle" placeholder="Məs: Yeni 50 Video Əlavə Edildi" required>
+            </div>
+            
+            <div class="form-row" style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                <div class="form-group">
+                    <label>Emoji</label>
+                    <select class="form-control" id="newsEmoji">
+                        <option value="🎉">🎉 Qeyd</option>
+                        <option value="📢">📢 Elan</option>
+                        <option value="🏆">🏆 Uğur</option>
+                        <option value="💡">💡 Məlumat</option>
+                        <option value="🎓">🎓 Təhsil</option>
+                        <option value="📱">📱 Texnologiya</option>
+                        <option value="💳">💳 Ödəniş</option>
+                        <option value="🔔">🔔 Bildiriş</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rəng</label>
+                    <select class="form-control" id="newsColor">
+                        <option value="#eef2ff">🔵 Mavi</option>
+                        <option value="#ecfdf5">🟢 Yaşıl</option>
+                        <option value="#fffbeb">🟡 Sarı</option>
+                        <option value="#fef2f2">🔴 Qırmızı</option>
+                        <option value="#fdf4ff">🟣 Bənövşəyi</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Xəbər Mətni *</label>
+                <textarea class="form-control" id="newsText" rows="5" placeholder="Xəbərin tam mətnini daxil edin..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Müəllif</label>
+                <input type="text" class="form-control" id="newsAuthor" value="Bizim Riyaziyyat Komandası">
+            </div>
+            
+            <div style="display:flex;gap:10px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Xəbəri Dərc Et
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='admin.html'">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </form>
+        
+        <hr style="margin:40px 0;">
+        
+        <h3 style="margin-bottom:20px;">Son Xəbərlər</h3>
+        <div id="newsList"></div>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+// Check admin access
+const user = getCurrentUser();
+if (!user || user.role !== 'admin') {
+    alert('Bu səhifəyə giriş yalnız adminlər üçündür!');
+    window.location.href = 'index.html';
+}
+
+document.getElementById('newsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const newsData = {
+        id: Date.now(),
+        title: document.getElementById('newsTitle').value,
+        text: document.getElementById('newsText').value,
+        emoji: document.getElementById('newsEmoji').value,
+        color: document.getElementById('newsColor').value,
+        author: document.getElementById('newsAuthor').value,
+        date: new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' }),
+        views: 0,
+        createdAt: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const news = Storage.get('news') || [];
+    news.unshift(newsData); // Add to beginning
+    Storage.set('news', news);
+    
+    document.getElementById('alertBox').innerHTML = `
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> Xəbər uğurla əlavə edildi!
+        </div>
+    `;
+    
+    // Reset form
+    document.getElementById('newsForm').reset();
+    document.getElementById('newsAuthor').value = 'Bizim Riyaziyyat Komandası';
+    
+    // Reload news list
+    loadNews();
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+function loadNews() {
+    const news = Storage.get('news') || [];
+    const container = document.getElementById('newsList');
+    
+    if (news.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Hələ xəbər yoxdur</p>';
+        return;
+    }
+    
+    container.innerHTML = news.slice(0, 5).map(n => `
+        <div style="display:flex;gap:15px;padding:15px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;">
+            <div style="width:60px;height:60px;background:${n.color};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
+                ${n.emoji}
+            </div>
+            <div style="flex:1;">
+                <h4 style="font-size:15px;margin-bottom:5px;">${n.title}</h4>
+                <p style="font-size:13px;color:var(--gray);margin-bottom:8px;">${n.text.substring(0, 100)}...</p>
+                <div style="display:flex;gap:15px;font-size:12px;color:var(--gray);">
+                    <span><i class="fas fa-calendar"></i> ${n.date}</span>
+                    <span><i class="fas fa-eye"></i> ${n.views} baxış</span>
+                </div>
+            </div>
+            <button class="btn-icon btn-delete" onclick="deleteNews(${n.id})" title="Sil">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function deleteNews(id) {
+    if (confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
+        const news = Storage.get('news') || [];
+        const filtered = news.filter(n => n.id !== id);
+        Storage.set('news', filtered);
+        loadNews();
+    }
+}
+
+loadNews();
+</script>
+
+</body>
+</html>

@@ -597,24 +597,24 @@
         <div id="news" class="admin-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <h2 style="margin:0;border:none;padding:0;">Xəbərlər</h2>
-                <button class="btn btn-primary btn-sm" onclick="showAddNewsModal()">
+                <a href="news-add.html" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i> Yeni Xəbər
-                </button>
+                </a>
             </div>
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Başlıq</th>
-                        <th>Kateqoriya</th>
+                        <th>Müəllif</th>
                         <th>Tarix</th>
-                        <th>Status</th>
+                        <th>Baxış</th>
                         <th>Əməliyyatlar</th>
                     </tr>
                 </thead>
                 <tbody id="newsTable">
                     <tr>
-                        <td colspan="6" style="text-align:center;color:var(--gray);">Xəbər yoxdur</td>
+                        <td colspan="6" style="text-align:center;color:var(--gray);">Yüklənir...</td>
                     </tr>
                 </tbody>
             </table>

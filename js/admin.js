@@ -202,27 +202,26 @@ function loadTests() {
 
 // Load News
 function loadNews() {
-    const news = Storage.get('news') || [
-        { id: 1, title: 'Yeni video dərslər əlavə edildi', category: 'Elan', date: '2024-01-15', status: 'published' },
-        { id: 2, title: 'Sınaq sistemi yeniləndi', category: 'Yenilik', date: '2024-01-14', status: 'published' },
-        { id: 3, title: 'Yeni kateqoriyalar gəlir', category: 'Elan', date: '2024-01-13', status: 'draft' }
-    ];
+    const news = Storage.get('news') || [];
     
     const tbody = document.getElementById('newsTable');
+    
+    if (news.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);">Xəbər yoxdur. <a href="news-add.html">İlk xəbəri əlavə edin</a></td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = news.map(n => `
         <tr>
             <td>${n.id}</td>
-            <td><strong>${n.title}</strong></td>
-            <td>${n.category}</td>
+            <td><strong>${n.emoji} ${n.title}</strong></td>
+            <td>${n.author}</td>
             <td>${n.date}</td>
-            <td><span class="badge badge-${n.status === 'published' ? 'success' : 'warning'}">${n.status === 'published' ? 'Dərc edilib' : 'Qaralama'}</span></td>
+            <td>${n.views || 0}</td>
             <td>
                 <div class="action-btns">
                     <button class="btn-icon btn-view" onclick="viewNews(${n.id})" title="Bax">
                         <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editNews(${n.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-icon btn-delete" onclick="deleteNews(${n.id})" title="Sil">
                         <i class="fas fa-trash"></i>
@@ -231,6 +230,24 @@ function loadNews() {
             </td>
         </tr>
     `).join('');
+}
+
+function viewNews(id) {
+    const news = Storage.get('news') || [];
+    const item = news.find(n => n.id === id);
+    if (item) {
+        alert(`${item.emoji} ${item.title}\n\n${item.text}\n\n📅 ${item.date}\n👤 ${item.author}\n👁️ ${item.views} baxış`);
+    }
+}
+
+function deleteNews(id) {
+    if (confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
+        const news = Storage.get('news') || [];
+        const filtered = news.filter(n => n.id !== id);
+        Storage.set('news', filtered);
+        loadNews();
+        alert('Xəbər silindi!');
+    }
 }
 
 // Load Payments
@@ -266,7 +283,21 @@ function viewUser(id) {
     const users = Storage.get('allUsers') || MOCK_USERS;
     const user = users.find(u => u.id === id);
     if (user) {
-        alert(`Ad: ${user.name}\nEmail: ${user.email}\nRol: ${user.role}\nBalans: ${user.balance} ₼\nDemo Testlər: ${user.demoTests}`);
+        // Get user's watched videos
+        const watchedVideos = Storage.get('userVideos_' + user.id) || [];
+        const videoCount = watchedVideos.length;
+        
+        const userTypeText = user.userType === 'teacher' ? '👨‍🏫 Müəllim' : '👨‍🎓 Şagird';
+        
+        alert(`👤 İstifadəçi Məlumatları\n\n` +
+              `Ad: ${user.name}\n` +
+              `Email: ${user.email}\n` +
+              `Rol: ${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}\n` +
+              `Tip: ${userTypeText}\n` +
+              `Balans: ${user.balance || 0} ₼\n` +
+              `İzlənmiş Videolar: ${videoCount}\n` +
+              `Demo Testlər: ${user.demoTests || 0}\n` +
+              `Qeydiyyat: ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('az-AZ') : 'N/A'}`);
     }
 }
 

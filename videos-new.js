@@ -138,11 +138,18 @@ function openVideo(id) {
         return;
     }
     
+    // Increment view count
+    incrementVideoViews(id);
+    
+    // Track user video watch
+    trackUserVideoWatch(id);
+    
     document.getElementById('modalTitle').textContent = video.title;
     document.getElementById('modalDesc').innerHTML = `
         ${video.desc}
         ${video.teacherName ? `<br><strong style="color:var(--primary);"><i class="fas fa-chalkboard-teacher"></i> Müəllim: ${video.teacherName}</strong>` : ''}
         <br><span style="color:var(--gray);"><i class="fas fa-clock"></i> Müddət: ${video.duration}</span>
+        <br><span style="color:var(--gray);"><i class="fas fa-eye"></i> Baxış: ${video.views + 1}</span>
     `;
     
     // Show video player based on source
@@ -189,6 +196,36 @@ function openVideo(id) {
     }
     
     document.getElementById('videoModal').classList.add('active');
+}
+
+function incrementVideoViews(videoId) {
+    // For uploaded videos
+    if (typeof videoId === 'string' && videoId.includes('uploaded_')) {
+        const videos = Storage.get('videos') || [];
+        const realId = parseInt(videoId.replace('uploaded_', ''));
+        const video = videos.find(v => v.id === realId);
+        if (video) {
+            video.views = (video.views || 0) + 1;
+            Storage.set('videos', videos);
+        }
+    }
+    // For mock videos, track separately
+    else {
+        const viewCounts = Storage.get('videoViews') || {};
+        viewCounts[videoId] = (viewCounts[videoId] || 0) + 1;
+        Storage.set('videoViews', viewCounts);
+    }
+}
+
+function trackUserVideoWatch(videoId) {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    const userVideos = Storage.get('userVideos_' + user.id) || [];
+    if (!userVideos.includes(videoId)) {
+        userVideos.push(videoId);
+        Storage.set('userVideos_' + user.id, userVideos);
+    }
 }
 
 function extractYouTubeId(url) {
