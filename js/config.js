@@ -7,8 +7,8 @@ const CONFIG = {
 
 // Upstash Configuration (Backend olmadan cloud storage)
 window.UPSTASH_CONFIG = {
-    url: 'https://enough-spider-40929.upstash.io',
-    token: 'AZ_hAAIgcDEwMjg5MmM0MTdkODY0ZjM5ODEyMGZjYTE5ODA3YzMwYQ',
+    url: 'https://kind-moccasin-40956.upstash.io',
+    token: 'AZ_8AAIgcDFkODk5NGEzNmUzZDQ0ZTdjODIwNjFiYzQ4MjNhNzhhYw',
     enabled: true,
     autoSync: true
 };
