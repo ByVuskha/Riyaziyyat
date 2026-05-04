@@ -123,39 +123,39 @@
     </div>
 </section>
 
+<!-- NEWS CAROUSEL -->
+<section class="section" style="background:white;padding:30px 0;">
+    <div class="container">
+        <h2 class="section-title">📰 Seçilmiş Xəbərlər</h2>
+        <div id="newsCarousel" style="position:relative;overflow:hidden;border-radius:12px;box-shadow:var(--shadow);">
+            <div id="newsSlides" style="display:flex;transition:transform 0.5s ease;">
+                <!-- News slides will be loaded here -->
+            </div>
+            <button onclick="prevNews()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><i class="fas fa-chevron-left"></i></button>
+            <button onclick="nextNews()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+</section>
+
+<!-- NOTIFICATIONS -->
+<section class="section" style="padding:20px 0;">
+    <div class="container">
+        <div id="notificationsPanel" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);">
+            <h3 style="font-size:18px;margin-bottom:15px;"><i class="fas fa-bell"></i> Bildirişlər</h3>
+            <div id="notificationsList">
+                <!-- Notifications will be loaded here -->
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- POPULAR COURSES -->
 <section class="section">
     <div class="container">
         <h2 class="section-title">Populyar Kurslar</h2>
         <p class="section-subtitle">Ən çox seçilən mövzular</p>
         <div class="features-grid" id="popularCourses">
-            <div class="feature-card">
-                <div class="feature-icon" style="background:#eef2ff;">📐</div>
-                <h3>Həndəsə</h3>
-                <p>Müstəvi həndəsəsi, fəza həndəsəsi, triqonometriya</p>
-                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
-                    <span class="badge badge-primary">45 video</span>
-                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
-                </div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" style="background:#ecfdf5;">🔢</div>
-                <h3>Cəbr</h3>
-                <p>Tənliklər, bərabərsizliklər, funksiyalar</p>
-                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
-                    <span class="badge badge-success">60 video</span>
-                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
-                </div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" style="background:#fffbeb;">∫</div>
-                <h3>Analiz</h3>
-                <p>Limitlər, törəmə, inteqral</p>
-                <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
-                    <span class="badge badge-warning">38 video</span>
-                    <a href="videos.html" class="btn btn-primary btn-sm">Bax</a>
-                </div>
-            </div>
+            <!-- Will be dynamically loaded -->
         </div>
     </div>
 </section>
@@ -250,7 +250,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p>
+            <p>&copy; 2025 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p>
         </div>
     </div>
 </footer>
@@ -262,5 +262,109 @@
 <script src="js/mobile-menu.js"></script>
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
+<script>
+// News Carousel
+let currentNewsSlide = 0;
+let newsInterval;
+
+function loadNewsCarousel() {
+    const news = Storage.get('news') || [];
+    const featured = news.filter(n => n.featured).slice(0, 5);
+    
+    if (featured.length === 0) {
+        document.getElementById('newsCarousel').style.display = 'none';
+        return;
+    }
+    
+    const slidesContainer = document.getElementById('newsSlides');
+    slidesContainer.innerHTML = featured.map(n => `
+        <div style="min-width:100%;background:linear-gradient(135deg, var(--primary), var(--secondary));color:white;padding:60px 40px;text-align:center;">
+            <h3 style="font-size:28px;margin-bottom:15px;">${n.title}</h3>
+            <p style="opacity:0.9;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto;">${n.excerpt || n.content.substring(0, 150)}...</p>
+            <a href="news.html" class="btn btn-lg" style="background:white;color:var(--primary);">Daha Ətraflı</a>
+        </div>
+    `).join('');
+    
+    // Auto-rotate
+    newsInterval = setInterval(nextNews, 5000);
+}
+
+function nextNews() {
+    const slides = document.getElementById('newsSlides');
+    const totalSlides = slides.children.length;
+    currentNewsSlide = (currentNewsSlide + 1) % totalSlides;
+    slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
+}
+
+function prevNews() {
+    const slides = document.getElementById('newsSlides');
+    const totalSlides = slides.children.length;
+    currentNewsSlide = (currentNewsSlide - 1 + totalSlides) % totalSlides;
+    slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
+}
+
+// Notifications
+function loadNotifications() {
+    const user = getCurrentUser();
+    if (!user) {
+        document.getElementById('notificationsPanel').style.display = 'none';
+        return;
+    }
+    
+    const notifications = [
+        { icon: '🎉', text: 'Yeni video dərs əlavə edildi: "Kvadrat tənliklər"', time: '2 saat əvvəl' },
+        { icon: '📝', text: 'Yeni sınaq mövcuddur: "Həndəsə - Səviyyə 2"', time: '5 saat əvvəl' },
+        { icon: '🏆', text: 'Təbriklər! Reytinqdə 10-cu yerə yüksəldiniz', time: '1 gün əvvəl' }
+    ];
+    
+    document.getElementById('notificationsList').innerHTML = notifications.map(n => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
+            <span style="font-size:24px;">${n.icon}</span>
+            <div style="flex:1;">
+                <p style="margin:0;font-size:14px;">${n.text}</p>
+                <small style="color:var(--gray);font-size:12px;">${n.time}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Popular Courses - Sync with videos
+function loadPopularCourses() {
+    const videos = Storage.get('videos') || [];
+    
+    // Count videos by category
+    const categories = {
+        'Həndəsə': { emoji: '📐', bg: '#eef2ff', count: 0, topic: 'hendese' },
+        'Cəbr': { emoji: '🔢', bg: '#ecfdf5', count: 0, topic: 'cebr' },
+        'Analiz': { emoji: '∫', bg: '#fffbeb', count: 0, topic: 'analiz' }
+    };
+    
+    videos.forEach(v => {
+        if (v.category === 'Həndəsə') categories['Həndəsə'].count++;
+        else if (v.category === 'Cəbr') categories['Cəbr'].count++;
+        else if (v.category === 'Analiz') categories['Analiz'].count++;
+    });
+    
+    document.getElementById('popularCourses').innerHTML = Object.entries(categories).map(([name, data]) => `
+        <div class="feature-card">
+            <div class="feature-icon" style="background:${data.bg};">${data.emoji}</div>
+            <h3>${name}</h3>
+            <p>${name === 'Həndəsə' ? 'Müstəvi həndəsəsi, fəza həndəsəsi, triqonometriya' : 
+                 name === 'Cəbr' ? 'Tənliklər, bərabərsizliklər, funksiyalar' : 
+                 'Limitlər, törəmə, inteqral'}</p>
+            <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
+                <span class="badge badge-primary">${data.count} video</span>
+                <a href="videos.html?filter=${data.topic}" class="btn btn-primary btn-sm">Bax</a>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadNewsCarousel();
+    loadNotifications();
+    loadPopularCourses();
+});
+</script>
 </body>
 </html>

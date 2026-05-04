@@ -1,19 +1,5 @@
-// Mock data - backend hazır olana qədər
-const MOCK_VIDEOS = [
-    { id:1, title:'Üçbucaqda bucaqların cəmi', topic:'hendese', emoji:'📐', duration:'18:24', views:1240, free:true, desc:'Üçbucağın daxili bucaqlarının cəminin 180° olduğunu isbat edirik.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:2, title:'Pifaqor teoremi', topic:'hendese', emoji:'📐', duration:'22:10', views:980, free:true, desc:'Düzbucaqlı üçbucaqda a²+b²=c² əlaqəsi.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:3, title:'Dairə və onun elementləri', topic:'hendese', emoji:'📐', duration:'15:40', views:760, free:false, desc:'Radius, diametr, vətər, yay anlayışları.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:4, title:'Fəza həndəsəsinə giriş', topic:'hendese', emoji:'📐', duration:'28:05', views:540, free:false, desc:'3 ölçülü fəzada nöqtə, düz xətt, müstəvi.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:5, title:'Xətti tənliklər', topic:'cebr', emoji:'🔢', duration:'20:15', views:1560, free:true, desc:'ax+b=0 formasında tənliklərin həlli.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:6, title:'Kvadrat tənliklər', topic:'cebr', emoji:'🔢', duration:'25:30', views:1320, free:true, desc:'Diskriminant düsturu ilə həll.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:7, title:'Funksiyalar və qrafiklər', topic:'cebr', emoji:'🔢', duration:'32:00', views:890, free:false, desc:'Funksiya anlayışı, sahə, dəyərlər çoxluğu.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:8, title:'Bərabərsizliklər', topic:'cebr', emoji:'🔢', duration:'19:45', views:670, free:false, desc:'Xətti və kvadrat bərabərsizliklərin həlli.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:9, title:'Limitlərə giriş', topic:'analiz', emoji:'∫', duration:'35:20', views:430, free:true, desc:'Limitin anlayışı, sadə limit hesablamaları.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:10, title:'Törəmə anlayışı', topic:'analiz', emoji:'∫', duration:'40:10', views:380, free:false, desc:'Diferensiallaşma qaydaları.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:11, title:'İnteqral hesabı', topic:'analiz', emoji:'∫', duration:'45:00', views:290, free:false, desc:'Qeyri-müəyyən inteqral, əsas düsturlar.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:12, title:'Ehtimal nəzəriyyəsi', topic:'ehtimal', emoji:'🎲', duration:'22:30', views:510, free:true, desc:'Hadisə, ehtimal, klassik tərif.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-    { id:13, title:'Kombinatorika', topic:'ehtimal', emoji:'🎲', duration:'18:50', views:440, free:false, desc:'Permutasiya, kombinasiya, yerləşdirmə.', youtubeUrl:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-];
+// Mock data - only for demo, will be replaced by uploaded videos
+const MOCK_VIDEOS = [];
 
 let currentFilter = 'all';
 let currentSearch = '';
@@ -65,11 +51,18 @@ function getCategoryEmoji(category) {
 function renderVideos() {
     const VIDEOS = getAllVideos();
     const grid = document.getElementById('videosGrid');
+    
+    // Get URL params for filtering
+    const urlParams = new URLSearchParams(window.location.search);
+    const teacherFilter = urlParams.get('teacher');
+    
     let filtered = VIDEOS.filter(v => {
         const matchFilter = currentFilter === 'all' || 
                            (currentFilter === 'free' ? v.free : v.topic === currentFilter);
-        const matchSearch = v.title.toLowerCase().includes(currentSearch.toLowerCase());
-        return matchFilter && matchSearch;
+        const matchSearch = v.title.toLowerCase().includes(currentSearch.toLowerCase()) ||
+                           (v.teacherName && v.teacherName.toLowerCase().includes(currentSearch.toLowerCase()));
+        const matchTeacher = !teacherFilter || (v.teacherName && v.teacherName === teacherFilter);
+        return matchFilter && matchSearch && matchTeacher;
     });
 
     if (filtered.length === 0) {

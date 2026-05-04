@@ -593,6 +593,7 @@ function toggleTeacherForm() {
         document.getElementById('newTeacherName').value = '';
         document.getElementById('newTeacherTitle').value = '';
         document.getElementById('newTeacherSubjects').value = '';
+        document.getElementById('newTeacherImage').value = '';
         document.getElementById('newTeacherExperience').value = '0';
         document.getElementById('newTeacherEmail').value = '';
         document.getElementById('newTeacherPhone').value = '';
@@ -606,6 +607,7 @@ function saveNewTeacher() {
     const name = document.getElementById('newTeacherName').value;
     const title = document.getElementById('newTeacherTitle').value;
     const subjects = document.getElementById('newTeacherSubjects').value;
+    const image = document.getElementById('newTeacherImage').value;
     const experience = parseInt(document.getElementById('newTeacherExperience').value) || 0;
     const email = document.getElementById('newTeacherEmail').value;
     const phone = document.getElementById('newTeacherPhone').value;
@@ -622,6 +624,7 @@ function saveNewTeacher() {
         name: name,
         title: title,
         subjects: subjects,
+        image: image,
         experience: experience,
         email: email,
         phone: phone,
@@ -1127,6 +1130,12 @@ function editTeacher(id) {
                 <input type="text" class="form-control" id="editTeacherSubjects" value="${teacher.subjects || ''}">
             </div>
             
+            <div class="form-group">
+                <label>Şəkil URL</label>
+                <input type="url" class="form-control" id="editTeacherImage" value="${teacher.image || ''}" placeholder="https://example.com/image.jpg">
+                <small style="color:var(--gray);font-size:12px;">Müəllimin şəklinin URL-ni daxil edin</small>
+            </div>
+            
             <div class="form-grid">
                 <div class="form-group">
                     <label>Telefon</label>
@@ -1179,6 +1188,7 @@ function saveTeacherEdit(id) {
         title: document.getElementById('editTeacherTitle').value,
         bio: document.getElementById('editTeacherBio').value,
         subjects: document.getElementById('editTeacherSubjects').value,
+        image: document.getElementById('editTeacherImage').value,
         phone: document.getElementById('editTeacherPhone').value,
         experience: parseInt(document.getElementById('editTeacherExperience').value) || 0,
         rating: parseFloat(document.getElementById('editTeacherRating').value) || 5.0,
