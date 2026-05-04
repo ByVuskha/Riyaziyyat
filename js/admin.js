@@ -1015,9 +1015,14 @@ function applySiteStyles(settings) {
     // Typography
     if (settings.typography) {
         root.style.setProperty('--font-family', settings.typography.fontFamily);
-        root.style.setProperty('--font-size', settings.typography.fontSize + 'px');
-        root.style.setProperty('--heading-font', settings.typography.headingFont);
-        root.style.setProperty('--line-height', settings.typography.lineHeight);
+        document.body.style.fontFamily = settings.typography.fontFamily;
+        document.body.style.fontSize = settings.typography.fontSize + 'px';
+        document.body.style.lineHeight = settings.typography.lineHeight;
+        
+        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headings.forEach(h => {
+            h.style.fontFamily = settings.typography.headingFont;
+        });
     }
 }
 

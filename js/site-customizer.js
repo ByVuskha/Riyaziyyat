@@ -32,6 +32,7 @@
     // Typography
     if (settings.typography) {
         root.style.setProperty('--font-family', settings.typography.fontFamily);
+        document.body.style.fontFamily = settings.typography.fontFamily;
         document.body.style.fontSize = settings.typography.fontSize + 'px';
         document.body.style.lineHeight = settings.typography.lineHeight;
         

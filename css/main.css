@@ -20,10 +20,11 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: var(--light);
     color: #1e293b;
     line-height: 1.6;
+    font-size: 16px;
 }
 
 a { text-decoration: none; color: inherit; }

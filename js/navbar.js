@@ -91,7 +91,8 @@ const FOOTER_HTML = `
 function renderNavbar() {
     // Check if navbar already exists
     if (document.querySelector('.navbar')) {
-        console.log('📌 Navbar already exists, skipping render');
+        console.log('📌 Navbar already exists, updating auth state only');
+        // Just update auth state, don't create new navbar
         return;
     }
     
@@ -134,13 +135,23 @@ function renderFooter() {
     console.log('✅ Footer rendered');
 }
 
-// Auto-initialize
+// Auto-initialize - DEAKTIV (səhifələrdə artıq navbar var)
+// Yalnız navbar/footer olmayan səhifələr üçün işləyir
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        renderNavbar();
-        renderFooter();
+        // Yalnız navbar yoxdursa render et
+        if (!document.querySelector('.navbar')) {
+            renderNavbar();
+        }
+        if (!document.querySelector('.footer')) {
+            renderFooter();
+        }
     });
 } else {
-    renderNavbar();
-    renderFooter();
+    if (!document.querySelector('.navbar')) {
+        renderNavbar();
+    }
+    if (!document.querySelector('.footer')) {
+        renderFooter();
+    }
 }
