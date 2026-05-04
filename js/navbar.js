@@ -20,6 +20,7 @@ const NAVBAR_HTML = `
                 <a href="tests.html" data-page="tests">Sınaqlar</a>
                 <a href="teachers.html" data-page="teachers">Müəllimlər</a>
                 <a href="news.html" data-page="news">Xəbərlər</a>
+                <a href="success.html" data-page="success">Uğurlar</a>
                 <a href="faq.html" data-page="faq">FAQ</a>
             </div>
             <div class="navbar-actions">
@@ -48,6 +49,7 @@ const NAVBAR_HTML = `
     <a href="tests.html" data-page="tests">Sınaqlar</a>
     <a href="teachers.html" data-page="teachers">Müəllimlər</a>
     <a href="news.html" data-page="news">Xəbərlər</a>
+    <a href="success.html" data-page="success">Uğurlar</a>
     <a href="faq.html" data-page="faq">FAQ</a>
 </div>
 `;
@@ -70,6 +72,7 @@ const FOOTER_HTML = `
                     <li><a href="tests.html">Sınaqlar</a></li>
                     <li><a href="teachers.html">Müəllimlər</a></li>
                     <li><a href="news.html">Xəbərlər</a></li>
+                    <li><a href="success.html">Uğurlar</a></li>
                 </ul>
             </div>
             <div class="footer-col">
