@@ -21,8 +21,10 @@ function initEmailJS() {
 // Send verification email
 async function sendVerificationEmail(toEmail, userName, verificationCode) {
     try {
-        // Check if EmailJS is configured
-        if (EMAILJS_CONFIG.serviceId === 'service_3yho55d') {
+        // Check if EmailJS is configured (check for placeholder values)
+        if (EMAILJS_CONFIG.serviceId === 'YOUR_SERVICE_ID' || 
+            EMAILJS_CONFIG.templateId === 'YOUR_TEMPLATE_ID' ||
+            EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
             console.warn('⚠️ EmailJS not configured, using demo mode');
             return {
                 success: true,
@@ -81,7 +83,7 @@ function generateVerificationCode() {
 // Send welcome email after registration
 async function sendWelcomeEmail(toEmail, userName) {
     try {
-        if (EMAILJS_CONFIG.serviceId === 'service_3yho55d') {
+        if (EMAILJS_CONFIG.serviceId === 'YOUR_SERVICE_ID') {
             console.warn('⚠️ EmailJS not configured, skipping welcome email');
             return { success: true, demo: true };
         }
@@ -116,7 +118,7 @@ async function sendWelcomeEmail(toEmail, userName) {
 // Send password reset email
 async function sendPasswordResetEmail(toEmail, userName, resetCode) {
     try {
-        if (EMAILJS_CONFIG.serviceId === 'service_3yho55d') {
+        if (EMAILJS_CONFIG.serviceId === 'YOUR_SERVICE_ID') {
             console.warn('⚠️ EmailJS not configured, using demo mode');
             return { success: true, demo: true, code: resetCode };
         }
