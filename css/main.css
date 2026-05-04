@@ -440,6 +440,17 @@ a { text-decoration: none; color: inherit; }
    MOBILE RESPONSIVE STYLES
    ======================================== */
 
+/* Mobile Menu Toggle - Hidden by default, shown only on mobile */
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 5px;
+}
+
 /* Tablet (768px və aşağı) */
 @media (max-width: 768px) {
     /* Container */
@@ -475,16 +486,9 @@ a { text-decoration: none; color: inherit; }
         padding: 6px 10px;
     }
     
-    /* Mobile Menu Toggle */
+    /* Mobile Menu Toggle - Show on mobile */
     .mobile-menu-toggle {
-        display: block !important;
-        background: none;
-        border: none;
-        font-size: 24px;
-        color: var(--primary);
-        cursor: pointer;
-        padding: 5px;
-        order: -1; /* Show before actions */
+        display: block;
     }
     
     /* Mobile Menu Overlay */
