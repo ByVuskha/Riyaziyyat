@@ -69,23 +69,8 @@
     // Wrap Storage.get
     const originalGet = Storage.get;
     Storage.get = function(key) {
-        if (shouldUseUpstash(key)) {
-            // Return promise for Upstash
-            return upstash.get(key).then(value => {
-                if (value !== null) {
-                    console.log(`📦 [Upstash] GET ${key}`);
-                    return value;
-                }
-                // Fallback to LocalStorage if not in Upstash
-                console.log(`📦 [LocalStorage] GET ${key} (fallback)`);
-                return originalGet.call(this, key);
-            }).catch(error => {
-                console.error(`❌ Upstash GET error for ${key}:`, error);
-                return originalGet.call(this, key);
-            });
-        }
-        
-        // Use LocalStorage for sensitive data
+        // Always use LocalStorage synchronously
+        // Upstash is only for backup/sync, not for real-time reads
         return originalGet.call(this, key);
     };
     
