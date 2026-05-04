@@ -41,6 +41,8 @@
         'news',
         'teachers',
         'tests',
+        'testResults',
+        'testStats',
         'payments',
         'activities'
     ];
@@ -155,10 +157,11 @@
         console.log('✅ Load completed!');
     };
     
-    // Auto-sync on page load (optional)
-    if (UPSTASH_CONFIG.autoSync) {
+    // Auto-sync on page load (optional) - only on index page
+    if (UPSTASH_CONFIG.autoSync && window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
         window.addEventListener('load', function() {
             setTimeout(() => {
+                console.log('🔄 Auto-loading from Upstash...');
                 loadFromUpstash().catch(console.error);
             }, 1000);
         });
