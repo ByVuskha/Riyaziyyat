@@ -76,11 +76,124 @@ function checkDeviceSession(userId) {
         return {
             isActive: true,
             deviceId: userSession.deviceId,
-            loginTime: userSession.loginTime
+            loginTime: userSession.loginTime,
+            attempts: userSession.loginAttempts || 0
         };
     }
     
     return { isActive: false };
+}
+
+// Record unauthorized login attempt
+function recordUnauthorizedAttempt(userId, userName, email) {
+    const sessions = Storage.get('userSessions') || {};
+    const userSession = sessions[userId] || {};
+    
+    // Increment attempts
+    userSession.loginAttempts = (userSession.loginAttempts || 0) + 1;
+    userSession.lastAttempt = new Date().toISOString();
+    sessions[userId] = userSession;
+    Storage.set('userSessions', sessions);
+    
+    // Add to suspicious activities
+    const suspicious = Storage.get('suspiciousActivities') || [];
+    suspicious.unshift({
+        id: Date.now(),
+        userId: userId,
+        userName: userName,
+        email: email,
+        activity: 'Yetkisiz cihazdan giriş cəhdi',
+        attempts: userSession.loginAttempts,
+        deviceId: getDeviceId(),
+        timestamp: new Date().toISOString(),
+        date: new Date().toLocaleDateString('az-AZ'),
+        time: new Date().toLocaleTimeString('az-AZ'),
+        status: userSession.loginAttempts >= 2 ? 'blocked' : 'warning'
+    });
+    
+    // Keep only last 100 activities
+    if (suspicious.length > 100) {
+        suspicious.length = 100;
+    }
+    
+    Storage.set('suspiciousActivities', suspicious);
+    
+    // If 2nd attempt, freeze account
+    if (userSession.loginAttempts >= 2) {
+        freezeAccount(userId);
+    }
+    
+    return userSession.loginAttempts;
+}
+
+// Freeze account (block + clear balance)
+function freezeAccount(userId) {
+    const allUsers = Storage.get('allUsers') || [];
+    const user = allUsers.find(u => u.id === userId);
+    
+    if (user) {
+        user.frozen = true;
+        user.frozenAt = new Date().toISOString();
+        user.frozenReason = 'Yetkisiz cihazdan təkrar giriş cəhdi';
+        user.balanceBeforeFreeze = user.balance || 0;
+        user.balance = 0; // Clear balance
+        
+        Storage.set('allUsers', allUsers);
+        
+        console.log(`🚫 Hesab donduruldu: User ${userId}`);
+        
+        // Log activity
+        logActivity(user.name, 'Hesab donduruldu (təhlükəsizlik)', 'blocked');
+    }
+}
+
+// Unfreeze account (admin only)
+function unfreezeAccount(userId) {
+    const allUsers = Storage.get('allUsers') || [];
+    const user = allUsers.find(u => u.id === userId);
+    
+    if (user && user.frozen) {
+        user.frozen = false;
+        user.unfrozenAt = new Date().toISOString();
+        user.unfrozenBy = getCurrentUser()?.name || 'Admin';
+        // Balance is NOT restored automatically
+        
+        // Reset login attempts
+        const sessions = Storage.get('userSessions') || {};
+        if (sessions[userId]) {
+            sessions[userId].loginAttempts = 0;
+            Storage.set('userSessions', sessions);
+        }
+        
+        Storage.set('allUsers', allUsers);
+        
+        console.log(`✅ Hesab açıldı: User ${userId}`);
+        logActivity(user.name, 'Hesab açıldı (admin tərəfindən)', 'success');
+        
+        return true;
+    }
+    
+    return false;
+}
+
+// Authorize new device (admin only)
+function authorizeNewDevice(userId, newDeviceId) {
+    const sessions = Storage.get('userSessions') || {};
+    
+    sessions[userId] = {
+        deviceId: newDeviceId,
+        loginTime: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        loginAttempts: 0,
+        authorizedBy: getCurrentUser()?.name || 'Admin',
+        authorizedAt: new Date().toISOString()
+    };
+    
+    Storage.set('userSessions', sessions);
+    
+    console.log(`✅ Yeni cihaz icazə verildi: User ${userId}, Device ${newDeviceId}`);
+    
+    return true;
 }
 
 // Set device session for user
@@ -106,7 +219,7 @@ function clearDeviceSession(userId) {
 }
 
 // Login function with device restriction and activity logging
-function login(email, password) {
+function login(email, password, onDeviceConflict) {
     // Get all users from storage
     const allUsers = Storage.get('allUsers') || MOCK_USERS;
     
@@ -115,22 +228,49 @@ function login(email, password) {
         return { success: false, message: 'Email və ya şifrə yanlışdır' };
     }
     
+    // Check if account is frozen
+    if (user.frozen) {
+        return { 
+            success: false, 
+            frozen: true,
+            message: '🚫 Hesabınız dondurulub!\n\nSəbəb: Yetkisiz cihazdan təkrar giriş cəhdi.\n\nHesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
+        };
+    }
+    
     // Check if user is logged in on another device
     const deviceCheck = checkDeviceSession(user.id);
     
     if (deviceCheck.isActive) {
-        const confirm = window.confirm(
-            '⚠️ Diqqət!\n\n' +
-            'Bu hesab başqa bir cihazda aktiv vəziyyətdədir.\n\n' +
-            'Davam etsəniz, digər cihazdan çıxış ediləcək.\n\n' +
-            'Davam etmək istəyirsiniz?'
-        );
+        // Record unauthorized attempt
+        const attempts = recordUnauthorizedAttempt(user.id, user.name, user.email);
         
-        if (!confirm) {
-            return { success: false, message: 'Giriş ləğv edildi' };
+        // If this is 2nd or more attempt, account is now frozen
+        if (attempts >= 2) {
+            return {
+                success: false,
+                frozen: true,
+                message: '🚫 HESAB DONDURULDU!\n\n' +
+                         'Təkrar yetkisiz giriş cəhdi aşkar edildi.\n\n' +
+                         '⚠️ Hesabınız təhlükəsizlik məqsədilə donduruldu.\n' +
+                         '💰 Balansınız təmizləndi.\n\n' +
+                         'Hesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
+            };
         }
         
-        console.log('⚠️ Digər cihazdan çıxış edilir...');
+        // First attempt - show warning
+        return { 
+            success: false, 
+            deviceConflict: true,
+            attempts: attempts,
+            user: user,
+            message: '⚠️ XƏBƏRDARLIQ!\n\n' +
+                     'Bu hesab başqa bir cihazda aktivdir.\n\n' +
+                     '🚫 Yenidən cəhd etsəniz:\n' +
+                     '• Hesabınız DONDURULACAQ\n' +
+                     '• Balansınız SİLİNƏCƏK\n' +
+                     '• Admin icazəsi tələb olunacaq\n\n' +
+                     'Davam etmək istəyirsiniz?'
+        };
     }
     
     // Set new device session
@@ -144,6 +284,9 @@ function login(email, password) {
     
     return { success: true, user: safeUser };
 }
+
+// Force login is now REMOVED - no longer allowed
+// Users cannot force login from another device
 
 // Helper function to log activity
 function logActivity(user, action, status = 'success') {

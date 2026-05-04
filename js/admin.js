@@ -44,6 +44,7 @@ function showSection(section) {
         siteEditor: 'Sayt Redaktoru',
         news: 'Xəbərlər',
         payments: 'Ödənişlər',
+        suspicious: 'Şübhəli Fəaliyyətlər',
         settings: 'Tənzimləmələr'
     };
     const pageTitle = document.getElementById('pageTitle');
@@ -60,6 +61,10 @@ function showSection(section) {
     if (section === 'siteEditor') loadSiteSettings();
     if (section === 'news') loadNews();
     if (section === 'payments') loadPayments();
+    if (section === 'suspicious') {
+        loadSuspiciousActivities();
+        loadFrozenAccounts();
+    }
 }
 
 // Load Dashboard Stats
@@ -1145,10 +1150,13 @@ function editTeacher(id) {
 }
 
 function deleteTeacher(id) {
-    if (confirm('Bu müəllimi silmək istədiyinizdən əminsiniz?')) {
-        alert('Müəllim silindi!');
+    showConfirm('Bu müəllimi silmək istədiyinizdən əminsiniz?', () => {
+        const teachers = Storage.get('teachers') || [];
+        const filtered = teachers.filter(t => t.id !== id);
+        Storage.set('teachers', filtered);
+        showNotification('Müəllim uğurla silindi', 'success');
         loadTeachers();
-    }
+    });
 }
 
 function toggleTeacherForm() {
@@ -1939,3 +1947,134 @@ saveNewTeacher = function() {
     logActivity('Admin', `Yeni müəllim əlavə edildi: ${name}`);
     return result;
 };
+
+
+// ==================== SUSPICIOUS ACTIVITIES ====================
+
+function loadSuspiciousActivities() {
+    const activities = Storage.get('suspiciousActivities') || [];
+    const tbody = document.getElementById('suspiciousActivitiesTable');
+    
+    if (!tbody) return;
+    
+    if (activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Şübhəli fəaliyyət yoxdur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = activities.map(activity => `
+        <tr style="background: ${activity.status === 'blocked' ? '#fee2e2' : '#fef3c7'};">
+            <td>${activity.id}</td>
+            <td>
+                <strong>${activity.userName}</strong><br>
+                <small style="color:#6b7280;">${activity.email}</small>
+            </td>
+            <td>${activity.activity}</td>
+            <td>
+                <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;
+                    background:${activity.status === 'blocked' ? '#dc2626' : '#f59e0b'};
+                    color:white;">
+                    ${activity.attempts} cəhd
+                </span>
+            </td>
+            <td>
+                <small>${activity.deviceId.substring(0, 20)}...</small>
+            </td>
+            <td>
+                ${activity.date}<br>
+                <small style="color:#6b7280;">${activity.time}</small>
+            </td>
+            <td>
+                ${activity.status === 'blocked' ? 
+                    `<button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${activity.userId})">
+                        <i class="fas fa-unlock"></i> Aç
+                    </button>` :
+                    `<span style="color:#f59e0b;"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq</span>`
+                }
+            </td>
+        </tr>
+    `).join('');
+}
+
+function unfreezeUserAccount(userId) {
+    showConfirm('Bu istifadəçinin hesabını açmaq istədiyinizə əminsiniz?', () => {
+        const result = unfreezeAccount(userId);
+        if (result) {
+            showNotification('Hesab uğurla açıldı', 'success');
+            loadSuspiciousActivities();
+            loadUsers();
+        } else {
+            showNotification('Xəta baş verdi', 'error');
+        }
+    });
+}
+
+function clearSuspiciousActivities() {
+    showConfirm('Bütün şübhəli fəaliyyət qeydlərini silmək istədiyinizə əminsiniz?', () => {
+        Storage.set('suspiciousActivities', []);
+        showNotification('Qeydlər təmizləndi', 'success');
+        loadSuspiciousActivities();
+    });
+}
+
+// ==================== FROZEN ACCOUNTS MANAGEMENT ====================
+
+function loadFrozenAccounts() {
+    const allUsers = Storage.get('allUsers') || [];
+    const frozenUsers = allUsers.filter(u => u.frozen);
+    const tbody = document.getElementById('frozenAccountsTable');
+    
+    if (!tbody) return;
+    
+    if (frozenUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">Dondurulmuş hesab yoxdur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = frozenUsers.map(user => `
+        <tr style="background:#fee2e2;">
+            <td>${user.id}</td>
+            <td>
+                <strong>${user.name}</strong><br>
+                <small style="color:#6b7280;">${user.email}</small>
+            </td>
+            <td>${user.frozenReason || 'Məlum deyil'}</td>
+            <td>
+                <span style="color:#dc2626;font-weight:600;">
+                    ${user.balanceBeforeFreeze || 0} AZN
+                </span>
+            </td>
+            <td>
+                ${new Date(user.frozenAt).toLocaleDateString('az-AZ')}<br>
+                <small style="color:#6b7280;">${new Date(user.frozenAt).toLocaleTimeString('az-AZ')}</small>
+            </td>
+            <td>
+                <button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${user.id})">
+                    <i class="fas fa-unlock"></i> Hesabı Aç
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="restoreBalance(${user.id})">
+                    <i class="fas fa-coins"></i> Balansı Bərpa Et
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function restoreBalance(userId) {
+    showConfirm('Bu istifadəçinin balansını bərpa etmək istəyirsiniz?', () => {
+        const allUsers = Storage.get('allUsers') || [];
+        const user = allUsers.find(u => u.id === userId);
+        
+        if (user && user.balanceBeforeFreeze) {
+            user.balance = user.balanceBeforeFreeze;
+            user.balanceRestored = true;
+            user.balanceRestoredAt = new Date().toISOString();
+            
+            Storage.set('allUsers', allUsers);
+            
+            showNotification(`${user.balanceBeforeFreeze} AZN bərpa edildi`, 'success');
+            loadFrozenAccounts();
+            loadUsers();
+        }
+    });
+}

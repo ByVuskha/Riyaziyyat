@@ -291,6 +291,10 @@
                 <i class="fas fa-credit-card"></i>
                 <span>Ödənişlər</span>
             </div>
+            <div class="admin-menu-item" onclick="showSection('suspicious')">
+                <i class="fas fa-shield-alt" style="color:#f59e0b;"></i>
+                <span>Şübhəli Fəaliyyətlər</span>
+            </div>
             <div class="admin-menu-item" onclick="showSection('settings')">
                 <i class="fas fa-cog"></i>
                 <span>Tənzimləmələr</span>
@@ -979,6 +983,59 @@
             </div>
         </div>
 
+        <!-- Suspicious Activities Section -->
+        <div id="suspicious" class="admin-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="margin:0;border:none;padding:0;">🛡️ Şübhəli Fəaliyyətlər</h2>
+                <button class="btn btn-danger btn-sm" onclick="clearSuspiciousActivities()">
+                    <i class="fas fa-trash"></i> Hamısını Təmizlə
+                </button>
+            </div>
+            
+            <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);margin-bottom:25px;">
+                <h3 style="margin-bottom:15px;"><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Yetkisiz Giriş Cəhdləri</h3>
+                <div style="overflow-x:auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>İstifadəçi</th>
+                                <th>Fəaliyyət</th>
+                                <th>Cəhdlər</th>
+                                <th>Cihaz ID</th>
+                                <th>Tarix</th>
+                                <th>Əməliyyat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suspiciousActivitiesTable">
+                            <tr><td colspan="7" style="text-align:center;padding:40px;">Yüklənir...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);">
+                <h3 style="margin-bottom:15px;"><i class="fas fa-ban" style="color:#dc2626;"></i> Dondurulmuş Hesablar</h3>
+                <div style="overflow-x:auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>İstifadəçi</th>
+                                <th>Səbəb</th>
+                                <th>İtirilən Balans</th>
+                                <th>Dondurulma Tarixi</th>
+                                <th>Əməliyyatlar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="frozenAccountsTable">
+                            <tr><td colspan="6" style="text-align:center;padding:40px;">Yüklənir...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Section -->
         <div id="settings" class="admin-section">
             <h2>Tənzimləmələr</h2>
@@ -1034,10 +1091,12 @@
 </div>
 
 <script src="js/config.js"></script>
+<script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/popup-replacer.js"></script>
 <script src="js/mobile-menu.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 </body>
 </html>

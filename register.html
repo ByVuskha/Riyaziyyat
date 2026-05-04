@@ -44,6 +44,11 @@
         .auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--gray); }
         .auth-footer a { color: var(--primary); font-weight: 600; }
         .password-strength { height: 4px; border-radius: 2px; margin-top: 6px; transition: all 0.3s; background: var(--border); }
+        .verification-section { display: none; margin-top: 20px; padding: 20px; background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 12px; }
+        .verification-section.active { display: block; animation: slideDown 0.3s ease; }
+        .verification-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; color: #1e40af; font-size: 14px; }
+        .verification-info i { font-size: 20px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -100,6 +105,22 @@
                     <input type="password" class="form-control" id="confirmPassword" placeholder="Şifrəni təkrar daxil et" required>
                 </div>
             </div>
+            
+            <!-- Verification Code Section -->
+            <div class="verification-section" id="verificationSection">
+                <div class="verification-info">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <span id="verificationMessage">Email ünvanınıza doğrulama kodu göndərildi</span>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Doğrulama Kodu</label>
+                    <div class="input-icon">
+                        <i class="fas fa-key"></i>
+                        <input type="text" class="form-control" id="verificationCode" placeholder="6 rəqəmli kod" maxlength="6" pattern="[0-9]{6}">
+                    </div>
+                </div>
+            </div>
+            
             <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
                 <i class="fas fa-user-plus"></i> Qeydiyyat
             </button>
@@ -150,59 +171,43 @@
         const userType = document.querySelector('input[name="userType"]:checked').value;
         const btn = document.getElementById('submitBtn');
         const alertBox = document.getElementById('alertBox');
+        const verificationSection = document.getElementById('verificationSection');
+        const verificationInput = document.getElementById('verificationCode');
+        const verificationMessage = document.getElementById('verificationMessage');
 
         if (password !== confirm) {
             alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Şifrələr uyğun gəlmir</div>';
             return;
         }
 
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Email göndərilir...';
-
-        try {
-            // Generate verification code
-            const verificationCode = generateVerificationCode();
-            
-            // Send email via EmailJS
-            const emailResult = await sendVerificationEmail(email, name, verificationCode);
-            
-            if (emailResult.demo) {
-                // Demo mode - show code in alert
-                alert(`📧 Email Doğrulama (Demo Rejimi)\n\nEmailJS konfiqurasiya edilməyib.\n\n🔑 Doğrulama Kodu: ${emailResult.code}\n\n⚙️ Real email göndərmək üçün:\n1. https://www.emailjs.com saytında qeydiyyatdan keçin\n2. js/email-service.js faylında konfiqurasiya edin`);
-            } else {
-                // Real email sent
-                alert(`📧 Email Göndərildi!\n\n${email} ünvanına doğrulama kodu göndərildi.\n\nZəhmət olmasa email qutunuzu yoxlayın.`);
-            }
-            
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Doğrulama gözlənilir...';
-            
-            // Ask for verification code
-            const userCode = prompt('Email ünvanınıza göndərilən 6 rəqəmli doğrulama kodunu daxil edin:');
+        // Check if verification code is being entered
+        if (verificationSection.classList.contains('active')) {
+            const userCode = verificationInput.value.trim();
             
             if (!userCode) {
-                alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Email doğrulanmadı</div>';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+                alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Doğrulama kodunu daxil edin</div>';
+                verificationInput.focus();
                 return;
             }
 
-            if (userCode !== verificationCode) {
+            if (userCode !== window.verificationCode) {
                 alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Yanlış doğrulama kodu</div>';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+                verificationInput.value = '';
+                verificationInput.focus();
                 return;
             }
 
+            // Code is correct, register user
+            btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Qeydiyyat tamamlanır...';
 
-            // Register user
             const result = register(name, email, password, userType);
             
             if (result.success) {
                 alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ✅ Qeydiyyat uğurlu! Email doğrulandı.</div>';
                 
                 // Send welcome email (optional)
-                if (!emailResult.demo) {
+                if (window.emailSentSuccessfully) {
                     await sendWelcomeEmail(email, name);
                 }
                 
@@ -212,6 +217,41 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
             }
+            
+            return;
+        }
+
+        // First submit - send verification email
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Email göndərilir...';
+
+        try {
+            // Generate verification code
+            const verificationCode = generateVerificationCode();
+            window.verificationCode = verificationCode; // Store for later verification
+            
+            // Send email via EmailJS
+            const emailResult = await sendVerificationEmail(email, name, verificationCode);
+            
+            if (emailResult.demo) {
+                // Demo mode - show code in message
+                verificationMessage.innerHTML = `<strong>Demo Rejimi:</strong> Doğrulama kodu: <strong>${emailResult.code}</strong>`;
+                window.emailSentSuccessfully = false;
+            } else {
+                // Real email sent
+                verificationMessage.innerHTML = `<strong>${email}</strong> ünvanına doğrulama kodu göndərildi. Email qutunuzu yoxlayın.`;
+                window.emailSentSuccessfully = true;
+            }
+            
+            // Show verification section
+            verificationSection.classList.add('active');
+            verificationInput.focus();
+            
+            // Change button text
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Doğrula və Qeydiyyatı Tamamla';
+            
+            alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Email göndərildi! Doğrulama kodunu daxil edin.</div>';
             
         } catch (error) {
             console.error('Registration error:', error);
