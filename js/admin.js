@@ -1230,3 +1230,42 @@ function closeTeacherModal() {
         modal.remove();
     }
 }
+
+
+// ==================== SYNC TO UPSTASH ====================
+
+async function syncAllData() {
+    if (typeof syncToUpstash === 'undefined') {
+        alert('⚠️ Upstash sinxronlaşdırma mövcud deyil!');
+        return;
+    }
+    
+    const confirmSync = confirm('Bütün məlumatları Upstash-a sinxronlaşdırmaq istəyirsiniz?\n\nBu, digər cihazlarda məlumatların görünməsini təmin edəcək.');
+    
+    if (!confirmSync) return;
+    
+    try {
+        // Show loading
+        const loadingMsg = document.createElement('div');
+        loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2);z-index:10000;text-align:center;';
+        loadingMsg.innerHTML = `
+            <div class="spinner" style="margin:0 auto 15px;"></div>
+            <h3 style="margin-bottom:10px;">Sinxronlaşdırılır...</h3>
+            <p style="color:var(--gray);font-size:14px;">Zəhmət olmasa gözləyin</p>
+        `;
+        document.body.appendChild(loadingMsg);
+        
+        // Sync to Upstash
+        await syncToUpstash();
+        
+        // Remove loading
+        loadingMsg.remove();
+        
+        // Show success
+        alert('✅ Məlumatlar uğurla sinxronlaşdırıldı!\n\nİndi digər cihazlarda da görünəcək.');
+        
+    } catch (error) {
+        console.error('Sync error:', error);
+        alert('❌ Sinxronlaşdırma zamanı xəta baş verdi:\n' + error.message);
+    }
+}

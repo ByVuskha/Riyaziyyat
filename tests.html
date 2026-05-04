@@ -346,6 +346,17 @@ function updateTestStats(testId) {
 }
 
 renderTests();
+
+// Load from Upstash on page load
+if (typeof loadFromUpstash !== 'undefined') {
+    console.log('📥 Upstash-dan yüklənir...');
+    loadFromUpstash().then(() => {
+        console.log('✅ Upstash-dan yükləndi, testlər yenilənir...');
+        renderTests(); // Re-render after loading
+    }).catch(err => {
+        console.error('❌ Upstash yükləmə xətası:', err);
+    });
+}
 </script>
 </body>
 </html>

@@ -517,7 +517,17 @@ function saveTestInfo() {
     
     console.log('✅ Sınaq saxlanıldı:', testData);
     
-    alert(`✅ Sınaq uğurla saxlanıldı!\n\n📝 ${testData.title}\n❓ ${questions.length} sual\n⏱️ ${testData.duration} dəqiqə`);
+    // Auto-sync to Upstash if available
+    if (typeof syncToUpstash !== 'undefined') {
+        console.log('🔄 Upstash-a sinxronlaşdırılır...');
+        syncToUpstash().then(() => {
+            console.log('✅ Upstash sinxronlaşdırıldı');
+        }).catch(err => {
+            console.error('❌ Upstash sinxronlaşdırma xətası:', err);
+        });
+    }
+    
+    alert(`✅ Sınaq uğurla saxlanıldı!\n\n📝 ${testData.title}\n❓ ${questions.length} sual\n⏱️ ${testData.duration} dəqiqə\n\n💡 Digər cihazlarda görünməsi üçün bir neçə saniyə gözləyin.`);
     
     // Reset form
     if (confirm('Yeni sınaq yaratmaq istəyirsiniz?')) {
