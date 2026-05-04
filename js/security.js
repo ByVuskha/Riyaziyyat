@@ -161,7 +161,13 @@ function updateActiveUser() {
         }
     });
     
+    // Save to both LocalStorage AND Upstash directly
     Storage.set('activeUsers', activeUsers);
+    
+    // Force immediate Upstash sync for real-time tracking
+    if (typeof upstash !== 'undefined' && upstash) {
+        upstash.set('activeUsers', activeUsers, 600).catch(() => {}); // 10 min TTL
+    }
 }
 
 function removeActiveUser() {
@@ -171,6 +177,11 @@ function removeActiveUser() {
     const activeUsers = Storage.get('activeUsers') || {};
     delete activeUsers[user.id];
     Storage.set('activeUsers', activeUsers);
+    
+    // Sync removal to Upstash
+    if (typeof upstash !== 'undefined' && upstash) {
+        upstash.set('activeUsers', activeUsers, 600).catch(() => {});
+    }
 }
 
 // Track active user on every page

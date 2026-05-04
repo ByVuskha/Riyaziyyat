@@ -2331,8 +2331,27 @@ function extendPremium(userId) {
 
 let activeUsersInterval = null;
 
-function loadActiveUsers() {
-    const activeUsers = Storage.get('activeUsers') || {};
+async function loadActiveUsers() {
+    // Load from Upstash first for real-time data
+    let activeUsers = {};
+    
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloudData = await upstash.get('activeUsers');
+            if (cloudData) {
+                activeUsers = cloudData;
+                // Sync to local
+                localStorage.setItem('activeUsers', JSON.stringify(activeUsers));
+            } else {
+                activeUsers = Storage.get('activeUsers') || {};
+            }
+        } catch (e) {
+            activeUsers = Storage.get('activeUsers') || {};
+        }
+    } else {
+        activeUsers = Storage.get('activeUsers') || {};
+    }
+    
     const now = Date.now();
     const fiveMin = 5 * 60 * 1000;
     
@@ -2344,46 +2363,54 @@ function loadActiveUsers() {
     
     if (countEl) countEl.textContent = active.length;
     
+    // Update stats
+    const totalEl = document.getElementById('activeCountTotal');
+    const premiumEl = document.getElementById('activePremiumCount');
+    const freeEl = document.getElementById('activeFreeCount');
+    const updateEl = document.getElementById('activeLastUpdate');
+    
+    if (totalEl) totalEl.textContent = active.length;
+    if (premiumEl) premiumEl.textContent = active.filter(u => u.premium).length;
+    if (freeEl) freeEl.textContent = active.filter(u => !u.premium && u.role !== 'admin').length;
+    if (updateEl) updateEl.textContent = new Date().toLocaleTimeString('az-AZ');
+    
     if (!container) return;
     
     if (active.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-users" style="font-size:40px;opacity:0.3;margin-bottom:10px;"></i><p>Aktiv istifadəçi yoxdur</p></div>';
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-users" style="font-size:40px;opacity:0.3;margin-bottom:10px;display:block;"></i><p>Aktiv istifadəçi yoxdur</p></div>';
         return;
     }
     
     const pageNames = {
-        'index.html': '🏠 Ana Səhifə',
-        'videos.html': '📹 Videolar',
-        'tests.html': '📝 Sınaqlar',
-        'dashboard.html': '📊 Kabinet',
-        'teachers.html': '👨‍🏫 Müəllimlər',
-        'news.html': '📰 Xəbərlər',
-        'faq.html': '❓ FAQ',
-        'admin.html': '⚙️ Admin Panel',
-        'login.html': '🔑 Giriş',
-        'register.html': '📋 Qeydiyyat'
+        'index.html': '🏠 Ana Səhifə', 'videos.html': '📹 Videolar',
+        'tests.html': '📝 Sınaqlar', 'dashboard.html': '📊 Kabinet',
+        'teachers.html': '👨‍🏫 Müəllimlər', 'news.html': '📰 Xəbərlər',
+        'faq.html': '❓ FAQ', 'admin.html': '⚙️ Admin Panel',
+        'login.html': '🔑 Giriş', 'register.html': '📋 Qeydiyyat'
     };
     
     container.innerHTML = active.map(u => {
         const lastSeenMin = Math.floor((now - u.lastSeen) / 60000);
         const lastSeenText = lastSeenMin === 0 ? 'İndi aktiv' : `${lastSeenMin} dəq əvvəl`;
         const pageName = pageNames[u.page] || u.page;
+        const initial = (u.userName || '?').charAt(0).toUpperCase();
+        const bgColor = u.role === 'admin' ? '#ef4444' : u.premium ? '#fbbf24' : '#667eea';
         
         return `
-            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:#f9fafb;margin-bottom:8px;">
-                <div style="width:40px;height:40px;border-radius:50%;background:${u.role === 'admin' ? '#ef4444' : u.premium ? '#fbbf24' : '#667eea'};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">
-                    ${u.userName.charAt(0).toUpperCase()}
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:#f9fafb;margin-bottom:8px;border-left:3px solid ${bgColor};">
+                <div style="width:40px;height:40px;border-radius:50%;background:${bgColor};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">
+                    ${initial}
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;">
-                        ${sanitizeHTML(u.userName)}
+                    <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        ${u.userName || 'Naməlum'}
                         ${u.role === 'admin' ? '<span style="background:#ef4444;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">Admin</span>' : ''}
-                        ${u.premium ? '<span style="background:#fbbf24;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">👑</span>' : ''}
+                        ${u.premium ? '<span style="background:#fbbf24;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">👑 Premium</span>' : ''}
                     </div>
-                    <div style="font-size:12px;color:#6b7280;">${u.userEmail}</div>
+                    <div style="font-size:12px;color:#6b7280;">${u.userEmail || ''}</div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:12px;color:#667eea;">${pageName}</div>
+                    <div style="font-size:12px;color:#667eea;font-weight:500;">${pageName}</div>
                     <div style="font-size:11px;color:#9ca3af;">${lastSeenText}</div>
                 </div>
                 <div style="width:8px;height:8px;border-radius:50%;background:${lastSeenMin === 0 ? '#10b981' : '#f59e0b'};flex-shrink:0;"></div>
@@ -2408,77 +2435,99 @@ function stopActiveUsersTracking() {
 // ==================== ENHANCED PREMIUM MANAGEMENT ====================
 
 function loadPremiumRequestsEnhanced() {
-    const requests = Storage.get('premiumRequests') || [];
-    const tbody = document.getElementById('premiumRequestsTable');
-    if (!tbody) return;
-    
-    const pending = requests.filter(r => r.status === 'pending');
-    const others = requests.filter(r => r.status !== 'pending');
-    const sorted = [...pending, ...others]; // Pending first
-    
-    // Update badge
-    const badge = document.getElementById('premiumPendingBadge');
-    if (badge) {
-        badge.textContent = pending.length;
-        badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
-    }
-    
-    if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Premium müraciət yoxdur</td></tr>';
-        return;
-    }
-    
-    const planLabels = {
-        premium1: { label: '⭐ Premium 1', color: '#667eea', duration: '1 ay', price: '15₼' },
-        premium6: { label: '💎 Premium 6', color: '#8b5cf6', duration: '6 ay', price: '75₼' },
-        premium12: { label: '🏆 Premium 12', color: '#f59e0b', duration: '1 il', price: '120₼' }
+    // Load from Upstash for real-time sync
+    const loadData = async () => {
+        let requests = [];
+        
+        if (typeof upstash !== 'undefined' && upstash) {
+            try {
+                const cloudData = await upstash.get('premiumRequests');
+                if (cloudData) {
+                    requests = cloudData;
+                    localStorage.setItem('premiumRequests', JSON.stringify(requests));
+                } else {
+                    requests = Storage.get('premiumRequests') || [];
+                }
+            } catch (e) {
+                requests = Storage.get('premiumRequests') || [];
+            }
+        } else {
+            requests = Storage.get('premiumRequests') || [];
+        }
+        
+        const tbody = document.getElementById('premiumRequestsTable');
+        if (!tbody) return;
+        
+        const pending = requests.filter(r => r.status === 'pending');
+        const others = requests.filter(r => r.status !== 'pending');
+        const sorted = [...pending, ...others];
+        
+        // Update badge
+        const badge = document.getElementById('premiumPendingBadge');
+        if (badge) {
+            badge.textContent = pending.length;
+            badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
+        }
+        
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-inbox" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>Premium müraciət yoxdur</td></tr>';
+            return;
+        }
+        
+        const planLabels = {
+            premium1: { label: '⭐ Premium 1', color: '#667eea', duration: '1 ay', price: '15₼' },
+            premium6: { label: '💎 Premium 6', color: '#8b5cf6', duration: '6 ay', price: '75₼' },
+            premium12: { label: '🏆 Premium 12', color: '#f59e0b', duration: '1 il', price: '120₼' }
+        };
+        
+        tbody.innerHTML = sorted.map(req => {
+            const plan = planLabels[req.plan] || { label: 'Naməlum', color: '#6b7280', duration: '-', price: '-' };
+            const isPending = req.status === 'pending';
+            
+            return `
+            <tr style="background:${req.status === 'approved' ? '#f0fdf4' : req.status === 'rejected' ? '#fef2f2' : '#fffbeb'};">
+                <td>
+                    <div style="font-weight:600;">${req.userName || ''}</div>
+                    <div style="font-size:12px;color:#6b7280;">${req.userEmail || ''}</div>
+                </td>
+                <td>
+                    <span style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${plan.color}22;color:${plan.color};">
+                        ${plan.label}
+                    </span>
+                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">${plan.duration} · ${plan.price}</div>
+                </td>
+                <td>
+                    <div style="font-size:13px;">${req.date || ''}</div>
+                    <div style="font-size:11px;color:#9ca3af;">${req.time || ''}</div>
+                </td>
+                <td>
+                    <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                        background:${req.status === 'approved' ? '#dcfce7' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7'};
+                        color:${req.status === 'approved' ? '#16a34a' : req.status === 'rejected' ? '#dc2626' : '#d97706'};">
+                        ${req.status === 'approved' ? '✅ Təsdiqləndi' : req.status === 'rejected' ? '❌ Rədd edildi' : '⏳ Gözləyir'}
+                    </span>
+                </td>
+                <td>
+                    ${isPending ? `
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn btn-success btn-sm" onclick="approvePremiumWithDuration(${req.userId}, ${req.id}, '${req.plan}')">
+                                <i class="fas fa-check"></i> Təsdiqlə
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
+                                <i class="fas fa-times"></i> Rədd Et
+                            </button>
+                        </div>
+                    ` : req.status === 'approved' ? `
+                        <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
+                            <i class="fas fa-ban"></i> Ləğv Et
+                        </button>
+                    ` : `<span style="color:#9ca3af;font-size:12px;">-</span>`}
+                </td>
+            </tr>`;
+        }).join('');
     };
     
-    tbody.innerHTML = sorted.map(req => {
-        const plan = planLabels[req.plan] || { label: 'Naməlum', color: '#6b7280', duration: '-', price: '-' };
-        const isPending = req.status === 'pending';
-        
-        return `
-        <tr style="background:${req.status === 'approved' ? '#f0fdf4' : req.status === 'rejected' ? '#fef2f2' : '#fffbeb'};">
-            <td>
-                <div style="font-weight:600;">${sanitizeHTML(req.userName)}</div>
-                <div style="font-size:12px;color:#6b7280;">${sanitizeHTML(req.userEmail)}</div>
-            </td>
-            <td>
-                <span style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${plan.color}22;color:${plan.color};">
-                    ${plan.label}
-                </span>
-                <div style="font-size:11px;color:#6b7280;margin-top:3px;">${plan.duration} · ${plan.price}</div>
-            </td>
-            <td>
-                <div style="font-size:13px;">${req.date}</div>
-                <div style="font-size:11px;color:#9ca3af;">${req.time}</div>
-            </td>
-            <td>
-                <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
-                    background:${req.status === 'approved' ? '#dcfce7' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7'};
-                    color:${req.status === 'approved' ? '#16a34a' : req.status === 'rejected' ? '#dc2626' : '#d97706'};">
-                    ${req.status === 'approved' ? '✅ Təsdiqləndi' : req.status === 'rejected' ? '❌ Rədd edildi' : '⏳ Gözləyir'}
-                </span>
-            </td>
-            <td>
-                ${isPending ? `
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button class="btn btn-success btn-sm" onclick="approvePremiumWithDuration(${req.userId}, ${req.id}, '${req.plan}')">
-                            <i class="fas fa-check"></i> Təsdiqlə
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
-                            <i class="fas fa-times"></i> Rədd Et
-                        </button>
-                    </div>
-                ` : req.status === 'approved' ? `
-                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
-                        <i class="fas fa-ban"></i> Ləğv Et
-                    </button>
-                ` : `<span style="color:#9ca3af;font-size:12px;">-</span>`}
-            </td>
-        </tr>`;
-    }).join('');
+    loadData();
 }
 
 function approvePremiumWithDuration(userId, requestId, planId) {

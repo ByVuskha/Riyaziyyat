@@ -409,13 +409,22 @@ function submitPromptRequest() {
     }
     
     const requests = Storage.get('premiumRequests') || [];
-    requests.unshift({
+    const newReq = {
         id: Date.now(), userId: user.id, userName: user.name, userEmail: user.email,
         plan: plan.planId, months: plan.months, price: plan.price,
         requestedAt: new Date().toISOString(), status: 'pending',
         date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ')
-    });
+    };
+    requests.unshift(newReq);
     Storage.set('premiumRequests', requests);
+    
+    // Force sync to Upstash
+    if (typeof upstash !== 'undefined' && upstash) {
+        Promise.all([
+            upstash.set('premiumRequests', requests, 86400 * 30),
+            upstash.set('allUsers', Storage.get('allUsers') || [], 86400 * 30)
+        ]).catch(e => console.error('Upstash sync error:', e));
+    }
     
     setTimeout(() => {
         document.getElementById('premiumPromptOverlay')?.remove();

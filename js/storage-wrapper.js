@@ -57,7 +57,10 @@ window.Storage = {
         'payments',
         'activities',
         'siteSettings',
-        'userSessions'
+        'userSessions',
+        'premiumRequests',
+        'suspiciousActivities',
+        'activeUsers'
     ];
     
     // Check if key should use Upstash
