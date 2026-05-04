@@ -475,14 +475,20 @@ function clearQuestionForm() {
 }
 
 function saveTestInfo() {
+    const titleEl = document.getElementById('testTitle');
+    const descEl = document.getElementById('testDescription');
+    const categoryEl = document.getElementById('testCategory');
+    const difficultyEl = document.getElementById('testDifficulty');
+    const durationEl = document.getElementById('testDuration');
+    
     const testData = {
         id: Date.now(),
-        title: document.getElementById('testTitle').value,
-        description: document.getElementById('testDescription').value || '',
-        category: document.getElementById('testCategory').value || 'Ümumi',
-        difficulty: document.getElementById('testDifficulty').value || 'Orta',
-        duration: parseInt(document.getElementById('testDuration').value) || 30,
-        isPremium: false, // Default false
+        title: titleEl ? titleEl.value : 'Yeni Sınaq',
+        description: descEl ? descEl.value : '',
+        category: categoryEl ? categoryEl.value : 'Ümumi',
+        difficulty: difficultyEl ? difficultyEl.value : 'Orta',
+        duration: durationEl ? parseInt(durationEl.value) : 30,
+        isPremium: false,
         questions: questions.map((q, index) => ({
             id: index + 1,
             question: q.text,
