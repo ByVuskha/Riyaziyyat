@@ -126,9 +126,22 @@ function openVideo(id) {
     }
     
     const user = getCurrentUser();
-    if (!video.free && (!user || user.balance < 5)) {
-        alert('Bu video premium-dur. Balans yükləyin və ya abunə olun.');
-        return;
+    
+    // Premium check
+    if (!video.free) {
+        if (!user) {
+            showPremiumPrompt('video');
+            return;
+        }
+        if (!user.premium) {
+            showPremiumPrompt('video');
+            return;
+        }
+        // Check if premium expired
+        if (user.premiumExpiresAt && new Date(user.premiumExpiresAt) < new Date()) {
+            showPremiumPrompt('video', true);
+            return;
+        }
     }
     
     // Increment view count
@@ -279,3 +292,133 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     renderVideos();
 });
+
+
+// Show premium prompt when user tries to access premium content
+function showPremiumPrompt(type = 'video', expired = false) {
+    const overlay = document.createElement('div');
+    overlay.id = 'premiumPromptOverlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6); z-index: 9999;
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+    `;
+    
+    const user = getCurrentUser();
+    const isLoggedIn = !!user;
+    const hasPending = user && user.premiumRequestedAt;
+    
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:20px;padding:35px;max-width:480px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size:60px;margin-bottom:15px;">👑</div>
+            <h2 style="margin:0 0 10px 0;font-size:24px;color:#1f2937;">
+                ${expired ? 'Premium Müddəti Bitib' : 'Premium Məzmun'}
+            </h2>
+            <p style="color:#6b7280;margin:0 0 25px 0;line-height:1.6;">
+                ${expired 
+                    ? 'Premium üzvlüyünüzün müddəti bitib. Yenidən müraciət edin.'
+                    : `Bu ${type === 'video' ? 'video' : 'sınaq'} yalnız premium üzvlər üçündür. Bütün məzmuna giriş üçün premium olun!`
+                }
+            </p>
+            
+            ${hasPending ? `
+                <div style="background:#fef3c7;border-radius:12px;padding:16px;margin-bottom:20px;">
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                        <i class="fas fa-clock"></i> Müraciətiniz admin tərəfindən yoxlanılır.
+                    </p>
+                </div>
+            ` : `
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
+                    <div style="background:#f0f9ff;border-radius:10px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;" onclick="selectPlanInPrompt(this,'premium1',1,15)">
+                        <div style="font-weight:700;color:#667eea;">15 ₼</div>
+                        <div style="font-size:12px;color:#6b7280;">1 Ay</div>
+                    </div>
+                    <div style="background:#f5f3ff;border-radius:10px;padding:12px;cursor:pointer;border:2px solid #8b5cf6;transition:all 0.2s;" onclick="selectPlanInPrompt(this,'premium6',6,75)">
+                        <div style="font-weight:700;color:#8b5cf6;">75 ₼</div>
+                        <div style="font-size:12px;color:#6b7280;">6 Ay</div>
+                        <div style="font-size:10px;color:#10b981;">-17%</div>
+                    </div>
+                    <div style="background:#fffbeb;border-radius:10px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;" onclick="selectPlanInPrompt(this,'premium12',12,120)">
+                        <div style="font-weight:700;color:#f59e0b;">120 ₼</div>
+                        <div style="font-size:12px;color:#6b7280;">1 İl</div>
+                        <div style="font-size:10px;color:#10b981;">-33%</div>
+                    </div>
+                </div>
+            `}
+            
+            <div style="display:flex;gap:12px;">
+                <button onclick="document.getElementById('premiumPromptOverlay').remove()" 
+                    style="flex:1;padding:12px;border:2px solid #e5e7eb;background:white;border-radius:10px;font-weight:600;cursor:pointer;color:#6b7280;">
+                    Bağla
+                </button>
+                ${!isLoggedIn ? `
+                    <a href="login.html" style="flex:2;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:10px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <i class="fas fa-sign-in-alt"></i> Giriş Et
+                    </a>
+                ` : hasPending ? `
+                    <button onclick="document.getElementById('premiumPromptOverlay').remove()"
+                        style="flex:2;padding:12px;background:#f59e0b;color:white;border-radius:10px;font-weight:600;cursor:pointer;border:none;">
+                        <i class="fas fa-clock"></i> Gözlənilir...
+                    </button>
+                ` : `
+                    <button id="promptSubmitBtn" onclick="submitPromptRequest()"
+                        style="flex:2;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:10px;font-weight:600;cursor:pointer;border:none;">
+                        <i class="fas fa-paper-plane"></i> Müraciət Et
+                    </button>
+                `}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    
+    // Default select middle plan
+    if (!hasPending && isLoggedIn) {
+        window._selectedPromptPlan = { planId: 'premium6', months: 6, price: 75 };
+    }
+}
+
+function selectPlanInPrompt(el, planId, months, price) {
+    document.querySelectorAll('#premiumPromptOverlay [onclick^="selectPlan"]').forEach(e => {
+        e.style.border = '2px solid transparent';
+    });
+    el.style.border = '2px solid #667eea';
+    window._selectedPromptPlan = { planId, months, price };
+}
+
+function submitPromptRequest() {
+    const plan = window._selectedPromptPlan;
+    if (!plan) { alert('Paket seçin'); return; }
+    
+    const user = getCurrentUser();
+    if (!user) { window.location.href = 'login.html'; return; }
+    
+    const btn = document.getElementById('promptSubmitBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    
+    const allUsers = Storage.get('allUsers') || [];
+    const userIndex = allUsers.findIndex(u => u.id === user.id);
+    if (userIndex !== -1) {
+        allUsers[userIndex].premiumRequestedAt = new Date().toISOString();
+        allUsers[userIndex].requestedPlan = plan;
+        Storage.set('allUsers', allUsers);
+        user.premiumRequestedAt = allUsers[userIndex].premiumRequestedAt;
+        user.requestedPlan = plan;
+        Storage.set('currentUser', user);
+    }
+    
+    const requests = Storage.get('premiumRequests') || [];
+    requests.unshift({
+        id: Date.now(), userId: user.id, userName: user.name, userEmail: user.email,
+        plan: plan.planId, months: plan.months, price: plan.price,
+        requestedAt: new Date().toISOString(), status: 'pending',
+        date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ')
+    });
+    Storage.set('premiumRequests', requests);
+    
+    setTimeout(() => {
+        document.getElementById('premiumPromptOverlay')?.remove();
+        alert('✅ Müraciətiniz göndərildi!\nAdmin tərəfindən yoxlanılacaq.');
+    }, 600);
+}
