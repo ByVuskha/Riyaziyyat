@@ -40,6 +40,7 @@ function showSection(section) {
     if (section === 'teachers') loadTeachers();
     if (section === 'videos') loadVideos();
     if (section === 'tests') loadTests();
+    if (section === 'testResults') loadTestResults();
     if (section === 'news') loadNews();
     if (section === 'payments') loadPayments();
 }
@@ -626,3 +627,404 @@ function saveNewTeacher() {
 function showAddTeacherModal() {
     toggleTeacherForm();
 }
+
+
+// ==================== TEST RESULTS ====================
+
+function loadTestResults() {
+    const results = Storage.get('testResults') || [];
+    const stats = Storage.get('testStats') || {};
+    const tests = Storage.get('tests') || [];
+    
+    // Statistikaları hesabla
+    const totalAttempts = results.length;
+    const uniqueUsers = new Set(results.map(r => r.userEmail)).size;
+    const avgScore = results.length > 0 
+        ? Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length)
+        : 0;
+    const passRate = results.length > 0
+        ? Math.round((results.filter(r => r.percentage >= 60).length / results.length) * 100)
+        : 0;
+    
+    // Statistikaları göstər
+    document.getElementById('totalTestAttempts').textContent = totalAttempts;
+    document.getElementById('uniqueTestTakers').textContent = uniqueUsers;
+    document.getElementById('avgTestScore').textContent = avgScore + '%';
+    document.getElementById('passRate').textContent = passRate + '%';
+    
+    // Filtr dropdown-unu doldur
+    const filterTest = document.getElementById('filterTest');
+    const testIds = [...new Set(results.map(r => r.testId))];
+    filterTest.innerHTML = '<option value="">Hamısı</option>';
+    testIds.forEach(testId => {
+        const test = tests.find(t => t.id == testId);
+        const testTitle = test ? test.title : `Sınaq ${testId}`;
+        filterTest.innerHTML += `<option value="${testId}">${testTitle}</option>`;
+    });
+    
+    // Nəticələri göstər
+    renderTestResults(results);
+}
+
+function renderTestResults(results = null) {
+    if (!results) {
+        results = Storage.get('testResults') || [];
+    }
+    
+    const tbody = document.getElementById('testResultsTable');
+    
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:40px;">Nəticə yoxdur</td></tr>';
+        return;
+    }
+    
+    // Tarixə görə sırala (ən yeni əvvəl)
+    results.sort((a, b) => b.timestamp - a.timestamp);
+    
+    tbody.innerHTML = results.map(r => {
+        const date = new Date(r.date).toLocaleString('az-AZ', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const statusColor = r.percentage >= 80 ? 'success' : r.percentage >= 60 ? 'warning' : 'danger';
+        const statusText = r.percentage >= 80 ? 'Əla' : r.percentage >= 60 ? 'Yaxşı' : 'Zəif';
+        
+        return `
+            <tr>
+                <td>${date}</td>
+                <td>
+                    <div style="font-weight:600;">${r.userName}</div>
+                    <div style="font-size:12px;color:var(--gray);">${r.userEmail}</div>
+                </td>
+                <td>${r.testTitle}</td>
+                <td><strong>${r.score}/${r.total}</strong></td>
+                <td><strong>${r.percentage}%</strong></td>
+                <td><span class="badge badge-${statusColor}">${statusText}</span></td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-view" onclick="viewTestResult('${r.timestamp}')" title="Ətraflı">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="deleteTestResult('${r.timestamp}')" title="Sil">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterTestResults() {
+    const testFilter = document.getElementById('filterTest').value;
+    const userFilter = document.getElementById('filterUser').value.toLowerCase();
+    
+    let results = Storage.get('testResults') || [];
+    
+    // Sınaq filtri
+    if (testFilter) {
+        results = results.filter(r => r.testId == testFilter);
+    }
+    
+    // İstifadəçi filtri
+    if (userFilter) {
+        results = results.filter(r => 
+            r.userName.toLowerCase().includes(userFilter) ||
+            r.userEmail.toLowerCase().includes(userFilter)
+        );
+    }
+    
+    renderTestResults(results);
+}
+
+function viewTestResult(timestamp) {
+    const results = Storage.get('testResults') || [];
+    const result = results.find(r => r.timestamp == timestamp);
+    
+    if (!result) {
+        alert('Nəticə tapılmadı!');
+        return;
+    }
+    
+    const info = `
+📊 Sınaq Nəticəsi
+
+👤 İstifadəçi: ${result.userName}
+📧 Email: ${result.userEmail}
+📝 Sınaq: ${result.testTitle}
+
+✅ Düzgün: ${result.score}
+❌ Səhv: ${result.total - result.score}
+📊 Ümumi: ${result.total}
+📈 Faiz: ${result.percentage}%
+
+📅 Tarix: ${new Date(result.date).toLocaleString('az-AZ')}
+    `.trim();
+    
+    alert(info);
+}
+
+function deleteTestResult(timestamp) {
+    if (!confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')) {
+        return;
+    }
+    
+    let results = Storage.get('testResults') || [];
+    results = results.filter(r => r.timestamp != timestamp);
+    Storage.set('testResults', results);
+    
+    loadTestResults();
+    alert('Nəticə silindi!');
+}
+
+function exportTestResults() {
+    const results = Storage.get('testResults') || [];
+    
+    if (results.length === 0) {
+        alert('Export ediləcək nəticə yoxdur!');
+        return;
+    }
+    
+    // CSV formatında export
+    let csv = 'Tarix,İstifadəçi,Email,Sınaq,Bal,Ümumi,Faiz\n';
+    
+    results.forEach(r => {
+        const date = new Date(r.date).toLocaleString('az-AZ');
+        csv += `"${date}","${r.userName}","${r.userEmail}","${r.testTitle}",${r.score},${r.total},${r.percentage}%\n`;
+    });
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `sinaq-neticeleri-${Date.now()}.csv`;
+    link.click();
+    
+    alert('Nəticələr export edildi!');
+}
+
+
+// ==================== SITE EDITOR ====================
+
+// Tab switching
+function switchEditorTab(tab) {
+    // Hide all tabs
+    document.querySelectorAll('.editor-content').forEach(c => c.style.display = 'none');
+    document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+    
+    // Show selected tab
+    document.getElementById('editor' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+// Load site settings
+function loadSiteSettings() {
+    const settings = Storage.get('siteSettings') || getDefaultSettings();
+    
+    // Branding
+    if (settings.branding) {
+        document.getElementById('siteName').value = settings.branding.name || 'Bizim Riyaziyyat';
+        document.getElementById('logoShort').value = settings.branding.logoShort || 'BR';
+        document.getElementById('siteSlogan').value = settings.branding.slogan || 'Riyaziyyatı Asan Öyrən';
+        document.getElementById('metaDescription').value = settings.branding.metaDescription || '';
+    }
+    
+    // Colors
+    if (settings.colors) {
+        document.getElementById('colorPrimary').value = settings.colors.primary || '#3b82f6';
+        document.getElementById('colorSecondary').value = settings.colors.secondary || '#8b5cf6';
+        document.getElementById('colorSuccess').value = settings.colors.success || '#10b981';
+        document.getElementById('colorWarning').value = settings.colors.warning || '#f59e0b';
+        document.getElementById('colorDanger').value = settings.colors.danger || '#ef4444';
+        document.getElementById('colorDark').value = settings.colors.dark || '#1e293b';
+    }
+    
+    // Typography
+    if (settings.typography) {
+        document.getElementById('fontFamily').value = settings.typography.fontFamily || "'Inter', sans-serif";
+        document.getElementById('fontSize').value = settings.typography.fontSize || 16;
+        document.getElementById('fontSizeValue').textContent = (settings.typography.fontSize || 16) + 'px';
+        document.getElementById('headingFont').value = settings.typography.headingFont || "'Inter', sans-serif";
+        document.getElementById('lineHeight').value = settings.typography.lineHeight || 1.6;
+        document.getElementById('lineHeightValue').textContent = settings.typography.lineHeight || 1.6;
+    }
+    
+    // Content
+    if (settings.content) {
+        document.getElementById('heroTitle').value = settings.content.heroTitle || 'Riyaziyyatı Asan Öyrən';
+        document.getElementById('heroSubtitle').value = settings.content.heroSubtitle || '';
+        document.getElementById('ctaButton1').value = settings.content.ctaButton1 || 'İndi Başla';
+        document.getElementById('ctaButton2').value = settings.content.ctaButton2 || 'Pulsuz Sınaq';
+        document.getElementById('statVideos').value = settings.content.statVideos || '500+';
+        document.getElementById('statStudents').value = settings.content.statStudents || '10K+';
+        document.getElementById('statTests').value = settings.content.statTests || '1000+';
+        document.getElementById('statSatisfaction').value = settings.content.statSatisfaction || '98%';
+    }
+    
+    // Footer
+    if (settings.footer) {
+        document.getElementById('footerEmail').value = settings.footer.email || 'info@bizimriyaziyyat.az';
+        document.getElementById('footerPhone').value = settings.footer.phone || '+994 50 123 45 67';
+        document.getElementById('footerInstagram').value = settings.footer.instagram || '@bizimriyaziyyat';
+        document.getElementById('footerTelegram').value = settings.footer.telegram || '@bizimriyaziyyat';
+        document.getElementById('footerCopyright').value = settings.footer.copyright || '© 2026 Bizim Riyaziyyat';
+        document.getElementById('footerDescription').value = settings.footer.description || '';
+    }
+    
+    // Range input listeners
+    document.getElementById('fontSize').addEventListener('input', function() {
+        document.getElementById('fontSizeValue').textContent = this.value + 'px';
+    });
+    
+    document.getElementById('lineHeight').addEventListener('input', function() {
+        document.getElementById('lineHeightValue').textContent = this.value;
+    });
+}
+
+// Get default settings
+function getDefaultSettings() {
+    return {
+        branding: {
+            name: 'Bizim Riyaziyyat',
+            logoShort: 'BR',
+            slogan: 'Riyaziyyatı Asan Öyrən',
+            metaDescription: 'Azərbaycanın ən böyük riyaziyyat öyrənmə platforması'
+        },
+        colors: {
+            primary: '#3b82f6',
+            secondary: '#8b5cf6',
+            success: '#10b981',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            dark: '#1e293b'
+        },
+        typography: {
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 16,
+            headingFont: "'Inter', sans-serif",
+            lineHeight: 1.6
+        },
+        content: {
+            heroTitle: 'Riyaziyyatı Asan Öyrən',
+            heroSubtitle: 'Peşəkar müəllimlərdən video dərslər, sınaqlar və interaktiv tapşırıqlarla riyaziyyatı mənimsə.',
+            ctaButton1: 'İndi Başla',
+            ctaButton2: 'Pulsuz Sınaq',
+            statVideos: '500+',
+            statStudents: '10K+',
+            statTests: '1000+',
+            statSatisfaction: '98%'
+        },
+        footer: {
+            email: 'info@bizimriyaziyyat.az',
+            phone: '+994 50 123 45 67',
+            instagram: '@bizimriyaziyyat',
+            telegram: '@bizimriyaziyyat',
+            copyright: '© 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.',
+            description: 'Azərbaycanın ən böyük riyaziyyat öyrənmə platforması. Hər yaşdan tələbə üçün.'
+        }
+    };
+}
+
+// Save site settings
+function saveSiteSettings() {
+    const settings = {
+        branding: {
+            name: document.getElementById('siteName').value,
+            logoShort: document.getElementById('logoShort').value,
+            slogan: document.getElementById('siteSlogan').value,
+            metaDescription: document.getElementById('metaDescription').value
+        },
+        colors: {
+            primary: document.getElementById('colorPrimary').value,
+            secondary: document.getElementById('colorSecondary').value,
+            success: document.getElementById('colorSuccess').value,
+            warning: document.getElementById('colorWarning').value,
+            danger: document.getElementById('colorDanger').value,
+            dark: document.getElementById('colorDark').value
+        },
+        typography: {
+            fontFamily: document.getElementById('fontFamily').value,
+            fontSize: parseInt(document.getElementById('fontSize').value),
+            headingFont: document.getElementById('headingFont').value,
+            lineHeight: parseFloat(document.getElementById('lineHeight').value)
+        },
+        content: {
+            heroTitle: document.getElementById('heroTitle').value,
+            heroSubtitle: document.getElementById('heroSubtitle').value,
+            ctaButton1: document.getElementById('ctaButton1').value,
+            ctaButton2: document.getElementById('ctaButton2').value,
+            statVideos: document.getElementById('statVideos').value,
+            statStudents: document.getElementById('statStudents').value,
+            statTests: document.getElementById('statTests').value,
+            statSatisfaction: document.getElementById('statSatisfaction').value
+        },
+        footer: {
+            email: document.getElementById('footerEmail').value,
+            phone: document.getElementById('footerPhone').value,
+            instagram: document.getElementById('footerInstagram').value,
+            telegram: document.getElementById('footerTelegram').value,
+            copyright: document.getElementById('footerCopyright').value,
+            description: document.getElementById('footerDescription').value
+        },
+        updatedAt: new Date().toISOString()
+    };
+    
+    Storage.set('siteSettings', settings);
+    
+    // Apply CSS variables
+    applySiteStyles(settings);
+    
+    alert('✅ Dəyişikliklər saxlanıldı və tətbiq edildi!');
+}
+
+// Apply site styles
+function applySiteStyles(settings) {
+    const root = document.documentElement;
+    
+    // Colors
+    if (settings.colors) {
+        root.style.setProperty('--primary', settings.colors.primary);
+        root.style.setProperty('--secondary', settings.colors.secondary);
+        root.style.setProperty('--success', settings.colors.success);
+        root.style.setProperty('--warning', settings.colors.warning);
+        root.style.setProperty('--danger', settings.colors.danger);
+        root.style.setProperty('--dark', settings.colors.dark);
+    }
+    
+    // Typography
+    if (settings.typography) {
+        root.style.setProperty('--font-family', settings.typography.fontFamily);
+        root.style.setProperty('--font-size', settings.typography.fontSize + 'px');
+        root.style.setProperty('--heading-font', settings.typography.headingFont);
+        root.style.setProperty('--line-height', settings.typography.lineHeight);
+    }
+}
+
+// Preview site
+function previewSite() {
+    window.open('index.html', '_blank');
+}
+
+// Reset to defaults
+function resetSiteSettings() {
+    if (!confirm('Bütün dəyişiklikləri sıfırlamaq istədiyinizə əminsiniz?')) {
+        return;
+    }
+    
+    Storage.remove('siteSettings');
+    loadSiteSettings();
+    alert('✅ Tənzimləmələr sıfırlandı!');
+}
+
+// Load settings when section is shown
+const originalShowSection = showSection;
+showSection = function(section) {
+    originalShowSection(section);
+    if (section === 'siteEditor') {
+        loadSiteSettings();
+    }
+};

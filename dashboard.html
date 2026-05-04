@@ -109,8 +109,11 @@
             <div>
                 <h2>Salam, <span id="userName">...</span>! 👋</h2>
                 <p>Bugün nə öyrənəcəksən?</p>
+                <a href="profile-edit.html" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;margin-top:10px;display:inline-flex;align-items:center;gap:6px;">
+                    <i class="fas fa-edit"></i> Profili Redaktə Et
+                </a>
             </div>
-            <div class="avatar">🎓</div>
+            <div class="avatar" id="profileAvatar">🎓</div>
         </div>
 
         <div class="stats-grid">
@@ -171,6 +174,11 @@
                 <h4>Balans Yüklə</h4>
                 <p>Kart ilə ödəniş et</p>
             </a>
+            <a href="profile-edit.html" class="quick-link">
+                <i class="fas fa-user-edit"></i>
+                <h4>Profili Redaktə Et</h4>
+                <p>Məlumatları yenilə</p>
+            </a>
         </div>
     </div>
 </div>
@@ -187,6 +195,12 @@
         document.getElementById('userName').textContent = user.name;
         document.getElementById('balanceDisplay').textContent = (user.balance || 0) + ' ₼';
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 0;
+        
+        // Profil şəklini göstər
+        const avatar = document.getElementById('profileAvatar');
+        if (user.profilePicture) {
+            avatar.innerHTML = `<img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        }
     });
 </script>
 <script src="js/upstash.js"></script>

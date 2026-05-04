@@ -433,3 +433,448 @@ a { text-decoration: none; color: inherit; }
     .footer-grid { grid-template-columns: 1fr; }
     .section { padding: 50px 0; }
 }
+
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Tablet (768px və aşağı) */
+@media (max-width: 768px) {
+    /* Container */
+    .container {
+        padding: 0 15px;
+    }
+    
+    /* Navbar */
+    .navbar-inner {
+        height: 60px;
+    }
+    
+    .navbar-logo {
+        font-size: 18px;
+    }
+    
+    .navbar-logo span {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .navbar-menu {
+        display: none; /* Hide on mobile, show hamburger instead */
+    }
+    
+    .navbar-actions {
+        gap: 8px;
+    }
+    
+    .balance-badge {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    /* Mobile Menu Toggle */
+    .mobile-menu-toggle {
+        display: block !important;
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--primary);
+        cursor: pointer;
+        padding: 5px;
+        order: -1; /* Show before actions */
+    }
+    
+    /* Mobile Menu Overlay */
+    .mobile-menu {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 20px;
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 999;
+    }
+    
+    .mobile-menu.active {
+        display: flex;
+    }
+    
+    .mobile-menu a {
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: var(--gray);
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .mobile-menu a:hover, .mobile-menu a.active {
+        background: #eef2ff;
+        color: var(--primary);
+    }
+    
+    /* Hero Section */
+    .hero {
+        padding: 40px 0 30px;
+    }
+    
+    .hero h1 {
+        font-size: 32px !important;
+        line-height: 1.2;
+    }
+    
+    .hero p {
+        font-size: 16px;
+    }
+    
+    .hero-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .hero-buttons .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .hero-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px;
+    }
+    
+    .hero-stat h3 {
+        font-size: 28px;
+    }
+    
+    .hero-stat p {
+        font-size: 12px;
+    }
+    
+    /* Section */
+    .section {
+        padding: 40px 0;
+    }
+    
+    .section-title {
+        font-size: 28px;
+    }
+    
+    .section-subtitle {
+        font-size: 14px;
+    }
+    
+    /* Features Grid */
+    .features-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 20px;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px;
+    }
+    
+    /* Teachers Grid */
+    .teachers-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Tests Grid */
+    .tests-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* News Layout */
+    .news-layout {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .news-card {
+        flex-direction: column;
+    }
+    
+    .news-img {
+        width: 100%;
+        min-height: 120px;
+    }
+    
+    /* Dashboard */
+    .welcome-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+    
+    .quick-links {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    /* Footer */
+    .footer-grid {
+        grid-template-columns: 1fr !important;
+        gap: 30px;
+    }
+    
+    /* Buttons */
+    .btn-lg {
+        padding: 12px 24px;
+        font-size: 15px;
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    /* Forms */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Modal */
+    .modal {
+        width: 95%;
+        max-width: none;
+        margin: 20px;
+    }
+    
+    /* Admin Panel */
+    .admin-sidebar {
+        width: 70px;
+    }
+    
+    .admin-main {
+        margin-left: 70px;
+        padding: 20px 15px;
+    }
+    
+    .admin-logo div,
+    .admin-menu-item span {
+        display: none;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .stats-row {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Tables */
+    .data-table {
+        font-size: 13px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 10px 8px;
+    }
+    
+    /* Hide some columns on mobile */
+    .data-table th:nth-child(n+5),
+    .data-table td:nth-child(n+5) {
+        display: none;
+    }
+}
+
+/* Mobile (480px və aşağı) */
+@media (max-width: 480px) {
+    /* Typography */
+    body {
+        font-size: 14px;
+    }
+    
+    h1 {
+        font-size: 28px !important;
+    }
+    
+    h2 {
+        font-size: 24px !important;
+    }
+    
+    h3 {
+        font-size: 18px !important;
+    }
+    
+    /* Navbar */
+    .navbar-logo {
+        font-size: 16px;
+    }
+    
+    .navbar-actions #guestButtons,
+    .navbar-actions #userButtons {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .navbar-actions .btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    /* Hero */
+    .hero {
+        padding: 30px 0 20px;
+    }
+    
+    .hero h1 {
+        font-size: 26px !important;
+    }
+    
+    .hero-badge {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+    
+    .hero-stats {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Section */
+    .section {
+        padding: 30px 0;
+    }
+    
+    .section-title {
+        font-size: 24px;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 15px;
+    }
+    
+    .feature-card {
+        padding: 20px;
+    }
+    
+    /* Quick Links */
+    .quick-links {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Auth Pages */
+    .auth-card {
+        padding: 30px 20px;
+    }
+    
+    /* Dashboard */
+    .welcome-banner {
+        padding: 25px;
+    }
+    
+    .avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+    }
+    
+    /* Admin */
+    .admin-sidebar {
+        width: 60px;
+    }
+    
+    .admin-main {
+        margin-left: 60px;
+        padding: 15px 10px;
+    }
+    
+    .admin-header h1 {
+        font-size: 20px;
+    }
+    
+    /* Hide more table columns */
+    .data-table th:nth-child(n+4),
+    .data-table td:nth-child(n+4) {
+        display: none;
+    }
+    
+    /* Editor Tabs */
+    .editor-tab {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .editor-tab i {
+        display: none;
+    }
+}
+
+/* Landscape Mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+    .hero {
+        padding: 30px 0;
+    }
+    
+    .hero-stats {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+/* Touch Device Improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .navbar-menu a,
+    .mobile-menu a {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Remove hover effects */
+    .card:hover,
+    .test-card:hover,
+    .teacher-card:hover,
+    .news-card:hover {
+        transform: none;
+    }
+    
+    /* Better tap feedback */
+    .btn:active {
+        transform: scale(0.98);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .navbar,
+    .footer,
+    .btn,
+    .admin-sidebar,
+    .navbar-actions {
+        display: none !important;
+    }
+    
+    .admin-main {
+        margin-left: 0;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .card,
+    .section {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}

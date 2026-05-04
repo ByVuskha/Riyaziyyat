@@ -99,9 +99,57 @@ const MOCK_TESTS = [
     }
 ];
 
+// Yüklənmiş sınaqları əlavə et
+function getAllTests() {
+    const uploadedTests = Storage.get('tests') || [];
+    const stats = Storage.get('testStats') || {};
+    
+    // Yüklənmiş sınaqları formatlayaq
+    const formattedTests = uploadedTests.map(t => {
+        const testStats = stats[t.id] || stats['uploaded_' + t.id] || { totalAttempts: 0, uniqueUsers: [] };
+        
+        return {
+            id: 'uploaded_' + t.id,
+            title: t.title,
+            emoji: '📝',
+            difficulty: t.difficulty || 'Orta',
+            questions: t.questions?.length || 0,
+            time: t.duration || 10,
+            free: !t.isPremium,
+            desc: t.description || '',
+            attempts: testStats.totalAttempts || 0,
+            users: (testStats.uniqueUsers || []).length,
+            data: (t.questions || []).map(q => ({
+                q: q.question,
+                opts: q.options,
+                ans: q.correctAnswer
+            }))
+        };
+    });
+    
+    // MOCK_TESTS-ə də statistika əlavə et
+    const mockWithStats = MOCK_TESTS.map(t => {
+        const testStats = stats[t.id] || { totalAttempts: 0, uniqueUsers: [] };
+        return {
+            ...t,
+            attempts: testStats.totalAttempts || 0,
+            users: (testStats.uniqueUsers || []).length
+        };
+    });
+    
+    return [...formattedTests, ...mockWithStats];
+}
+
 function renderTests() {
+    const allTests = getAllTests();
     const grid = document.getElementById('testsGrid');
-    grid.innerHTML = MOCK_TESTS.map(t => `
+    
+    if (allTests.length === 0) {
+        grid.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Sınaq tapılmadı</p>';
+        return;
+    }
+    
+    grid.innerHTML = allTests.map(t => `
         <div class="card">
             <div style="font-size:48px;text-align:center;margin-bottom:15px;">${t.emoji}</div>
             <h3 style="font-size:18px;margin-bottom:8px;">${t.title}</h3>
@@ -111,8 +159,10 @@ function renderTests() {
                 <span><i class="fas fa-clock"></i> ${t.time} dəq</span>
                 <span class="badge badge-${t.difficulty === 'Asan' ? 'success' : t.difficulty === 'Orta' ? 'warning' : 'danger'}">${t.difficulty}</span>
             </div>
+            ${t.attempts > 0 ? `<div style="background:#f0f9ff;color:#0369a1;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;justify-content:space-between;"><span><i class="fas fa-users"></i> ${t.users} nəfər</span><span><i class="fas fa-chart-line"></i> ${t.attempts} cəhd</span></div>` : ''}
             ${!t.free ? '<div style="background:#fef3c7;color:#92400e;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;"><i class="fas fa-crown"></i> Premium</div>' : ''}
-            <button class="btn btn-primary btn-block" onclick="startTest(${t.id})">
+            ${typeof t.id === 'string' && t.id.includes('uploaded') ? '<div style="background:#e0f2fe;color:#0369a1;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;"><i class="fas fa-upload"></i> Yüklənmiş</div>' : ''}
+            <button class="btn btn-primary btn-block" onclick="startTest('${t.id}')">
                 <i class="fas fa-play"></i> Başla
             </button>
         </div>
@@ -128,7 +178,14 @@ function startTest(id) {
         return;
     }
     
-    currentTest = MOCK_TESTS.find(t => t.id === id);
+    const allTests = getAllTests();
+    currentTest = allTests.find(t => t.id == id);
+    
+    if (!currentTest) {
+        alert('Sınaq tapılmadı!');
+        return;
+    }
+    
     const user = getCurrentUser();
     
     if (!currentTest.free && user.balance < 5) {
@@ -198,6 +255,25 @@ function nextQuestion() {
 
 function showResult() {
     const pct = Math.round((score / currentTest.questions) * 100);
+    const user = getCurrentUser();
+    
+    // Nəticəni saxla
+    saveTestResult({
+        testId: currentTest.id,
+        testTitle: currentTest.title,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        score: score,
+        total: currentTest.questions,
+        percentage: pct,
+        date: new Date().toISOString(),
+        timestamp: Date.now()
+    });
+    
+    // Sınaq statistikasını yenilə
+    updateTestStats(currentTest.id);
+    
     const modal = document.createElement('div');
     modal.id = 'resultModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
@@ -220,6 +296,50 @@ function closeQuiz() {
 function closeResult() {
     const modal = document.getElementById('resultModal');
     if (modal) modal.remove();
+}
+
+// Sınaq nəticəsini saxla
+function saveTestResult(result) {
+    const results = Storage.get('testResults') || [];
+    results.push(result);
+    Storage.set('testResults', results);
+    console.log('✅ Nəticə saxlanıldı:', result);
+}
+
+// Sınaq statistikasını yenilə
+function updateTestStats(testId) {
+    const stats = Storage.get('testStats') || {};
+    
+    if (!stats[testId]) {
+        stats[testId] = {
+            testId: testId,
+            totalAttempts: 0,
+            uniqueUsers: new Set()
+        };
+    }
+    
+    stats[testId].totalAttempts++;
+    
+    const user = getCurrentUser();
+    if (user && user.email) {
+        if (!stats[testId].uniqueUsers) {
+            stats[testId].uniqueUsers = new Set();
+        }
+        stats[testId].uniqueUsers.add(user.email);
+    }
+    
+    // Set-i array-ə çevir (localStorage üçün)
+    const statsToSave = {};
+    for (const [key, value] of Object.entries(stats)) {
+        statsToSave[key] = {
+            testId: value.testId,
+            totalAttempts: value.totalAttempts,
+            uniqueUsers: Array.from(value.uniqueUsers || [])
+        };
+    }
+    
+    Storage.set('testStats', statsToSave);
+    console.log('📊 Statistika yeniləndi:', statsToSave[testId]);
 }
 
 renderTests();

@@ -198,6 +198,32 @@
             gap: 20px;
         }
         
+        /* Editor Tabs */
+        .editor-tab {
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            color: var(--gray);
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .editor-tab:hover {
+            color: var(--primary);
+        }
+        .editor-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .editor-content {
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         /* Charts */
         .chart-container {
             height: 300px;
@@ -247,6 +273,14 @@
             <div class="admin-menu-item" onclick="showSection('tests')">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Sınaqlar</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('testResults')">
+                <i class="fas fa-chart-bar"></i>
+                <span>Sınaq Nəticələri</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('siteEditor')">
+                <i class="fas fa-paint-brush"></i>
+                <span>Sayt Redaktoru</span>
             </div>
             <div class="admin-menu-item" onclick="showSection('news')">
                 <i class="fas fa-newspaper"></i>
@@ -641,6 +675,298 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Test Results Section -->
+        <div id="testResults" class="admin-section" style="display:none;">
+            <h2>Sınaq Nəticələri</h2>
+            
+            <!-- Statistika -->
+            <div class="stats-row" style="margin-bottom:30px;">
+                <div class="stat-box">
+                    <div class="stat-icon" style="background:#eef2ff;"><i class="fas fa-clipboard-check" style="color:var(--primary);"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalTestAttempts">0</div>
+                        <div class="stat-label">Ümumi Cəhd</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon" style="background:#ecfdf5;"><i class="fas fa-users" style="color:var(--success);"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="uniqueTestTakers">0</div>
+                        <div class="stat-label">Unikal İstifadəçi</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon" style="background:#fffbeb;"><i class="fas fa-percentage" style="color:var(--warning);"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="avgTestScore">0%</div>
+                        <div class="stat-label">Orta Bal</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon" style="background:#fef2f2;"><i class="fas fa-trophy" style="color:var(--danger);"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="passRate">0%</div>
+                        <div class="stat-label">Uğur Faizi (60%+)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtr -->
+            <div style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:var(--shadow);">
+                <div style="display:flex;gap:15px;align-items:end;">
+                    <div class="form-group" style="flex:1;margin:0;">
+                        <label>Sınaq</label>
+                        <select class="form-control" id="filterTest" onchange="filterTestResults()">
+                            <option value="">Hamısı</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;margin:0;">
+                        <label>İstifadəçi</label>
+                        <input type="text" class="form-control" id="filterUser" placeholder="Ad və ya email" onkeyup="filterTestResults()">
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportTestResults()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Nəticələr Cədvəli -->
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tarix</th>
+                            <th>İstifadəçi</th>
+                            <th>Sınaq</th>
+                            <th>Bal</th>
+                            <th>Faiz</th>
+                            <th>Status</th>
+                            <th>Əməliyyatlar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testResultsTable">
+                        <tr>
+                            <td colspan="7" style="text-align:center;color:var(--gray);padding:40px;">Nəticə yoxdur</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Site Editor Section -->
+        <div id="siteEditor" class="admin-section" style="display:none;">
+            <h2>🎨 Sayt Redaktoru</h2>
+            <p style="color:var(--gray);margin-bottom:30px;">Saytın görünüşünü və mətnlərini buradan idarə edin. Dəyişikliklər dərhal tətbiq olunur.</p>
+            
+            <!-- Tabs -->
+            <div style="display:flex;gap:10px;margin-bottom:25px;border-bottom:2px solid var(--border);">
+                <button class="editor-tab active" onclick="switchEditorTab('branding')">
+                    <i class="fas fa-palette"></i> Branding
+                </button>
+                <button class="editor-tab" onclick="switchEditorTab('colors')">
+                    <i class="fas fa-fill-drip"></i> Rənglər
+                </button>
+                <button class="editor-tab" onclick="switchEditorTab('typography')">
+                    <i class="fas fa-font"></i> Şrift
+                </button>
+                <button class="editor-tab" onclick="switchEditorTab('content')">
+                    <i class="fas fa-file-alt"></i> Mətnlər
+                </button>
+                <button class="editor-tab" onclick="switchEditorTab('footer')">
+                    <i class="fas fa-shoe-prints"></i> Footer
+                </button>
+            </div>
+            
+            <!-- Branding Tab -->
+            <div id="editorBranding" class="editor-content">
+                <div class="card">
+                    <h3 style="margin-bottom:20px;">Logo və Branding</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Sayt Adı</label>
+                            <input type="text" class="form-control" id="siteName" value="Bizim Riyaziyyat">
+                        </div>
+                        <div class="form-group">
+                            <label>Logo Qısaltması</label>
+                            <input type="text" class="form-control" id="logoShort" value="BR" maxlength="3">
+                        </div>
+                        <div class="form-group">
+                            <label>Slogan</label>
+                            <input type="text" class="form-control" id="siteSlogan" value="Riyaziyyatı Asan Öyrən">
+                        </div>
+                        <div class="form-group">
+                            <label>Meta Təsvir</label>
+                            <textarea class="form-control" id="metaDescription" rows="2">Azərbaycanın ən böyük riyaziyyat öyrənmə platforması</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colors Tab -->
+            <div id="editorColors" class="editor-content" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-bottom:20px;">Rəng Sxemi</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Əsas Rəng (Primary)</label>
+                            <input type="color" class="form-control" id="colorPrimary" value="#3b82f6">
+                            <small style="color:var(--gray);">Düymələr, linklər</small>
+                        </div>
+                        <div class="form-group">
+                            <label>İkinci Rəng (Secondary)</label>
+                            <input type="color" class="form-control" id="colorSecondary" value="#8b5cf6">
+                            <small style="color:var(--gray);">Aksentlər</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Uğur Rəngi (Success)</label>
+                            <input type="color" class="form-control" id="colorSuccess" value="#10b981">
+                        </div>
+                        <div class="form-group">
+                            <label>Xəbərdarlıq (Warning)</label>
+                            <input type="color" class="form-control" id="colorWarning" value="#f59e0b">
+                        </div>
+                        <div class="form-group">
+                            <label>Xəta (Danger)</label>
+                            <input type="color" class="form-control" id="colorDanger" value="#ef4444">
+                        </div>
+                        <div class="form-group">
+                            <label>Tünd Rəng (Dark)</label>
+                            <input type="color" class="form-control" id="colorDark" value="#1e293b">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Typography Tab -->
+            <div id="editorTypography" class="editor-content" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-bottom:20px;">Şrift Tənzimləmələri</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Əsas Şrift</label>
+                            <select class="form-control" id="fontFamily">
+                                <option value="'Inter', sans-serif">Inter (Default)</option>
+                                <option value="'Roboto', sans-serif">Roboto</option>
+                                <option value="'Open Sans', sans-serif">Open Sans</option>
+                                <option value="'Poppins', sans-serif">Poppins</option>
+                                <option value="'Montserrat', sans-serif">Montserrat</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Əsas Şrift Ölçüsü</label>
+                            <input type="range" class="form-control" id="fontSize" min="14" max="18" value="16">
+                            <small id="fontSizeValue">16px</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Başlıq Şrifti</label>
+                            <select class="form-control" id="headingFont">
+                                <option value="'Inter', sans-serif">Inter (Default)</option>
+                                <option value="'Roboto', sans-serif">Roboto</option>
+                                <option value="'Poppins', sans-serif">Poppins</option>
+                                <option value="'Montserrat', sans-serif">Montserrat</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sətir Hündürlüyü</label>
+                            <input type="range" class="form-control" id="lineHeight" min="1.4" max="2" step="0.1" value="1.6">
+                            <small id="lineHeightValue">1.6</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Tab -->
+            <div id="editorContent" class="editor-content" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-bottom:20px;">Ana Səhifə Mətnləri</h3>
+                    <div class="form-group">
+                        <label>Hero Başlıq</label>
+                        <input type="text" class="form-control" id="heroTitle" value="Riyaziyyatı Asan Öyrən">
+                    </div>
+                    <div class="form-group">
+                        <label>Hero Alt Başlıq</label>
+                        <textarea class="form-control" id="heroSubtitle" rows="2">Peşəkar müəllimlərdən video dərslər, sınaqlar və interaktiv tapşırıqlarla riyaziyyatı mənimsə.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Düymə Mətni 1</label>
+                        <input type="text" class="form-control" id="ctaButton1" value="İndi Başla">
+                    </div>
+                    <div class="form-group">
+                        <label>Düymə Mətni 2</label>
+                        <input type="text" class="form-control" id="ctaButton2" value="Pulsuz Sınaq">
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top:20px;">
+                    <h3 style="margin-bottom:20px;">Statistika</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Video Sayı</label>
+                            <input type="text" class="form-control" id="statVideos" value="500+">
+                        </div>
+                        <div class="form-group">
+                            <label>Tələbə Sayı</label>
+                            <input type="text" class="form-control" id="statStudents" value="10K+">
+                        </div>
+                        <div class="form-group">
+                            <label>Sınaq Sayı</label>
+                            <input type="text" class="form-control" id="statTests" value="1000+">
+                        </div>
+                        <div class="form-group">
+                            <label>Məmnuniyyət</label>
+                            <input type="text" class="form-control" id="statSatisfaction" value="98%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer Tab -->
+            <div id="editorFooter" class="editor-content" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-bottom:20px;">Footer Məlumatları</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" class="form-control" id="footerEmail" value="info@bizimriyaziyyat.az">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" class="form-control" id="footerPhone" value="+994 50 123 45 67">
+                        </div>
+                        <div class="form-group">
+                            <label>Instagram</label>
+                            <input type="text" class="form-control" id="footerInstagram" value="@bizimriyaziyyat">
+                        </div>
+                        <div class="form-group">
+                            <label>Telegram</label>
+                            <input type="text" class="form-control" id="footerTelegram" value="@bizimriyaziyyat">
+                        </div>
+                        <div class="form-group">
+                            <label>Copyright Mətni</label>
+                            <input type="text" class="form-control" id="footerCopyright" value="© 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.">
+                        </div>
+                        <div class="form-group">
+                            <label>Footer Təsvir</label>
+                            <textarea class="form-control" id="footerDescription" rows="2">Azərbaycanın ən böyük riyaziyyat öyrənmə platforması. Hər yaşdan tələbə üçün.</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display:flex;gap:15px;margin-top:30px;">
+                <button class="btn btn-primary" onclick="saveSiteSettings()">
+                    <i class="fas fa-save"></i> Dəyişiklikləri Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="previewSite()">
+                    <i class="fas fa-eye"></i> Önizləmə
+                </button>
+                <button class="btn" style="background:#fef2f2;color:#dc2626;" onclick="resetSiteSettings()">
+                    <i class="fas fa-undo"></i> Sıfırla
+                </button>
+            </div>
         </div>
 
         <!-- Settings Section -->
