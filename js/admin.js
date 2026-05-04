@@ -296,41 +296,134 @@ function loadPayments() {
     `).join('');
 }
 
-// User Actions
+// User Actions - Inline Editing (No Popups)
 function viewUser(id) {
     const users = Storage.get('allUsers') || MOCK_USERS;
     const user = users.find(u => u.id === id);
-    if (user) {
-        // Get user's watched videos
-        const watchedVideos = Storage.get('userVideos_' + user.id) || [];
-        const videoCount = watchedVideos.length;
-        
-        const userTypeText = user.userType === 'teacher' ? '👨‍🏫 Müəllim' : '👨‍🎓 Şagird';
-        
-        alert(`👤 İstifadəçi Məlumatları\n\n` +
-              `Ad: ${user.name}\n` +
-              `Email: ${user.email}\n` +
-              `Rol: ${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}\n` +
-              `Tip: ${userTypeText}\n` +
-              `Balans: ${user.balance || 0} ₼\n` +
-              `İzlənmiş Videolar: ${videoCount}\n` +
-              `Demo Testlər: ${user.demoTests || 0}\n` +
-              `Qeydiyyat: ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('az-AZ') : 'N/A'}`);
+    if (!user) return;
+    
+    // Expand row to show details inline
+    const row = event.target.closest('tr');
+    const existingDetails = row.nextElementSibling;
+    
+    if (existingDetails && existingDetails.classList.contains('user-details-row')) {
+        existingDetails.remove();
+        return;
     }
+    
+    const watchedVideos = Storage.get('userVideos_' + user.id) || [];
+    const userTypeText = user.userType === 'teacher' ? '👨‍🏫 Müəllim' : '👨‍🎓 Şagird';
+    
+    const detailsRow = document.createElement('tr');
+    detailsRow.className = 'user-details-row';
+    detailsRow.innerHTML = `
+        <td colspan="8" style="background:#f8fafc;padding:25px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əsas Məlumat</h4>
+                    <p><strong>Ad:</strong> ${user.name}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Rol:</strong> ${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}</p>
+                    <p><strong>Tip:</strong> ${userTypeText}</p>
+                </div>
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Statistika</h4>
+                    <p><strong>Balans:</strong> ${user.balance || 0} ₼</p>
+                    <p><strong>İzlənmiş Videolar:</strong> ${watchedVideos.length}</p>
+                    <p><strong>Demo Testlər:</strong> ${user.demoTests || 0}</p>
+                    <p><strong>Qeydiyyat:</strong> ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('az-AZ') : 'N/A'}</p>
+                </div>
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
+                    <button class="btn btn-primary btn-sm" onclick="editUserInline(${user.id})" style="margin-bottom:8px;width:100%;">
+                        <i class="fas fa-edit"></i> Redaktə Et
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})" style="width:100%;">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </td>
+    `;
+    
+    row.after(detailsRow);
+}
+
+function editUserInline(id) {
+    const users = Storage.get('allUsers') || MOCK_USERS;
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+    
+    const detailsRow = document.querySelector('.user-details-row');
+    if (!detailsRow) return;
+    
+    detailsRow.innerHTML = `
+        <td colspan="8" style="background:#f8fafc;padding:25px;">
+            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> İstifadəçini Redaktə Et</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                <div class="form-group">
+                    <label>Ad</label>
+                    <input type="text" class="form-control" id="editUserName_${id}" value="${user.name}">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" class="form-control" id="editUserEmail_${id}" value="${user.email}" disabled style="background:#e2e8f0;">
+                </div>
+                <div class="form-group">
+                    <label>Balans (₼)</label>
+                    <input type="number" class="form-control" id="editUserBalance_${id}" value="${user.balance || 0}">
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select class="form-control" id="editUserRole_${id}">
+                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>İstifadəçi</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="btn btn-primary" onclick="saveUserEdit(${id})">
+                    <i class="fas fa-save"></i> Yadda Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('.user-details-row').remove()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </td>
+    `;
+}
+
+function saveUserEdit(id) {
+    const users = Storage.get('allUsers') || MOCK_USERS;
+    const index = users.findIndex(u => u.id === id);
+    if (index === -1) return;
+    
+    const name = document.getElementById(`editUserName_${id}`).value;
+    const balance = parseFloat(document.getElementById(`editUserBalance_${id}`).value) || 0;
+    const role = document.getElementById(`editUserRole_${id}`).value;
+    
+    users[index].name = name;
+    users[index].balance = balance;
+    users[index].role = role;
+    
+    Storage.set('allUsers', users);
+    
+    document.querySelector('.user-details-row').remove();
+    loadUsers();
+    
+    // Show success message inline
+    const successMsg = document.createElement('div');
+    successMsg.className = 'alert alert-success';
+    successMsg.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;animation:slideIn 0.3s;';
+    successMsg.innerHTML = '<i class="fas fa-check-circle"></i> İstifadəçi yeniləndi!';
+    document.body.appendChild(successMsg);
+    setTimeout(() => successMsg.remove(), 3000);
 }
 
 function editUser(id) {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    const user = users.find(u => u.id === id);
-    if (user) {
-        const name = prompt('Ad:', user.name);
-        const balance = prompt('Balans:', user.balance);
-        if (name) user.name = name;
-        if (balance) user.balance = parseFloat(balance);
-        Storage.set('allUsers', users);
-        loadUsers();
-        alert('İstifadəçi yeniləndi!');
-    }
+    editUserInline(id);
+    // Scroll to the row
+    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function deleteUser(id) {

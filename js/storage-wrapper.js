@@ -1,6 +1,6 @@
 /**
- * Storage Wrapper - LocalStorage-i Upstash ilə əvəz edir
- * Minimal kod dəyişikliyi ilə Upstash inteqrasiyası
+ * Storage Wrapper - Direct Upstash Integration
+ * LocalStorage yalnız cache kimi, əsas məlumat Upstash-da
  */
 
 (function() {
@@ -8,7 +8,7 @@
     
     // Check if Upstash is enabled
     if (typeof UPSTASH_CONFIG === 'undefined' || !UPSTASH_CONFIG.enabled) {
-        console.log('📦 Using LocalStorage (Upstash disabled)');
+        console.log('📦 Using LocalStorage only (Upstash disabled)');
         return;
     }
     
@@ -18,23 +18,9 @@
         return;
     }
     
-    console.log('⚡ Upstash enabled - wrapping Storage methods');
+    console.log('⚡ Upstash enabled - Direct cloud storage');
     
-    // Save original methods
-    const originalStorage = {
-        get: Storage.get,
-        set: Storage.set,
-        remove: Storage.remove
-    };
-    
-    // Keys that should stay in LocalStorage (sensitive data)
-    const LOCAL_ONLY_KEYS = [
-        'token',
-        'authToken',
-        'sessionToken'
-    ];
-    
-    // Keys that should use Upstash (public data)
+    // Keys that should use Upstash (all data)
     const UPSTASH_KEYS = [
         'allUsers',
         'videos',
@@ -44,103 +30,128 @@
         'testResults',
         'testStats',
         'payments',
-        'activities'
+        'activities',
+        'siteSettings'
     ];
     
     // Check if key should use Upstash
     function shouldUseUpstash(key) {
-        // Check if in local-only list
-        if (LOCAL_ONLY_KEYS.includes(key)) {
-            return false;
-        }
-        
-        // Check if in Upstash list
+        // All data keys use Upstash
         if (UPSTASH_KEYS.includes(key)) {
             return true;
         }
         
-        // Check if starts with userVideos_
-        if (key.startsWith('userVideos_')) {
+        // User-specific data
+        if (key.startsWith('userVideos_') || key.startsWith('user_')) {
             return true;
         }
         
-        // Default: use LocalStorage for unknown keys
-        return false;
-    }
-    
-    // Wrap Storage.get
-    const originalGet = Storage.get;
-    Storage.get = function(key) {
-        // Always use LocalStorage synchronously
-        // Upstash is only for backup/sync, not for real-time reads
-        return originalGet.call(this, key);
-    };
-    
-    // Wrap Storage.set
-    const originalSet = Storage.set;
-    Storage.set = function(key, value) {
-        if (shouldUseUpstash(key)) {
-            // Save to both Upstash and LocalStorage (backup)
-            console.log(`💾 [Upstash] SET ${key}`);
-            
-            // Save to LocalStorage immediately (sync)
-            originalSet.call(this, key, value);
-            
-            // Save to Upstash (async)
-            upstash.set(key, value, 86400).catch(error => {
-                console.error(`❌ Upstash SET error for ${key}:`, error);
-            });
-            
-            return;
+        // Sensitive data stays in LocalStorage only
+        if (key === 'token' || key === 'authToken' || key === 'sessionToken' || key === 'currentUser') {
+            return false;
         }
         
-        // Use LocalStorage for sensitive data
+        // Default: use Upstash
+        return true;
+    }
+    
+    // Original Storage methods
+    const originalStorage = {
+        get: Storage.get,
+        set: Storage.set,
+        remove: Storage.remove
+    };
+    
+    // Wrap Storage.get - Read from Upstash first, fallback to LocalStorage
+    const originalGet = Storage.get;
+    Storage.get = function(key) {
+        // For sensitive data, use LocalStorage only
+        if (!shouldUseUpstash(key)) {
+            return originalGet.call(this, key);
+        }
+        
+        // Try LocalStorage first (cache)
+        const cached = originalGet.call(this, key);
+        if (cached !== null) {
+            return cached;
+        }
+        
+        // If not in cache, will be loaded async
+        return null;
+    };
+    
+    // Wrap Storage.set - Write to both Upstash and LocalStorage
+    const originalSet = Storage.set;
+    Storage.set = function(key, value) {
+        // Always save to LocalStorage first (immediate)
         originalSet.call(this, key, value);
+        
+        if (shouldUseUpstash(key)) {
+            // Save to Upstash (async, with retry)
+            console.log(`💾 [Upstash] Saving ${key}...`);
+            
+            const saveToUpstash = async (retries = 3) => {
+                try {
+                    await upstash.set(key, value, 86400 * 7); // 7 days TTL
+                    console.log(`✅ [Upstash] Saved ${key}`);
+                } catch (error) {
+                    console.error(`❌ [Upstash] Error saving ${key}:`, error);
+                    if (retries > 0) {
+                        console.log(`🔄 Retrying... (${retries} attempts left)`);
+                        setTimeout(() => saveToUpstash(retries - 1), 1000);
+                    }
+                }
+            };
+            
+            saveToUpstash();
+        }
     };
     
     // Wrap Storage.remove
     const originalRemove = Storage.remove;
     Storage.remove = function(key) {
-        if (shouldUseUpstash(key)) {
-            console.log(`🗑️ [Upstash] REMOVE ${key}`);
-            
-            // Remove from LocalStorage
-            originalRemove.call(this, key);
-            
-            // Remove from Upstash
-            upstash.delete(key).catch(error => {
-                console.error(`❌ Upstash REMOVE error for ${key}:`, error);
-            });
-            
-            return;
-        }
-        
-        // Use LocalStorage
+        // Remove from LocalStorage
         originalRemove.call(this, key);
+        
+        if (shouldUseUpstash(key)) {
+            console.log(`🗑️ [Upstash] Removing ${key}...`);
+            upstash.delete(key).catch(error => {
+                console.error(`❌ [Upstash] Error removing ${key}:`, error);
+            });
+        }
     };
     
     // Helper: Sync LocalStorage to Upstash
     window.syncToUpstash = async function() {
-        console.log('🔄 Syncing LocalStorage to Upstash...');
+        console.log('🔄 Syncing to Upstash...');
+        
+        let successCount = 0;
+        let errorCount = 0;
         
         for (const key of UPSTASH_KEYS) {
             const value = originalGet(key);
             if (value) {
                 try {
-                    await upstash.set(key, value, 86400);
+                    await upstash.set(key, value, 86400 * 7);
                     console.log(`✅ Synced ${key}`);
+                    successCount++;
                 } catch (error) {
                     console.error(`❌ Failed to sync ${key}:`, error);
+                    errorCount++;
                 }
             }
         }
         
-        console.log('✅ Sync completed!');
+        console.log(`✅ Sync completed! Success: ${successCount}, Errors: ${errorCount}`);
+        return { success: successCount, errors: errorCount };
     };
     
     // Helper: Load from Upstash to LocalStorage
     window.loadFromUpstash = async function() {
-        console.log('📥 Loading from Upstash to LocalStorage...');
+        console.log('📥 Loading from Upstash...');
+        
+        let successCount = 0;
+        let errorCount = 0;
         
         for (const key of UPSTASH_KEYS) {
             try {
@@ -148,27 +159,28 @@
                 if (value) {
                     originalSet(key, value);
                     console.log(`✅ Loaded ${key}`);
+                    successCount++;
                 }
             } catch (error) {
                 console.error(`❌ Failed to load ${key}:`, error);
+                errorCount++;
             }
         }
         
-        console.log('✅ Load completed!');
+        console.log(`✅ Load completed! Success: ${successCount}, Errors: ${errorCount}`);
+        return { success: successCount, errors: errorCount };
     };
     
-    // Auto-sync on page load (optional) - only on index page
-    if (UPSTASH_CONFIG.autoSync && window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                console.log('🔄 Auto-loading from Upstash...');
-                loadFromUpstash().catch(console.error);
-            }, 1000);
-        });
-    }
+    // Auto-load on page load
+    window.addEventListener('load', function() {
+        // Small delay to ensure upstash is ready
+        setTimeout(() => {
+            console.log('🔄 Auto-loading from Upstash...');
+            loadFromUpstash().catch(console.error);
+        }, 500);
+    });
     
-    console.log('✅ Storage wrapper initialized');
-    console.log('💡 Use syncToUpstash() to sync LocalStorage → Upstash');
-    console.log('💡 Use loadFromUpstash() to load Upstash → LocalStorage');
+    console.log('✅ Upstash storage wrapper initialized');
+    console.log('💡 All data is now stored in Upstash cloud');
     
 })();
