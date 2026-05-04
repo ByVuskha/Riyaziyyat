@@ -77,27 +77,172 @@ function loadDashboardStats() {
     const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     document.getElementById('totalRevenue').textContent = totalRevenue + ' ₼';
     
-    // Load activity log
+    // Load charts and activity
+    loadRecentRegistrations();
+    loadActiveUsers();
     loadActivityLog();
+}
+
+// Load Recent Registrations Chart
+function loadRecentRegistrations() {
+    const users = Storage.get('allUsers') || MOCK_USERS;
+    
+    // Get registrations from last 7 days
+    const last7Days = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+        
+        const count = users.filter(u => {
+            if (!u.registeredAt) return false;
+            const regDate = new Date(u.registeredAt);
+            return regDate.toDateString() === date.toDateString();
+        }).length;
+        
+        last7Days.push({ date: dateStr, count });
+    }
+    
+    // Create simple bar chart
+    const chartContainer = document.querySelector('.chart-container');
+    if (!chartContainer) return;
+    
+    const maxCount = Math.max(...last7Days.map(d => d.count), 1);
+    
+    chartContainer.innerHTML = `
+        <div style="display:flex;align-items:flex-end;justify-content:space-around;height:100%;padding:20px;">
+            ${last7Days.map(day => `
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;">
+                    <div style="background:var(--primary);width:30px;height:${(day.count / maxCount) * 200}px;border-radius:4px;transition:all 0.3s;" title="${day.count} qeydiyyat"></div>
+                    <span style="font-size:11px;color:var(--gray);">${day.date}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--primary);">${day.count}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Load Active Users
+function loadActiveUsers() {
+    const sessions = Storage.get('userSessions') || {};
+    const users = Storage.get('allUsers') || [];
+    
+    const activeCount = Object.keys(sessions).length;
+    const totalUsers = users.length;
+    const percentage = totalUsers > 0 ? Math.round((activeCount / totalUsers) * 100) : 0;
+    
+    const chartContainers = document.querySelectorAll('.chart-container');
+    if (chartContainers.length < 2) return;
+    
+    const activeUsersChart = chartContainers[1];
+    
+    activeUsersChart.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;">
+            <div style="position:relative;width:150px;height:150px;">
+                <svg viewBox="0 0 36 36" style="transform:rotate(-90deg);">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" stroke-width="3"></circle>
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--success)" stroke-width="3" 
+                            stroke-dasharray="${percentage} 100" stroke-linecap="round"></circle>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div style="font-size:32px;font-weight:800;color:var(--success);">${activeCount}</div>
+                    <div style="font-size:12px;color:var(--gray);">Aktiv</div>
+                </div>
+            </div>
+            <div style="margin-top:15px;text-align:center;">
+                <div style="font-size:14px;color:var(--gray);">Ümumi: ${totalUsers}</div>
+                <div style="font-size:13px;color:var(--success);font-weight:600;">${percentage}% Aktiv</div>
+            </div>
+        </div>
+    `;
 }
 
 // Load Activity Log
 function loadActivityLog() {
-    const activities = Storage.get('activities') || [
-        { user: 'Tələbə', action: 'Yeni qeydiyyat', date: '2024-01-15', status: 'success' },
-        { user: 'Admin', action: 'Video əlavə etdi', date: '2024-01-15', status: 'success' },
-        { user: 'Test User', action: 'Balans yüklədi', date: '2024-01-14', status: 'success' }
-    ];
+    const activities = Storage.get('activities') || [];
+    const users = Storage.get('allUsers') || [];
+    const videos = Storage.get('videos') || [];
+    const tests = Storage.get('tests') || [];
+    
+    // Generate recent activities
+    const recentActivities = [];
+    
+    // Recent registrations
+    const recentUsers = users
+        .filter(u => u.registeredAt)
+        .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
+        .slice(0, 3);
+    
+    recentUsers.forEach(u => {
+        recentActivities.push({
+            user: u.name,
+            action: 'Yeni qeydiyyat',
+            date: new Date(u.registeredAt).toLocaleDateString('az-AZ'),
+            status: 'success',
+            icon: 'user-plus'
+        });
+    });
+    
+    // Recent videos
+    const recentVideos = videos
+        .filter(v => v.createdAt)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 2);
+    
+    recentVideos.forEach(v => {
+        recentActivities.push({
+            user: 'Admin',
+            action: `Video əlavə edildi: "${v.title}"`,
+            date: new Date(v.createdAt).toLocaleDateString('az-AZ'),
+            status: 'success',
+            icon: 'video'
+        });
+    });
+    
+    // Recent tests
+    const recentTests = tests
+        .filter(t => t.createdAt)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 2);
+    
+    recentTests.forEach(t => {
+        recentActivities.push({
+            user: 'Admin',
+            action: `Sınaq əlavə edildi: "${t.title}"`,
+            date: new Date(t.createdAt).toLocaleDateString('az-AZ'),
+            status: 'success',
+            icon: 'clipboard-list'
+        });
+    });
+    
+    // Sort by date and take last 10
+    recentActivities.sort((a, b) => {
+        const dateA = new Date(a.date.split('.').reverse().join('-'));
+        const dateB = new Date(b.date.split('.').reverse().join('-'));
+        return dateB - dateA;
+    });
+    
+    const displayActivities = recentActivities.slice(0, 10);
     
     const tbody = document.getElementById('activityLog');
-    if (activities.length === 0) {
+    
+    if (displayActivities.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray);">Fəaliyyət yoxdur</td></tr>';
         return;
     }
     
-    tbody.innerHTML = activities.map(a => `
+    tbody.innerHTML = displayActivities.map(a => `
         <tr>
-            <td><strong>${a.user}</strong></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:35px;height:35px;border-radius:50%;background:#eef2ff;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-${a.icon}" style="color:var(--primary);font-size:14px;"></i>
+                    </div>
+                    <strong>${a.user}</strong>
+                </div>
+            </td>
             <td>${a.action}</td>
             <td>${a.date}</td>
             <td><span class="badge badge-${a.status === 'success' ? 'success' : 'warning'}">${a.status === 'success' ? 'Uğurlu' : 'Gözləyir'}</span></td>
@@ -218,7 +363,7 @@ function loadTests() {
     `).join('');
 }
 
-// Load News
+// Load News - Only user-added news
 function loadNews() {
     const news = Storage.get('news') || [];
     
@@ -232,14 +377,17 @@ function loadNews() {
     tbody.innerHTML = news.map(n => `
         <tr>
             <td>${n.id}</td>
-            <td><strong>${n.emoji} ${n.title}</strong></td>
-            <td>${n.author}</td>
+            <td><strong>${n.emoji || '📰'} ${n.title}</strong></td>
+            <td>${n.author || 'Admin'}</td>
             <td>${n.date}</td>
             <td>${n.views || 0}</td>
             <td>
                 <div class="action-btns">
                     <button class="btn-icon btn-view" onclick="viewNews(${n.id})" title="Bax">
                         <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-icon btn-edit" onclick="editNews(${n.id})" title="Redaktə">
+                        <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-icon btn-delete" onclick="deleteNews(${n.id})" title="Sil">
                         <i class="fas fa-trash"></i>
@@ -253,19 +401,124 @@ function loadNews() {
 function viewNews(id) {
     const news = Storage.get('news') || [];
     const item = news.find(n => n.id === id);
-    if (item) {
-        alert(`${item.emoji} ${item.title}\n\n${item.text}\n\n📅 ${item.date}\n👤 ${item.author}\n👁️ ${item.views} baxış`);
+    if (!item) return;
+    
+    const row = event.target.closest('tr');
+    const existingDetails = row.nextElementSibling;
+    
+    if (existingDetails && existingDetails.classList.contains('news-details-row')) {
+        existingDetails.remove();
+        return;
+    }
+    
+    const detailsRow = document.createElement('tr');
+    detailsRow.className = 'news-details-row';
+    detailsRow.innerHTML = `
+        <td colspan="6" style="background:#f8fafc;padding:25px;">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+                <div>
+                    <h4 style="font-size:18px;margin-bottom:15px;">${item.emoji || '📰'} ${item.title}</h4>
+                    <p style="white-space:pre-wrap;line-height:1.6;">${item.content || item.text}</p>
+                    <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border);">
+                        <small style="color:var(--gray);">
+                            📅 ${item.date} | 👤 ${item.author || 'Admin'} | 👁️ ${item.views || 0} baxış
+                        </small>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
+                    <button class="btn btn-primary btn-sm" onclick="editNews(${item.id})" style="margin-bottom:8px;width:100%;">
+                        <i class="fas fa-edit"></i> Redaktə Et
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteNews(${item.id})" style="width:100%;">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </td>
+    `;
+    
+    row.after(detailsRow);
+}
+
+function editNews(id) {
+    const news = Storage.get('news') || [];
+    const item = news.find(n => n.id === id);
+    if (!item) return;
+    
+    const detailsRow = document.querySelector('.news-details-row');
+    if (!detailsRow) {
+        // If not in details view, create edit row
+        const row = event.target.closest('tr');
+        const editRow = document.createElement('tr');
+        editRow.className = 'news-details-row';
+        editRow.innerHTML = getNewsEditHTML(item);
+        row.after(editRow);
+    } else {
+        detailsRow.innerHTML = getNewsEditHTML(item);
     }
 }
 
+function getNewsEditHTML(item) {
+    return `
+        <td colspan="6" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
+            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Xəbəri Redaktə Et</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                <div class="form-group">
+                    <label>Başlıq</label>
+                    <input type="text" class="form-control" id="editNewsTitle_${item.id}" value="${item.title}">
+                </div>
+                <div class="form-group">
+                    <label>Emoji</label>
+                    <input type="text" class="form-control" id="editNewsEmoji_${item.id}" value="${item.emoji || '📰'}" maxlength="2">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Məzmun</label>
+                <textarea class="form-control" id="editNewsContent_${item.id}" rows="6">${item.content || item.text}</textarea>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="btn btn-primary" onclick="saveNewsEdit(${item.id})">
+                    <i class="fas fa-save"></i> Yadda Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('.news-details-row').remove()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </td>
+    `;
+}
+
+function saveNewsEdit(id) {
+    const news = Storage.get('news') || [];
+    const index = news.findIndex(n => n.id === id);
+    if (index === -1) return;
+    
+    news[index].title = document.getElementById(`editNewsTitle_${id}`).value;
+    news[index].emoji = document.getElementById(`editNewsEmoji_${id}`).value;
+    news[index].content = document.getElementById(`editNewsContent_${id}`).value;
+    news[index].text = document.getElementById(`editNewsContent_${id}`).value;
+    
+    Storage.set('news', news);
+    
+    document.querySelector('.news-details-row').remove();
+    loadNews();
+    showSuccessMessage('Xəbər yeniləndi!');
+}
+
 function deleteNews(id) {
-    if (confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
-        const news = Storage.get('news') || [];
-        const filtered = news.filter(n => n.id !== id);
-        Storage.set('news', filtered);
-        loadNews();
-        alert('Xəbər silindi!');
+    if (!confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
+        return;
     }
+    const news = Storage.get('news') || [];
+    const filtered = news.filter(n => n.id !== id);
+    Storage.set('news', filtered);
+    
+    const detailsRow = document.querySelector('.news-details-row');
+    if (detailsRow) detailsRow.remove();
+    
+    loadNews();
+    showSuccessMessage('Xəbər silindi!');
 }
 
 // Load Payments
@@ -410,14 +663,7 @@ function saveUserEdit(id) {
     
     document.querySelector('.user-details-row').remove();
     loadUsers();
-    
-    // Show success message inline
-    const successMsg = document.createElement('div');
-    successMsg.className = 'alert alert-success';
-    successMsg.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;animation:slideIn 0.3s;';
-    successMsg.innerHTML = '<i class="fas fa-check-circle"></i> İstifadəçi yeniləndi!';
-    document.body.appendChild(successMsg);
-    setTimeout(() => successMsg.remove(), 3000);
+    showSuccessMessage('İstifadəçi yeniləndi!');
 }
 
 function editUser(id) {
@@ -505,44 +751,271 @@ function showAddUserModal() {
     toggleUserForm();
 }
 
-// Video Actions
+// Video Actions - Inline Editing
 function viewVideo(id) {
     const videos = Storage.get('videos') || [];
     const video = videos.find(v => v.id === id);
-    if (video) {
-        alert(`Başlıq: ${video.title}\nKateqoriya: ${video.category}\nMüddət: ${video.duration}\nBaxış: ${video.views}\nStatus: ${video.status}`);
+    if (!video) return;
+    
+    const row = event.target.closest('tr');
+    const existingDetails = row.nextElementSibling;
+    
+    if (existingDetails && existingDetails.classList.contains('video-details-row')) {
+        existingDetails.remove();
+        return;
     }
+    
+    const detailsRow = document.createElement('tr');
+    detailsRow.className = 'video-details-row';
+    detailsRow.innerHTML = `
+        <td colspan="7" style="background:#f8fafc;padding:25px;">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Video Məlumatları</h4>
+                    <p><strong>Başlıq:</strong> ${video.title}</p>
+                    <p><strong>Kateqoriya:</strong> ${video.category}</p>
+                    <p><strong>Müddət:</strong> ${video.duration}</p>
+                    <p><strong>Baxış:</strong> ${video.views}</p>
+                    <p><strong>Status:</strong> ${video.status === 'active' ? 'Aktiv' : 'Qaralama'}</p>
+                    ${video.description ? `<p><strong>Təsvir:</strong> ${video.description}</p>` : ''}
+                </div>
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
+                    <button class="btn btn-primary btn-sm" onclick="editVideoInline(${video.id})" style="margin-bottom:8px;width:100%;">
+                        <i class="fas fa-edit"></i> Redaktə Et
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteVideo(${video.id})" style="width:100%;">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </td>
+    `;
+    
+    row.after(detailsRow);
+}
+
+function editVideoInline(id) {
+    const videos = Storage.get('videos') || [];
+    const video = videos.find(v => v.id === id);
+    if (!video) return;
+    
+    const detailsRow = document.querySelector('.video-details-row');
+    if (!detailsRow) return;
+    
+    detailsRow.innerHTML = `
+        <td colspan="7" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
+            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Videonu Redaktə Et</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                <div class="form-group">
+                    <label>Başlıq</label>
+                    <input type="text" class="form-control" id="editVideoTitle_${id}" value="${video.title}">
+                </div>
+                <div class="form-group">
+                    <label>Kateqoriya</label>
+                    <select class="form-control" id="editVideoCategory_${id}">
+                        <option value="Həndəsə" ${video.category === 'Həndəsə' ? 'selected' : ''}>Həndəsə</option>
+                        <option value="Cəbr" ${video.category === 'Cəbr' ? 'selected' : ''}>Cəbr</option>
+                        <option value="Analiz" ${video.category === 'Analiz' ? 'selected' : ''}>Analiz</option>
+                        <option value="Triqonometriya" ${video.category === 'Triqonometriya' ? 'selected' : ''}>Triqonometriya</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Müddət</label>
+                    <input type="text" class="form-control" id="editVideoDuration_${id}" value="${video.duration}">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select class="form-control" id="editVideoStatus_${id}">
+                        <option value="active" ${video.status === 'active' ? 'selected' : ''}>Aktiv</option>
+                        <option value="draft" ${video.status === 'draft' ? 'selected' : ''}>Qaralama</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Təsvir</label>
+                <textarea class="form-control" id="editVideoDescription_${id}" rows="3">${video.description || ''}</textarea>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="btn btn-primary" onclick="saveVideoEdit(${video.id})">
+                    <i class="fas fa-save"></i> Yadda Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('.video-details-row').remove()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </td>
+    `;
+}
+
+function saveVideoEdit(id) {
+    const videos = Storage.get('videos') || [];
+    const index = videos.findIndex(v => v.id === id);
+    if (index === -1) return;
+    
+    videos[index].title = document.getElementById(`editVideoTitle_${id}`).value;
+    videos[index].category = document.getElementById(`editVideoCategory_${id}`).value;
+    videos[index].duration = document.getElementById(`editVideoDuration_${id}`).value;
+    videos[index].status = document.getElementById(`editVideoStatus_${id}`).value;
+    videos[index].description = document.getElementById(`editVideoDescription_${id}`).value;
+    
+    Storage.set('videos', videos);
+    
+    document.querySelector('.video-details-row').remove();
+    loadVideos();
+    showSuccessMessage('Video yeniləndi!');
 }
 
 function editVideo(id) {
-    window.location.href = `video-upload.html?id=${id}`;
+    editVideoInline(id);
+    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function deleteVideo(id) {
-    if (confirm('Bu videonu silmək istədiyinizdən əminsiniz?')) {
-        alert('Video silindi!');
-        loadVideos();
-    }
+    if (!confirm('Bu videonu silmək istədiyinizdən əminsiniz?')) return;
+    
+    const videos = Storage.get('videos') || [];
+    const filtered = videos.filter(v => v.id !== id);
+    Storage.set('videos', filtered);
+    
+    const detailsRow = document.querySelector('.video-details-row');
+    if (detailsRow) detailsRow.remove();
+    
+    loadVideos();
+    showSuccessMessage('Video silindi!');
 }
 
 function showAddVideoModal() {
     window.location.href = 'video-upload.html';
 }
 
-// Test Actions
+// Test Actions - Inline Editing
 function viewTest(id) {
-    alert('Test məlumatları: ID ' + id);
+    const tests = Storage.get('tests') || [];
+    const test = tests.find(t => t.id === id);
+    if (!test) return;
+    
+    const row = event.target.closest('tr');
+    const existingDetails = row.nextElementSibling;
+    
+    if (existingDetails && existingDetails.classList.contains('test-details-row')) {
+        existingDetails.remove();
+        return;
+    }
+    
+    const detailsRow = document.createElement('tr');
+    detailsRow.className = 'test-details-row';
+    detailsRow.innerHTML = `
+        <td colspan="7" style="background:#f8fafc;padding:25px;">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Sınaq Məlumatları</h4>
+                    <p><strong>Başlıq:</strong> ${test.title}</p>
+                    <p><strong>Sual Sayı:</strong> ${test.questions?.length || 0}</p>
+                    <p><strong>Müddət:</strong> ${test.duration} dəqiqə</p>
+                    <p><strong>Kateqoriya:</strong> ${test.category || 'Ümumi'}</p>
+                    ${test.description ? `<p><strong>Təsvir:</strong> ${test.description}</p>` : ''}
+                </div>
+                <div>
+                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
+                    <button class="btn btn-primary btn-sm" onclick="editTestInline(${test.id})" style="margin-bottom:8px;width:100%;">
+                        <i class="fas fa-edit"></i> Redaktə Et
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteTest(${test.id})" style="width:100%;">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </td>
+    `;
+    
+    row.after(detailsRow);
+}
+
+function editTestInline(id) {
+    const tests = Storage.get('tests') || [];
+    const test = tests.find(t => t.id === id);
+    if (!test) return;
+    
+    const detailsRow = document.querySelector('.test-details-row');
+    if (!detailsRow) return;
+    
+    detailsRow.innerHTML = `
+        <td colspan="7" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
+            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Sınağı Redaktə Et</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                <div class="form-group">
+                    <label>Başlıq</label>
+                    <input type="text" class="form-control" id="editTestTitle_${id}" value="${test.title}">
+                </div>
+                <div class="form-group">
+                    <label>Kateqoriya</label>
+                    <input type="text" class="form-control" id="editTestCategory_${id}" value="${test.category || 'Ümumi'}">
+                </div>
+                <div class="form-group">
+                    <label>Müddət (dəqiqə)</label>
+                    <input type="number" class="form-control" id="editTestDuration_${id}" value="${test.duration}">
+                </div>
+                <div class="form-group">
+                    <label>Çətinlik</label>
+                    <select class="form-control" id="editTestDifficulty_${id}">
+                        <option value="Asan" ${test.difficulty === 'Asan' ? 'selected' : ''}>Asan</option>
+                        <option value="Orta" ${test.difficulty === 'Orta' ? 'selected' : ''}>Orta</option>
+                        <option value="Çətin" ${test.difficulty === 'Çətin' ? 'selected' : ''}>Çətin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Təsvir</label>
+                <textarea class="form-control" id="editTestDescription_${id}" rows="3">${test.description || ''}</textarea>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="btn btn-primary" onclick="saveTestEdit(${test.id})">
+                    <i class="fas fa-save"></i> Yadda Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('.test-details-row').remove()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </td>
+    `;
+}
+
+function saveTestEdit(id) {
+    const tests = Storage.get('tests') || [];
+    const index = tests.findIndex(t => t.id === id);
+    if (index === -1) return;
+    
+    tests[index].title = document.getElementById(`editTestTitle_${id}`).value;
+    tests[index].category = document.getElementById(`editTestCategory_${id}`).value;
+    tests[index].duration = parseInt(document.getElementById(`editTestDuration_${id}`).value);
+    tests[index].difficulty = document.getElementById(`editTestDifficulty_${id}`).value;
+    tests[index].description = document.getElementById(`editTestDescription_${id}`).value;
+    
+    Storage.set('tests', tests);
+    
+    document.querySelector('.test-details-row').remove();
+    loadTests();
+    showSuccessMessage('Sınaq yeniləndi!');
 }
 
 function editTest(id) {
-    window.location.href = `test-editor.html?id=${id}`;
+    editTestInline(id);
+    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function deleteTest(id) {
-    if (confirm('Bu testi silmək istədiyinizdən əminsiniz?')) {
-        alert('Test silindi!');
-        loadTests();
-    }
+    if (!confirm('Bu sınağı silmək istədiyinizdən əminsiniz?')) return;
+    
+    const tests = Storage.get('tests') || [];
+    const filtered = tests.filter(t => t.id !== id);
+    Storage.set('tests', filtered);
+    
+    const detailsRow = document.querySelector('.test-details-row');
+    if (detailsRow) detailsRow.remove();
+    
+    loadTests();
+    showSuccessMessage('Sınaq silindi!');
 }
 
 function showAddTestModal() {
@@ -1187,82 +1660,98 @@ function editTeacher(id) {
     const teacher = teachers.find(t => t.id === id);
     
     if (!teacher) {
-        alert('Müəllim tapılmadı!');
+        showSuccessMessage('Müəllim tapılmadı!');
         return;
     }
     
-    // Create edit modal
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay active';
-    modal.innerHTML = `
-        <div class="modal" style="max-width:600px;">
-            <h2>Müəllimi Redaktə Et</h2>
-            
-            <div class="form-group">
-                <label>Ad Soyad</label>
-                <input type="text" class="form-control" id="editTeacherName" value="${teacher.name}">
-            </div>
-            
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" class="form-control" id="editTeacherEmail" value="${teacher.email}" disabled style="background:#f1f5f9;">
-            </div>
-            
-            <div class="form-group">
-                <label>Vəzifə/Başlıq</label>
-                <input type="text" class="form-control" id="editTeacherTitle" value="${teacher.title || ''}">
-            </div>
-            
-            <div class="form-group">
-                <label>Bio</label>
-                <textarea class="form-control" id="editTeacherBio" rows="3">${teacher.bio || ''}</textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Fənlər (vergüllə ayırın)</label>
-                <input type="text" class="form-control" id="editTeacherSubjects" value="${teacher.subjects || ''}">
-            </div>
-            
-            <div class="form-group">
-                <label>Şəkil URL</label>
-                <input type="url" class="form-control" id="editTeacherImage" value="${teacher.image || ''}" placeholder="https://example.com/image.jpg">
-                <small style="color:var(--gray);font-size:12px;">Müəllimin şəklinin URL-ni daxil edin</small>
-            </div>
-            
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Telefon</label>
-                    <input type="tel" class="form-control" id="editTeacherPhone" value="${teacher.phone || ''}">
+    const row = event.target.closest('tr');
+    const existingEdit = row.nextElementSibling;
+    
+    if (existingEdit && existingEdit.classList.contains('teacher-edit-row')) {
+        existingEdit.remove();
+        return;
+    }
+    
+    // Create edit row with scrollable content
+    const editRow = document.createElement('tr');
+    editRow.className = 'teacher-edit-row';
+    editRow.innerHTML = `
+        <td colspan="7" style="background:#f8fafc;padding:0;">
+            <div style="max-height:500px;overflow-y:auto;padding:25px;">
+                <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Müəllimi Redaktə Et</h4>
+                
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
+                    <div class="form-group">
+                        <label>Ad Soyad</label>
+                        <input type="text" class="form-control" id="editTeacherName_${id}" value="${teacher.name}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" class="form-control" id="editTeacherEmail_${id}" value="${teacher.email || ''}" disabled style="background:#e2e8f0;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Vəzifə/Başlıq</label>
+                        <input type="text" class="form-control" id="editTeacherTitle_${id}" value="${teacher.title || ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" class="form-control" id="editTeacherPhone_${id}" value="${teacher.phone || ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Təcrübə (il)</label>
+                        <input type="number" class="form-control" id="editTeacherExperience_${id}" value="${teacher.experience || 0}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Reytinq</label>
+                        <input type="number" class="form-control" id="editTeacherRating_${id}" min="1" max="5" step="0.1" value="${teacher.rating || 5.0}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tələbə Sayı</label>
+                        <input type="number" class="form-control" id="editTeacherStudents_${id}" value="${teacher.students || 0}">
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>Təcrübə (il)</label>
-                    <input type="number" class="form-control" id="editTeacherExperience" value="${teacher.experience || 0}">
+                    <label>Fənlər (vergüllə ayırın)</label>
+                    <input type="text" class="form-control" id="editTeacherSubjects_${id}" value="${teacher.subjects || ''}">
                 </div>
                 
                 <div class="form-group">
-                    <label>Reytinq</label>
-                    <input type="number" class="form-control" id="editTeacherRating" min="1" max="5" step="0.1" value="${teacher.rating || 5.0}">
+                    <label>Şəkil URL</label>
+                    <input type="url" class="form-control" id="editTeacherImage_${id}" value="${teacher.image || ''}" placeholder="https://example.com/image.jpg">
+                    <small style="color:var(--gray);font-size:12px;">Müəllimin şəklinin URL-ni daxil edin</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea class="form-control" id="editTeacherBio_${id}" rows="3">${teacher.bio || ''}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Təhsil</label>
+                    <textarea class="form-control" id="editTeacherEducation_${id}" rows="2">${teacher.education || ''}</textarea>
+                </div>
+                
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn btn-primary" onclick="saveTeacherEdit(${id})">
+                        <i class="fas fa-save"></i> Yadda Saxla
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.closest('.teacher-edit-row').remove()">
+                        <i class="fas fa-times"></i> Ləğv Et
+                    </button>
                 </div>
             </div>
-            
-            <div class="form-group">
-                <label>Təhsil</label>
-                <textarea class="form-control" id="editTeacherEducation" rows="2">${teacher.education || ''}</textarea>
-            </div>
-            
-            <div style="display:flex;gap:10px;margin-top:25px;">
-                <button class="btn btn-primary" onclick="saveTeacherEdit(${id})">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="closeTeacherModal()">
-                    <i class="fas fa-times"></i> Ləğv Et
-                </button>
-            </div>
-        </div>
+        </td>
     `;
     
-    document.body.appendChild(modal);
+    row.after(editRow);
+    editRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function saveTeacherEdit(id) {
@@ -1270,22 +1759,23 @@ function saveTeacherEdit(id) {
     const index = teachers.findIndex(t => t.id === id);
     
     if (index === -1) {
-        alert('Müəllim tapılmadı!');
+        showSuccessMessage('Müəllim tapılmadı!');
         return;
     }
     
     // Update teacher data
     teachers[index] = {
         ...teachers[index],
-        name: document.getElementById('editTeacherName').value,
-        title: document.getElementById('editTeacherTitle').value,
-        bio: document.getElementById('editTeacherBio').value,
-        subjects: document.getElementById('editTeacherSubjects').value,
-        image: document.getElementById('editTeacherImage').value,
-        phone: document.getElementById('editTeacherPhone').value,
-        experience: parseInt(document.getElementById('editTeacherExperience').value) || 0,
-        rating: parseFloat(document.getElementById('editTeacherRating').value) || 5.0,
-        education: document.getElementById('editTeacherEducation').value,
+        name: document.getElementById(`editTeacherName_${id}`).value,
+        title: document.getElementById(`editTeacherTitle_${id}`).value,
+        bio: document.getElementById(`editTeacherBio_${id}`).value,
+        subjects: document.getElementById(`editTeacherSubjects_${id}`).value,
+        image: document.getElementById(`editTeacherImage_${id}`).value,
+        phone: document.getElementById(`editTeacherPhone_${id}`).value,
+        experience: parseInt(document.getElementById(`editTeacherExperience_${id}`).value) || 0,
+        rating: parseFloat(document.getElementById(`editTeacherRating_${id}`).value) || 5.0,
+        students: parseInt(document.getElementById(`editTeacherStudents_${id}`).value) || 0,
+        education: document.getElementById(`editTeacherEducation_${id}`).value,
         updatedAt: new Date().toISOString()
     };
     
@@ -1299,9 +1789,9 @@ function saveTeacherEdit(id) {
         Storage.set('allUsers', allUsers);
     }
     
-    closeTeacherModal();
+    document.querySelector('.teacher-edit-row').remove();
     loadTeachers();
-    alert('✅ Müəllim məlumatları yeniləndi!');
+    showSuccessMessage('Müəllim məlumatları yeniləndi!');
 }
 
 function deleteTeacher(id) {
@@ -1313,15 +1803,11 @@ function deleteTeacher(id) {
     teachers = teachers.filter(t => t.id !== id);
     Storage.set('teachers', teachers);
     
+    const editRow = document.querySelector('.teacher-edit-row');
+    if (editRow) editRow.remove();
+    
     loadTeachers();
-    alert('✅ Müəllim silindi!');
-}
-
-function closeTeacherModal() {
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) {
-        modal.remove();
-    }
+    showSuccessMessage('Müəllim silindi!');
 }
 
 
@@ -1362,3 +1848,94 @@ async function syncAllData() {
         alert('❌ Sinxronlaşdırma zamanı xəta baş verdi:\n' + error.message);
     }
 }
+
+
+// ==================== DEVICE SESSIONS ====================
+
+function viewUserSessions() {
+    const sessions = Storage.get('userSessions') || {};
+    const allUsers = Storage.get('allUsers') || [];
+    
+    let sessionInfo = '🔒 Aktiv Cihaz Sessiyaları\n\n';
+    
+    if (Object.keys(sessions).length === 0) {
+        sessionInfo += 'Heç bir aktiv sessiya yoxdur.';
+    } else {
+        Object.entries(sessions).forEach(([userId, session]) => {
+            const user = allUsers.find(u => u.id == userId);
+            const userName = user ? user.name : `User ${userId}`;
+            const loginTime = new Date(session.loginTime).toLocaleString('az-AZ');
+            
+            sessionInfo += `👤 ${userName}\n`;
+            sessionInfo += `📱 Cihaz: ${session.deviceId.substring(0, 20)}...\n`;
+            sessionInfo += `🕐 Giriş: ${loginTime}\n\n`;
+        });
+    }
+    
+    alert(sessionInfo);
+}
+
+// Clear all sessions (force logout all users)
+function clearAllSessions() {
+    if (!confirm('Bütün istifadəçiləri çıxış etdirmək istədiyinizə əminsiniz?')) {
+        return;
+    }
+    
+    Storage.set('userSessions', {});
+    showSuccessMessage('Bütün sessiyalar təmizləndi!');
+}
+
+
+// ==================== ACTIVITY TRACKING ====================
+
+function logActivity(user, action, status = 'success') {
+    const activities = Storage.get('activities') || [];
+    
+    const activity = {
+        id: Date.now(),
+        user: user,
+        action: action,
+        date: new Date().toLocaleDateString('az-AZ'),
+        timestamp: new Date().toISOString(),
+        status: status,
+        icon: getActivityIcon(action)
+    };
+    
+    activities.unshift(activity); // Add to beginning
+    
+    // Keep only last 100 activities
+    if (activities.length > 100) {
+        activities.length = 100;
+    }
+    
+    Storage.set('activities', activities);
+}
+
+function getActivityIcon(action) {
+    if (action.includes('qeydiyyat')) return 'user-plus';
+    if (action.includes('Video')) return 'video';
+    if (action.includes('Sınaq') || action.includes('Test')) return 'clipboard-list';
+    if (action.includes('Müəllim')) return 'chalkboard-teacher';
+    if (action.includes('Xəbər')) return 'newspaper';
+    if (action.includes('Balans')) return 'wallet';
+    if (action.includes('Giriş')) return 'sign-in-alt';
+    if (action.includes('Çıxış')) return 'sign-out-alt';
+    return 'info-circle';
+}
+
+// Update existing functions to log activities
+const originalSaveNewUser = saveNewUser;
+saveNewUser = function() {
+    const result = originalSaveNewUser.apply(this, arguments);
+    const name = document.getElementById('newUserName').value;
+    logActivity('Admin', `Yeni istifadəçi əlavə edildi: ${name}`);
+    return result;
+};
+
+const originalSaveNewTeacher = saveNewTeacher;
+saveNewTeacher = function() {
+    const result = originalSaveNewTeacher.apply(this, arguments);
+    const name = document.getElementById('newTeacherName').value;
+    logActivity('Admin', `Yeni müəllim əlavə edildi: ${name}`);
+    return result;
+};

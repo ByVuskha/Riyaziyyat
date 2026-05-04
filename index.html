@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bizim Riyaziyyat - Riyaziyyat Öyrən</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -126,13 +127,20 @@
 <!-- NEWS CAROUSEL -->
 <section class="section" style="background:white;padding:30px 0;">
     <div class="container">
-        <h2 class="section-title">📰 Seçilmiş Xəbərlər</h2>
-        <div id="newsCarousel" style="position:relative;overflow:hidden;border-radius:12px;box-shadow:var(--shadow);">
-            <div id="newsSlides" style="display:flex;transition:transform 0.5s ease;">
+        <h2 class="section-title animate-fade-in">📰 Seçilmiş Xəbərlər</h2>
+        <div id="newsCarousel" style="position:relative;overflow:hidden;border-radius:12px;box-shadow:var(--shadow);min-height:300px;">
+            <div id="newsSlides" style="display:flex;transition:transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
                 <!-- News slides will be loaded here -->
             </div>
-            <button onclick="prevNews()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><i class="fas fa-chevron-left"></i></button>
-            <button onclick="nextNews()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><i class="fas fa-chevron-right"></i></button>
+            <button onclick="prevNews()" class="carousel-btn carousel-btn-prev" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.95);border:none;width:45px;height:45px;border-radius:50%;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.15);transition:all 0.3s;z-index:10;">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button onclick="nextNews()" class="carousel-btn carousel-btn-next" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.95);border:none;width:45px;height:45px;border-radius:50%;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.15);transition:all 0.3s;z-index:10;">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div id="newsIndicators" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10;">
+                <!-- Indicators will be added here -->
+            </div>
         </div>
     </div>
 </section>
@@ -263,9 +271,10 @@
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
 <script>
-// News Carousel
+// News Carousel with animations
 let currentNewsSlide = 0;
 let newsInterval;
+let totalNewsSlides = 0;
 
 function loadNewsCarousel() {
     const news = Storage.get('news') || [];
@@ -276,34 +285,75 @@ function loadNewsCarousel() {
         return;
     }
     
+    totalNewsSlides = featured.length;
     const slidesContainer = document.getElementById('newsSlides');
-    slidesContainer.innerHTML = featured.map(n => `
-        <div style="min-width:100%;background:linear-gradient(135deg, var(--primary), var(--secondary));color:white;padding:60px 40px;text-align:center;">
-            <h3 style="font-size:28px;margin-bottom:15px;">${n.title}</h3>
-            <p style="opacity:0.9;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto;">${n.excerpt || n.content.substring(0, 150)}...</p>
-            <a href="news.html" class="btn btn-lg" style="background:white;color:var(--primary);">Daha Ətraflı</a>
+    
+    slidesContainer.innerHTML = featured.map((n, index) => `
+        <div class="news-slide" style="min-width:100%;background:linear-gradient(135deg, var(--primary), var(--secondary));color:white;padding:60px 40px;text-align:center;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);"></div>
+            <div style="position:relative;z-index:1;">
+                <h3 style="font-size:28px;margin-bottom:15px;animation:fadeIn 0.8s ease-out;">${n.title}</h3>
+                <p style="opacity:0.9;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto;animation:fadeIn 1s ease-out 0.2s backwards;">${n.excerpt || n.content.substring(0, 150)}...</p>
+                <a href="news.html" class="btn btn-lg" style="background:white;color:var(--primary);animation:bounceIn 1s ease-out 0.4s backwards;">Daha Ətraflı</a>
+            </div>
         </div>
     `).join('');
     
+    // Create indicators
+    const indicatorsContainer = document.getElementById('newsIndicators');
+    indicatorsContainer.innerHTML = featured.map((_, index) => `
+        <div class="indicator-dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${index})"></div>
+    `).join('');
+    
     // Auto-rotate
-    newsInterval = setInterval(nextNews, 5000);
+    startAutoRotate();
 }
 
 function nextNews() {
-    const slides = document.getElementById('newsSlides');
-    const totalSlides = slides.children.length;
-    currentNewsSlide = (currentNewsSlide + 1) % totalSlides;
-    slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
+    currentNewsSlide = (currentNewsSlide + 1) % totalNewsSlides;
+    updateSlide();
 }
 
 function prevNews() {
-    const slides = document.getElementById('newsSlides');
-    const totalSlides = slides.children.length;
-    currentNewsSlide = (currentNewsSlide - 1 + totalSlides) % totalSlides;
-    slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
+    currentNewsSlide = (currentNewsSlide - 1 + totalNewsSlides) % totalNewsSlides;
+    updateSlide();
 }
 
-// Notifications
+function goToSlide(index) {
+    currentNewsSlide = index;
+    updateSlide();
+    resetAutoRotate();
+}
+
+function updateSlide() {
+    const slides = document.getElementById('newsSlides');
+    slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
+    
+    // Update indicators
+    document.querySelectorAll('.indicator-dot').forEach((dot, index) => {
+        dot.classList.toggle('active', index === currentNewsSlide);
+    });
+}
+
+function startAutoRotate() {
+    newsInterval = setInterval(nextNews, 5000);
+}
+
+function resetAutoRotate() {
+    clearInterval(newsInterval);
+    startAutoRotate();
+}
+
+// Pause on hover
+document.addEventListener('DOMContentLoaded', function() {
+    const carousel = document.getElementById('newsCarousel');
+    if (carousel) {
+        carousel.addEventListener('mouseenter', () => clearInterval(newsInterval));
+        carousel.addEventListener('mouseleave', startAutoRotate);
+    }
+});
+
+// Notifications with animations
 function loadNotifications() {
     const user = getCurrentUser();
     if (!user) {
@@ -317,9 +367,9 @@ function loadNotifications() {
         { icon: '🏆', text: 'Təbriklər! Reytinqdə 10-cu yerə yüksəldiniz', time: '1 gün əvvəl' }
     ];
     
-    document.getElementById('notificationsList').innerHTML = notifications.map(n => `
-        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
-            <span style="font-size:24px;">${n.icon}</span>
+    document.getElementById('notificationsList').innerHTML = notifications.map((n, index) => `
+        <div class="notification-item" style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
+            <span style="font-size:24px;animation:bounceIn 0.6s ease-out ${index * 0.1}s backwards;">${n.icon}</span>
             <div style="flex:1;">
                 <p style="margin:0;font-size:14px;">${n.text}</p>
                 <small style="color:var(--gray);font-size:12px;">${n.time}</small>
@@ -368,3 +418,34 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
+
+
+<script>
+// Scroll Reveal Animation
+function revealOnScroll() {
+    const reveals = document.querySelectorAll('.scroll-reveal');
+    
+    reveals.forEach(element => {
+        const windowHeight = window.innerHeight;
+        const elementTop = element.getBoundingClientRect().top;
+        const elementVisible = 150;
+        
+        if (elementTop < windowHeight - elementVisible) {
+            element.classList.add('revealed');
+        }
+    });
+}
+
+window.addEventListener('scroll', revealOnScroll);
+window.addEventListener('load', revealOnScroll);
+
+// Add scroll-reveal class to sections
+document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('.section');
+    sections.forEach((section, index) => {
+        if (index > 0) { // Skip first section
+            section.classList.add('scroll-reveal');
+        }
+    });
+});
+</script>

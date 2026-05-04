@@ -31,7 +31,8 @@
         'testStats',
         'payments',
         'activities',
-        'siteSettings'
+        'siteSettings',
+        'userSessions'
     ];
     
     // Check if key should use Upstash
@@ -42,12 +43,12 @@
         }
         
         // User-specific data
-        if (key.startsWith('userVideos_') || key.startsWith('user_')) {
+        if (key.startsWith('userVideos_') || key.startsWith('user_') || key.startsWith('teacher_')) {
             return true;
         }
         
         // Sensitive data stays in LocalStorage only
-        if (key === 'token' || key === 'authToken' || key === 'sessionToken' || key === 'currentUser') {
+        if (key === 'token' || key === 'authToken' || key === 'sessionToken' || key === 'currentUser' || key === 'deviceId') {
             return false;
         }
         

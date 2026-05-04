@@ -8,6 +8,10 @@ function isLoggedIn() {
 }
 
 function logout() {
+    const user = getCurrentUser();
+    if (user) {
+        clearDeviceSession(user.id);
+    }
     Storage.remove('currentUser');
     window.location.href = 'index.html';
 }
@@ -52,21 +56,119 @@ function updateNavbar() {
     }
 }
 
-// Login function
+// Generate unique device ID
+function getDeviceId() {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
+}
+
+// Check if user is logged in on another device
+function checkDeviceSession(userId) {
+    const sessions = Storage.get('userSessions') || {};
+    const currentDeviceId = getDeviceId();
+    const userSession = sessions[userId];
+    
+    if (userSession && userSession.deviceId !== currentDeviceId) {
+        return {
+            isActive: true,
+            deviceId: userSession.deviceId,
+            loginTime: userSession.loginTime
+        };
+    }
+    
+    return { isActive: false };
+}
+
+// Set device session for user
+function setDeviceSession(userId) {
+    const sessions = Storage.get('userSessions') || {};
+    const currentDeviceId = getDeviceId();
+    
+    sessions[userId] = {
+        deviceId: currentDeviceId,
+        loginTime: new Date().toISOString(),
+        lastActivity: new Date().toISOString()
+    };
+    
+    Storage.set('userSessions', sessions);
+    console.log(`🔒 Cihaz sessiyası yaradıldı: User ${userId}, Device ${currentDeviceId}`);
+}
+
+// Clear device session
+function clearDeviceSession(userId) {
+    const sessions = Storage.get('userSessions') || {};
+    delete sessions[userId];
+    Storage.set('userSessions', sessions);
+}
+
+// Login function with device restriction and activity logging
 function login(email, password) {
     // Get all users from storage
     const allUsers = Storage.get('allUsers') || MOCK_USERS;
     
     const user = allUsers.find(u => u.email === email && u.password === password);
-    if (user) {
-        const { password: _, ...safeUser } = user;
-        Storage.set('currentUser', safeUser);
-        return { success: true, user: safeUser };
+    if (!user) {
+        return { success: false, message: 'Email və ya şifrə yanlışdır' };
     }
-    return { success: false, message: 'Email və ya şifrə yanlışdır' };
+    
+    // Check if user is logged in on another device
+    const deviceCheck = checkDeviceSession(user.id);
+    
+    if (deviceCheck.isActive) {
+        const confirm = window.confirm(
+            '⚠️ Diqqət!\n\n' +
+            'Bu hesab başqa bir cihazda aktiv vəziyyətdədir.\n\n' +
+            'Davam etsəniz, digər cihazdan çıxış ediləcək.\n\n' +
+            'Davam etmək istəyirsiniz?'
+        );
+        
+        if (!confirm) {
+            return { success: false, message: 'Giriş ləğv edildi' };
+        }
+        
+        console.log('⚠️ Digər cihazdan çıxış edilir...');
+    }
+    
+    // Set new device session
+    setDeviceSession(user.id);
+    
+    const { password: _, ...safeUser } = user;
+    Storage.set('currentUser', safeUser);
+    
+    // Log activity
+    logActivity(user.name, 'Sistemə giriş etdi');
+    
+    return { success: true, user: safeUser };
 }
 
-// Register function
+// Helper function to log activity
+function logActivity(user, action, status = 'success') {
+    const activities = Storage.get('activities') || [];
+    
+    const activity = {
+        id: Date.now(),
+        user: user,
+        action: action,
+        date: new Date().toLocaleDateString('az-AZ'),
+        timestamp: new Date().toISOString(),
+        status: status
+    };
+    
+    activities.unshift(activity);
+    
+    // Keep only last 100 activities
+    if (activities.length > 100) {
+        activities.length = 100;
+    }
+    
+    Storage.set('activities', activities);
+}
+
+// Register function with device session and activity logging
 function register(name, email, password, userType = 'student') {
     // Get all users from storage
     const allUsers = Storage.get('allUsers') || MOCK_USERS;
@@ -114,8 +216,14 @@ function register(name, email, password, userType = 'student') {
         console.log('✅ Müəllim siyahısına əlavə edildi:', teacherData);
     }
     
+    // Set device session
+    setDeviceSession(newUser.id);
+    
     // Set current user (without password)
     Storage.set('currentUser', newUser);
+    
+    // Log activity
+    logActivity(name, 'Yeni qeydiyyat');
     
     return { success: true, user: newUser };
 }
@@ -132,3 +240,26 @@ function updateUser(updates) {
 
 // Run on every page
 document.addEventListener('DOMContentLoaded', updateNavbar);
+
+
+// Check device session on every page load
+function validateDeviceSession() {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    const deviceCheck = checkDeviceSession(user.id);
+    
+    if (deviceCheck.isActive) {
+        // User is logged in on another device
+        alert('⚠️ Hesabınız başqa bir cihazdan daxil olunub.\n\nTəhlükəsizlik məqsədilə bu cihazdan çıxış edilir.');
+        logout();
+    }
+}
+
+// Run device validation on every page
+if (typeof window !== 'undefined') {
+    window.addEventListener('load', validateDeviceSession);
+    
+    // Also check periodically (every 30 seconds)
+    setInterval(validateDeviceSession, 30000);
+}

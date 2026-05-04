@@ -218,6 +218,38 @@ function trackUserVideoWatch(videoId) {
     if (!userVideos.includes(videoId)) {
         userVideos.push(videoId);
         Storage.set('userVideos_' + user.id, userVideos);
+        
+        // Update teacher's student count
+        const videos = Storage.get('videos') || [];
+        const video = videos.find(v => v.id === videoId || v.id === 'uploaded_' + videoId);
+        
+        if (video && video.teacherId) {
+            updateTeacherStudentCount(video.teacherId, user.id);
+        }
+    }
+}
+
+// New function to update teacher student count
+function updateTeacherStudentCount(teacherId, userId) {
+    const teachers = Storage.get('teachers') || [];
+    const teacher = teachers.find(t => t.id == teacherId);
+    
+    if (!teacher) return;
+    
+    // Track unique students per teacher
+    const teacherStudents = Storage.get(`teacher_${teacherId}_students`) || [];
+    
+    if (!teacherStudents.includes(userId)) {
+        teacherStudents.push(userId);
+        Storage.set(`teacher_${teacherId}_students`, teacherStudents);
+        
+        // Update teacher's student count
+        const teacherIndex = teachers.findIndex(t => t.id == teacherId);
+        if (teacherIndex !== -1) {
+            teachers[teacherIndex].students = teacherStudents.length;
+            Storage.set('teachers', teachers);
+            console.log(`✅ Müəllim ${teacher.name} - Tələbə sayı: ${teacherStudents.length}`);
+        }
     }
 }
 
