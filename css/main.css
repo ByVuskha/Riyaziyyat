@@ -451,6 +451,11 @@ a { text-decoration: none; color: inherit; }
     padding: 5px;
 }
 
+/* Mobile Menu - Hidden by default */
+.mobile-menu {
+    display: none;
+}
+
 /* Tablet (768px və aşağı) */
 @media (max-width: 768px) {
     /* Container */
