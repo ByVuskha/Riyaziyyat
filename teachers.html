@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Müəllimlər - RiyazMath</title>
+    <title>Müəllimlər - Bizim Riyaziyyat</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -231,7 +231,7 @@
     <div class="container">
         <div class="navbar-inner">
             <a href="index.html" class="navbar-logo">
-                <span>∑</span> RiyazMath
+                <span>BR</span> Bizim Riyaziyyat
             </a>
             <div class="navbar-menu">
                 <a href="index.html">Ana Səhifə</a>
@@ -514,6 +514,57 @@ function loadTeachers() {
 }
 
 function viewTeacherVideos(teacherId) {
+    // Müəllimin videolarını göstər
+    const teachers = getAllTeachers();
+    const teacher = teachers.find(t => t.id === teacherId);
+    
+    if (!teacher) {
+        alert('Müəllim tapılmadı');
+        return;
+    }
+    
+    // Videoları yüklə və müəllimə görə filtr et
+    const allVideos = Storage.get('videos') || [];
+    const teacherVideos = allVideos.filter(v => v.teacherName === teacher.name || v.teacher === teacher.name);
+    
+    // Video sayını sinxronlaşdır
+    teacher.videos = teacherVideos.length;
+    
+    alert(`${teacher.name} - ${teacherVideos.length} video\n\nVideolar səhifəsinə yönləndirilirsiniz...`);
+    
+    // Videos səhifəsinə keç və müəllim filtri əlavə et
+    window.location.href = `videos.html?teacher=${encodeURIComponent(teacher.name)}`;
+}
+
+function contactTeacher(teacherId) {
+    const teachers = getAllTeachers();
+    const teacher = teachers.find(t => t.id === teacherId);
+    
+    if (!teacher) {
+        alert('Müəllim tapılmadı');
+        return;
+    }
+    
+    // Əlaqə məlumatları
+    const contactInfo = `
+📧 Əlaqə Məlumatları
+
+👤 ${teacher.name}
+📚 ${teacher.title}
+
+📞 Telefon: +994 50 123 45 67
+📧 Email: ${teacher.name.toLowerCase().replace(/\s+/g, '.')}@riyazmath.az
+💬 WhatsApp: +994 50 123 45 67
+📱 Telegram: @riyazmath
+
+⏰ İş saatları: 09:00 - 18:00
+📍 Ünvan: Bakı, Azərbaycan
+
+Müəllim ilə əlaqə saxlamaq üçün yuxarıdakı məlumatlardan istifadə edə bilərsiniz.
+    `.trim();
+    
+    alert(contactInfo);
+}
     window.location.href = `videos.html?teacher=${teacherId}`;
 }
 

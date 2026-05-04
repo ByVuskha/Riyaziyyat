@@ -1,5 +1,5 @@
 const CONFIG = {
-    API_URL: 'https://bizimriyaziyyat.work.gd/api',  // Backend hazır olduqda
+    API_URL: 'https://bizimriyaziyyat.work.gd/api',
     APP_NAME: 'Bizim Riyaziyyat',
     VERSION: '1.0.0',
     DOMAIN: 'bizimriyaziyyat.work.gd'

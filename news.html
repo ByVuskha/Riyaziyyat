@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xəbərlər - RiyazMath</title>
+    <title>Xəbərlər - Bizim Riyaziyyat</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -41,14 +41,13 @@
 <nav class="navbar">
     <div class="container">
         <div class="navbar-inner">
-            <a href="index.html" class="navbar-logo"><span>∑</span> RiyazMath</a>
+            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
             <div class="navbar-menu">
                 <a href="index.html">Ana Səhifə</a>
                 <a href="videos.html">Dərslər</a>
-                <a href="tests.html">Sınaqlar</a>
+                <a href="teachers.html">Müəllimlər</a>
                 <a href="news.html" class="active">Xəbərlər</a>
-                <a href="success.html">Uğurlar</a>
-                <a href="faq.html">Suallar</a>
+                <a href="faq.html">FAQ</a>
             </div>
             <div class="navbar-actions">
                 <span class="balance-badge" id="balanceBadge"><i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼</span>
@@ -95,7 +94,7 @@
 
 <footer class="footer">
     <div class="container">
-        <div class="footer-bottom"><p>&copy; 2024 RiyazMath. Bütün hüquqlar qorunur.</p></div>
+        <div class="footer-bottom"><p>&copy; 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p></div>
     </div>
 </footer>
 
@@ -126,6 +125,32 @@ function getAllNews() {
     const customNews = Storage.get('news') || [];
     return [...customNews, ...DEFAULT_NEWS];
 }
+
+// Increment news view count
+function incrementNewsViews(newsId) {
+    const allNews = Storage.get('news') || [];
+    const newsIndex = allNews.findIndex(n => n.id === newsId);
+    
+    if (newsIndex !== -1) {
+        allNews[newsIndex].views = (allNews[newsIndex].views || 0) + 1;
+        Storage.set('news', allNews);
+    }
+    
+    // Also update in DEFAULT_NEWS for display
+    const defaultIndex = DEFAULT_NEWS.findIndex(n => n.id === newsId);
+    if (defaultIndex !== -1) {
+        DEFAULT_NEWS[defaultIndex].views = (DEFAULT_NEWS[defaultIndex].views || 0) + 1;
+    }
+}
+
+// Track page view
+window.addEventListener('load', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const newsId = urlParams.get('id');
+    if (newsId) {
+        incrementNewsViews(parseInt(newsId));
+    }
+});
 
 const NEWS = getAllNews();
 
