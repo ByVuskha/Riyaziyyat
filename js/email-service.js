@@ -42,9 +42,12 @@ async function sendVerificationEmail(toEmail, userName, verificationCode) {
         const templateParams = {
             to_email: toEmail,
             to_name: userName,
+            user_email: toEmail,  // Alternative parameter name
+            user_name: userName,   // Alternative parameter name
             verification_code: verificationCode,
             site_name: 'Bizim Riyaziyyat',
-            site_url: window.location.origin
+            site_url: window.location.origin,
+            message: `Doğrulama kodunuz: ${verificationCode}` // Fallback message
         };
 
         // Send email via EmailJS

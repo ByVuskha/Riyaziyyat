@@ -27,7 +27,18 @@ Bu təlimat sizə EmailJS vasitəsilə real email göndərmə sistemini quraşd�
 1. "Email Templates" bölməsinə keçin
 2. "Create New Template" düyməsinə klikləyin
 3. Template adı: `verification_email`
-4. Aşağıdakı məzmunu əlavə edin:
+4. **ÖNƏMLİ:** "To Email" sahəsində `{{to_email}}` və ya `{{user_email}}` yazın
+5. Aşağıdakı məzmunu əlavə edin:
+
+**To Email (Alıcı):**
+```
+{{to_email}}
+```
+
+**From Name:**
+```
+Bizim Riyaziyyat
+```
 
 **Subject:**
 ```
@@ -53,7 +64,12 @@ Hörmətlə,
 {{site_url}}
 ```
 
-5. **Template ID**-ni kopyalayın (məsələn: `template_xyz789`)
+**⚠️ ÇOX ÖNƏMLİ:** 
+- Template-də "Settings" tab-ına keçin
+- "To Email" sahəsində `{{to_email}}` yazın (mötərizələrlə birlikdə)
+- Bu olmadan email göndərilməyəcək!
+
+6. **Template ID**-ni kopyalayın (məsələn: `template_xyz789`)
 
 #### Welcome Email Template (İstəyə bağlı)
 
