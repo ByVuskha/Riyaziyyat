@@ -3,6 +3,31 @@
  * LocalStorage yalnız cache kimi, əsas məlumat Upstash-da
  */
 
+// Global Storage object
+window.Storage = {
+    get: function(key) {
+        const item = localStorage.getItem(key);
+        if (!item) return null;
+        try {
+            return JSON.parse(item);
+        } catch {
+            return item;
+        }
+    },
+    
+    set: function(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+            console.error('Storage.set error:', error);
+        }
+    },
+    
+    remove: function(key) {
+        localStorage.removeItem(key);
+    }
+};
+
 (function() {
     'use strict';
     
@@ -57,14 +82,11 @@
     }
     
     // Original Storage methods
-    const originalStorage = {
-        get: Storage.get,
-        set: Storage.set,
-        remove: Storage.remove
-    };
+    const originalGet = Storage.get;
+    const originalSet = Storage.set;
+    const originalRemove = Storage.remove;
     
     // Wrap Storage.get - Read from Upstash first, fallback to LocalStorage
-    const originalGet = Storage.get;
     Storage.get = function(key) {
         // For sensitive data, use LocalStorage only
         if (!shouldUseUpstash(key)) {
@@ -82,7 +104,6 @@
     };
     
     // Wrap Storage.set - Write to both Upstash and LocalStorage
-    const originalSet = Storage.set;
     Storage.set = function(key, value) {
         // Always save to LocalStorage first (immediate)
         originalSet.call(this, key, value);
@@ -109,7 +130,6 @@
     };
     
     // Wrap Storage.remove
-    const originalRemove = Storage.remove;
     Storage.remove = function(key) {
         // Remove from LocalStorage
         originalRemove.call(this, key);
