@@ -153,6 +153,8 @@
     </div>
 </div>
 
+<script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -175,8 +177,14 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yüklənir...';
 
+        console.log('🔍 Login attempt:', email);
+        console.log('🔍 Upstash available:', typeof upstash !== 'undefined');
+        console.log('🔍 UPSTASH_CONFIG:', typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : 'NOT FOUND');
+
         // Use async login for Upstash check
         const result = await loginAsync(email, password, true);
+        
+        console.log('🔍 Login result:', result);
         
         if (result.frozen) {
             // Account is frozen
@@ -207,7 +215,5 @@
     });
 </script>
 <script src="js/mobile-menu.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 </body>
 </html>
