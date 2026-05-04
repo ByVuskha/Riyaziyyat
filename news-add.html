@@ -153,10 +153,10 @@ function loadNews() {
             </div>
             <div style="flex:1;">
                 <h4 style="font-size:15px;margin-bottom:5px;">${n.title}</h4>
-                <p style="font-size:13px;color:var(--gray);margin-bottom:8px;">${n.text.substring(0, 100)}...</p>
+                <p style="font-size:13px;color:var(--gray);margin-bottom:8px;">${(n.text || n.content || '').substring(0, 100)}...</p>
                 <div style="display:flex;gap:15px;font-size:12px;color:var(--gray);">
                     <span><i class="fas fa-calendar"></i> ${n.date}</span>
-                    <span><i class="fas fa-eye"></i> ${n.views} baxış</span>
+                    <span><i class="fas fa-eye"></i> ${n.views || 0} baxış</span>
                 </div>
             </div>
             <button class="btn-icon btn-delete" onclick="deleteNews(${n.id})" title="Sil">
