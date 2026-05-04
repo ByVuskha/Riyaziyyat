@@ -159,7 +159,7 @@
     // Redirect if already logged in
     if (isLoggedIn()) window.location.href = 'dashboard.html';
 
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
@@ -175,30 +175,29 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yüklənir...';
 
-        setTimeout(() => {
-            const result = login(email, password, true);
-            
-            if (result.frozen) {
-                // Account is frozen
-                frozenWarning.classList.add('active');
-                alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-ban"></i> Hesab dondurulub!</div>';
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-ban"></i> Hesab Dondurulub';
-            } else if (result.deviceConflict) {
-                // Show device warning (first attempt)
-                deviceWarning.classList.add('active');
-                alertBox.innerHTML = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq! Cəhd ${result.attempts}/2</div>`;
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
-            } else if (result.success) {
-                alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Uğurla daxil oldunuz!</div>';
-                setTimeout(() => window.location.href = 'dashboard.html', 800);
-            } else {
-                alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
-            }
-        }, 600);
+        // Use async login for Upstash check
+        const result = await loginAsync(email, password, true);
+        
+        if (result.frozen) {
+            // Account is frozen
+            frozenWarning.classList.add('active');
+            alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-ban"></i> Hesab dondurulub!</div>';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-ban"></i> Hesab Dondurulub';
+        } else if (result.deviceConflict) {
+            // Show device warning (first attempt)
+            deviceWarning.classList.add('active');
+            alertBox.innerHTML = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq! Cəhd ${result.attempts}/2</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
+        } else if (result.success) {
+            alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Uğurla daxil oldunuz!</div>';
+            setTimeout(() => window.location.href = 'dashboard.html', 800);
+        } else {
+            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
+        }
     });
 
     // Cancel login

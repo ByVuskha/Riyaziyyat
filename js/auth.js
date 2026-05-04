@@ -56,18 +56,92 @@ function updateNavbar() {
     }
 }
 
-// Generate unique device ID
+// Generate unique device ID (stored in cookie for cross-tab sharing)
 function getDeviceId() {
-    let deviceId = localStorage.getItem('deviceId');
+    // Check cookie first
+    let deviceId = getCookie('deviceId');
+    
     if (!deviceId) {
-        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        // Check localStorage as fallback
+        deviceId = localStorage.getItem('deviceId');
+        
+        if (!deviceId) {
+            // Generate new device ID
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // Save to both cookie and localStorage
+        setCookie('deviceId', deviceId, 365); // 1 year
         localStorage.setItem('deviceId', deviceId);
     }
+    
     return deviceId;
 }
 
+// Cookie helper functions
+function setCookie(name, value, days) {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Strict';
+}
+
+function getCookie(name) {
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/';
+}
+
 // Check if user is logged in on another device
-function checkDeviceSession(userId) {
+async function checkDeviceSession(userId) {
+    const currentDeviceId = getDeviceId();
+    
+    // Check from Upstash (cloud)
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const sessionKey = `user_session:${userId}`;
+            const cloudSession = await upstash.get(sessionKey);
+            
+            if (cloudSession && cloudSession.deviceId !== currentDeviceId) {
+                console.log('🔍 Device conflict detected in Upstash:', cloudSession.deviceId);
+                return {
+                    isActive: true,
+                    deviceId: cloudSession.deviceId,
+                    loginTime: cloudSession.loginTime,
+                    attempts: cloudSession.loginAttempts || 0
+                };
+            }
+        } catch (error) {
+            console.error('Upstash check failed:', error);
+        }
+    }
+    
+    // Fallback to LocalStorage
+    const sessions = Storage.get('userSessions') || {};
+    const userSession = sessions[userId];
+    
+    if (userSession && userSession.deviceId !== currentDeviceId) {
+        return {
+            isActive: true,
+            deviceId: userSession.deviceId,
+            loginTime: userSession.loginTime,
+            attempts: userSession.loginAttempts || 0
+        };
+    }
+    
+    return { isActive: false };
+}
+
+// Synchronous version for immediate check
+function checkDeviceSessionSync(userId) {
     const sessions = Storage.get('userSessions') || {};
     const currentDeviceId = getDeviceId();
     const userSession = sessions[userId];
@@ -85,12 +159,36 @@ function checkDeviceSession(userId) {
 }
 
 // Record unauthorized login attempt
-function recordUnauthorizedAttempt(userId, userName, email) {
+async function recordUnauthorizedAttempt(userId, userName, email) {
+    const currentDeviceId = getDeviceId();
+    
+    // Get current session from Upstash
+    let attempts = 1;
+    
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const sessionKey = `user_session:${userId}`;
+            const session = await upstash.get(sessionKey);
+            
+            if (session) {
+                attempts = (session.loginAttempts || 0) + 1;
+                session.loginAttempts = attempts;
+                session.lastAttempt = new Date().toISOString();
+                session.lastAttemptDevice = currentDeviceId;
+                
+                // Update in Upstash
+                await upstash.set(sessionKey, session, 86400 * 7);
+                console.log(`⚠️ Yetkisiz cəhd qeydə alındı: User ${userId}, Cəhd ${attempts}`);
+            }
+        } catch (error) {
+            console.error('Failed to record attempt in Upstash:', error);
+        }
+    }
+    
+    // Also update LocalStorage
     const sessions = Storage.get('userSessions') || {};
     const userSession = sessions[userId] || {};
-    
-    // Increment attempts
-    userSession.loginAttempts = (userSession.loginAttempts || 0) + 1;
+    userSession.loginAttempts = attempts;
     userSession.lastAttempt = new Date().toISOString();
     sessions[userId] = userSession;
     Storage.set('userSessions', sessions);
@@ -103,12 +201,12 @@ function recordUnauthorizedAttempt(userId, userName, email) {
         userName: userName,
         email: email,
         activity: 'Yetkisiz cihazdan giriş cəhdi',
-        attempts: userSession.loginAttempts,
-        deviceId: getDeviceId(),
+        attempts: attempts,
+        deviceId: currentDeviceId,
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString('az-AZ'),
         time: new Date().toLocaleTimeString('az-AZ'),
-        status: userSession.loginAttempts >= 2 ? 'blocked' : 'warning'
+        status: attempts >= 2 ? 'blocked' : 'warning'
     });
     
     // Keep only last 100 activities
@@ -119,15 +217,15 @@ function recordUnauthorizedAttempt(userId, userName, email) {
     Storage.set('suspiciousActivities', suspicious);
     
     // If 2nd attempt, freeze account
-    if (userSession.loginAttempts >= 2) {
-        freezeAccount(userId);
+    if (attempts >= 2) {
+        await freezeAccount(userId);
     }
     
-    return userSession.loginAttempts;
+    return attempts;
 }
 
 // Freeze account (block + clear balance)
-function freezeAccount(userId) {
+async function freezeAccount(userId) {
     const allUsers = Storage.get('allUsers') || [];
     const user = allUsers.find(u => u.id === userId);
     
@@ -139,6 +237,16 @@ function freezeAccount(userId) {
         user.balance = 0; // Clear balance
         
         Storage.set('allUsers', allUsers);
+        
+        // Also save to Upstash
+        if (typeof upstash !== 'undefined' && upstash) {
+            try {
+                await upstash.set('allUsers', allUsers, 86400 * 30); // 30 days
+                console.log(`🚫 Hesab donduruldu və Upstash-a yazıldı: User ${userId}`);
+            } catch (error) {
+                console.error('Failed to sync frozen account to Upstash:', error);
+            }
+        }
         
         console.log(`🚫 Hesab donduruldu: User ${userId}`);
         
@@ -197,17 +305,32 @@ function authorizeNewDevice(userId, newDeviceId) {
 }
 
 // Set device session for user
-function setDeviceSession(userId) {
-    const sessions = Storage.get('userSessions') || {};
+async function setDeviceSession(userId) {
     const currentDeviceId = getDeviceId();
     
-    sessions[userId] = {
+    const sessionData = {
         deviceId: currentDeviceId,
         loginTime: new Date().toISOString(),
-        lastActivity: new Date().toISOString()
+        lastActivity: new Date().toISOString(),
+        loginAttempts: 0
     };
     
+    // Save to LocalStorage
+    const sessions = Storage.get('userSessions') || {};
+    sessions[userId] = sessionData;
     Storage.set('userSessions', sessions);
+    
+    // Save to Upstash (cloud) - individual key per user
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const sessionKey = `user_session:${userId}`;
+            await upstash.set(sessionKey, sessionData, 86400 * 7); // 7 days TTL
+            console.log(`🔒 Cihaz sessiyası Upstash-a yazıldı: User ${userId}, Device ${currentDeviceId}`);
+        } catch (error) {
+            console.error('Failed to sync session to Upstash:', error);
+        }
+    }
+    
     console.log(`🔒 Cihaz sessiyası yaradıldı: User ${userId}, Device ${currentDeviceId}`);
 }
 
@@ -219,6 +342,73 @@ function clearDeviceSession(userId) {
 }
 
 // Login function with device restriction and activity logging
+async function loginAsync(email, password, onDeviceConflict) {
+    // Get all users from storage
+    const allUsers = Storage.get('allUsers') || MOCK_USERS;
+    
+    const user = allUsers.find(u => u.email === email && u.password === password);
+    if (!user) {
+        return { success: false, message: 'Email və ya şifrə yanlışdır' };
+    }
+    
+    // Check if account is frozen
+    if (user.frozen) {
+        return { 
+            success: false, 
+            frozen: true,
+            message: '🚫 Hesabınız dondurulub!\n\nSəbəb: Yetkisiz cihazdan təkrar giriş cəhdi.\n\nHesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
+        };
+    }
+    
+    // Check if user is logged in on another device (async check with Upstash)
+    const deviceCheck = await checkDeviceSession(user.id);
+    
+    if (deviceCheck.isActive) {
+        // Record unauthorized attempt
+        const attempts = recordUnauthorizedAttempt(user.id, user.name, user.email);
+        
+        // If this is 2nd or more attempt, account is now frozen
+        if (attempts >= 2) {
+            return {
+                success: false,
+                frozen: true,
+                message: '🚫 HESAB DONDURULDU!\n\n' +
+                         'Təkrar yetkisiz giriş cəhdi aşkar edildi.\n\n' +
+                         '⚠️ Hesabınız təhlükəsizlik məqsədilə donduruldu.\n' +
+                         '💰 Balansınız təmizləndi.\n\n' +
+                         'Hesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
+            };
+        }
+        
+        // First attempt - show warning
+        return { 
+            success: false, 
+            deviceConflict: true,
+            attempts: attempts,
+            user: user,
+            message: '⚠️ XƏBƏRDARLIQ!\n\n' +
+                     'Bu hesab başqa bir cihazda aktivdir.\n\n' +
+                     '🚫 Yenidən cəhd etsəniz:\n' +
+                     '• Hesabınız DONDURULACAQ\n' +
+                     '• Balansınız SİLİNƏCƏK\n' +
+                     '• Admin icazəsi tələb olunacaq\n\n' +
+                     'Davam etmək istəyirsiniz?'
+        };
+    }
+    
+    // Set new device session
+    setDeviceSession(user.id);
+    
+    const { password: _, ...safeUser } = user;
+    Storage.set('currentUser', safeUser);
+    
+    // Log activity
+    logActivity(user.name, 'Sistemə giriş etdi');
+    
+    return { success: true, user: safeUser };
+}
+
+// Synchronous login (fallback)
 function login(email, password, onDeviceConflict) {
     // Get all users from storage
     const allUsers = Storage.get('allUsers') || MOCK_USERS;
@@ -237,8 +427,8 @@ function login(email, password, onDeviceConflict) {
         };
     }
     
-    // Check if user is logged in on another device
-    const deviceCheck = checkDeviceSession(user.id);
+    // Check if user is logged in on another device (sync check)
+    const deviceCheck = checkDeviceSessionSync(user.id);
     
     if (deviceCheck.isActive) {
         // Record unauthorized attempt
