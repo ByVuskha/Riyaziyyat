@@ -157,18 +157,33 @@
 <script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/security.js"></script>
 <script>
     // Redirect if already logged in
     if (isLoggedIn()) window.location.href = 'dashboard.html';
 
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const email = document.getElementById('email').value;
+        const email = sanitizeInput(document.getElementById('email').value);
         const password = document.getElementById('password').value;
         const btn = document.getElementById('submitBtn');
         const alertBox = document.getElementById('alertBox');
         const deviceWarning = document.getElementById('deviceWarning');
         const frozenWarning = document.getElementById('frozenWarning');
+
+        // Input validation
+        if (!validateEmail(email)) {
+            alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Düzgün email daxil edin</div>';
+            return;
+        }
+        
+        // Rate limiting - max 5 attempts per 15 min
+        const rateCheck = rateLimiter.check(`login_${email}`, 5, 15 * 60 * 1000);
+        if (!rateCheck.allowed) {
+            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-ban"></i> Çox sayda cəhd. ${rateCheck.waitMinutes} dəqiqə gözləyin.</div>`;
+            btn.disabled = true;
+            return;
+        }
 
         // Hide warnings
         deviceWarning.classList.remove('active');
@@ -181,28 +196,26 @@
         console.log('🔍 Upstash available:', typeof upstash !== 'undefined');
         console.log('🔍 UPSTASH_CONFIG:', typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : 'NOT FOUND');
 
-        // Use async login for Upstash check
         const result = await loginAsync(email, password, true);
         
         console.log('🔍 Login result:', result);
         
         if (result.frozen) {
-            // Account is frozen
             frozenWarning.classList.add('active');
             alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-ban"></i> Hesab dondurulub!</div>';
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-ban"></i> Hesab Dondurulub';
         } else if (result.deviceConflict) {
-            // Show device warning (first attempt)
             deviceWarning.classList.add('active');
             alertBox.innerHTML = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq! Cəhd ${result.attempts}/2</div>`;
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
         } else if (result.success) {
+            rateLimiter.reset(`login_${email}`);
             alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Uğurla daxil oldunuz!</div>';
             setTimeout(() => window.location.href = 'dashboard.html', 800);
         } else {
-            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
+            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${sanitizeHTML(result.message)}</div>`;
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
         }

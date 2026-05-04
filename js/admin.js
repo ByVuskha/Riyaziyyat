@@ -67,8 +67,32 @@ function showSection(section) {
         loadFrozenAccounts();
     }
     if (section === 'premium') {
-        loadPremiumRequests();
+        loadPremiumRequestsEnhanced();
         loadPremiumUsers();
+    }
+    if (section === 'activeUsers') {
+        startActiveUsersTracking();
+        // Update stats
+        setTimeout(() => {
+            const activeUsers = Storage.get('activeUsers') || {};
+            const now = Date.now();
+            const fiveMin = 5 * 60 * 1000;
+            const active = Object.values(activeUsers).filter(u => now - u.lastSeen < fiveMin);
+            const premium = active.filter(u => u.premium).length;
+            const free = active.filter(u => !u.premium && u.role !== 'admin').length;
+            
+            const totalEl = document.getElementById('activeCountTotal');
+            const premiumEl = document.getElementById('activePremiumCount');
+            const freeEl = document.getElementById('activeFreeCount');
+            const updateEl = document.getElementById('activeLastUpdate');
+            
+            if (totalEl) totalEl.textContent = active.length;
+            if (premiumEl) premiumEl.textContent = premium;
+            if (freeEl) freeEl.textContent = free;
+            if (updateEl) updateEl.textContent = new Date().toLocaleTimeString('az-AZ');
+        }, 100);
+    } else {
+        stopActiveUsersTracking();
     }
 }
 
@@ -86,6 +110,27 @@ function loadDashboardStats() {
     
     const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     document.getElementById('totalRevenue').textContent = totalRevenue + ' ₼';
+    
+    // Active users count
+    const activeUsers = Storage.get('activeUsers') || {};
+    const now = Date.now();
+    const activeCount = Object.values(activeUsers).filter(u => now - u.lastSeen < 5 * 60 * 1000).length;
+    const activeEl = document.getElementById('activeUsersCount');
+    if (activeEl) activeEl.textContent = activeCount;
+    
+    // Premium users count
+    const premiumUsers = users.filter(u => u.premium).length;
+    const premiumEl = document.getElementById('totalPremiumUsers');
+    if (premiumEl) premiumEl.textContent = premiumUsers;
+    
+    // Pending premium requests
+    const requests = Storage.get('premiumRequests') || [];
+    const pendingCount = requests.filter(r => r.status === 'pending').length;
+    const badge = document.getElementById('premiumPendingBadge');
+    if (badge) {
+        badge.textContent = pendingCount;
+        badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
+    }
     
     // Load charts and activity
     loadRecentRegistrations();
@@ -2279,4 +2324,208 @@ function extendPremium(userId) {
         showNotification(`Premium ${days} gün uzadıldı`, 'success');
         loadPremiumUsers();
     }
+}
+
+
+// ==================== ACTIVE USERS (REAL-TIME) ====================
+
+let activeUsersInterval = null;
+
+function loadActiveUsers() {
+    const activeUsers = Storage.get('activeUsers') || {};
+    const now = Date.now();
+    const fiveMin = 5 * 60 * 1000;
+    
+    // Filter only truly active (last 5 min)
+    const active = Object.values(activeUsers).filter(u => now - u.lastSeen < fiveMin);
+    
+    const container = document.getElementById('activeUsersContainer');
+    const countEl = document.getElementById('activeUsersCount');
+    
+    if (countEl) countEl.textContent = active.length;
+    
+    if (!container) return;
+    
+    if (active.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-users" style="font-size:40px;opacity:0.3;margin-bottom:10px;"></i><p>Aktiv istifadəçi yoxdur</p></div>';
+        return;
+    }
+    
+    const pageNames = {
+        'index.html': '🏠 Ana Səhifə',
+        'videos.html': '📹 Videolar',
+        'tests.html': '📝 Sınaqlar',
+        'dashboard.html': '📊 Kabinet',
+        'teachers.html': '👨‍🏫 Müəllimlər',
+        'news.html': '📰 Xəbərlər',
+        'faq.html': '❓ FAQ',
+        'admin.html': '⚙️ Admin Panel',
+        'login.html': '🔑 Giriş',
+        'register.html': '📋 Qeydiyyat'
+    };
+    
+    container.innerHTML = active.map(u => {
+        const lastSeenMin = Math.floor((now - u.lastSeen) / 60000);
+        const lastSeenText = lastSeenMin === 0 ? 'İndi aktiv' : `${lastSeenMin} dəq əvvəl`;
+        const pageName = pageNames[u.page] || u.page;
+        
+        return `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:#f9fafb;margin-bottom:8px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:${u.role === 'admin' ? '#ef4444' : u.premium ? '#fbbf24' : '#667eea'};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">
+                    ${u.userName.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;">
+                        ${sanitizeHTML(u.userName)}
+                        ${u.role === 'admin' ? '<span style="background:#ef4444;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">Admin</span>' : ''}
+                        ${u.premium ? '<span style="background:#fbbf24;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">👑</span>' : ''}
+                    </div>
+                    <div style="font-size:12px;color:#6b7280;">${u.userEmail}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:12px;color:#667eea;">${pageName}</div>
+                    <div style="font-size:11px;color:#9ca3af;">${lastSeenText}</div>
+                </div>
+                <div style="width:8px;height:8px;border-radius:50%;background:${lastSeenMin === 0 ? '#10b981' : '#f59e0b'};flex-shrink:0;"></div>
+            </div>
+        `;
+    }).join('');
+}
+
+function startActiveUsersTracking() {
+    loadActiveUsers();
+    if (activeUsersInterval) clearInterval(activeUsersInterval);
+    activeUsersInterval = setInterval(loadActiveUsers, 30000); // Every 30 seconds
+}
+
+function stopActiveUsersTracking() {
+    if (activeUsersInterval) {
+        clearInterval(activeUsersInterval);
+        activeUsersInterval = null;
+    }
+}
+
+// ==================== ENHANCED PREMIUM MANAGEMENT ====================
+
+function loadPremiumRequestsEnhanced() {
+    const requests = Storage.get('premiumRequests') || [];
+    const tbody = document.getElementById('premiumRequestsTable');
+    if (!tbody) return;
+    
+    const pending = requests.filter(r => r.status === 'pending');
+    const others = requests.filter(r => r.status !== 'pending');
+    const sorted = [...pending, ...others]; // Pending first
+    
+    // Update badge
+    const badge = document.getElementById('premiumPendingBadge');
+    if (badge) {
+        badge.textContent = pending.length;
+        badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
+    }
+    
+    if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Premium müraciət yoxdur</td></tr>';
+        return;
+    }
+    
+    const planLabels = {
+        premium1: { label: '⭐ Premium 1', color: '#667eea', duration: '1 ay', price: '15₼' },
+        premium6: { label: '💎 Premium 6', color: '#8b5cf6', duration: '6 ay', price: '75₼' },
+        premium12: { label: '🏆 Premium 12', color: '#f59e0b', duration: '1 il', price: '120₼' }
+    };
+    
+    tbody.innerHTML = sorted.map(req => {
+        const plan = planLabels[req.plan] || { label: 'Naməlum', color: '#6b7280', duration: '-', price: '-' };
+        const isPending = req.status === 'pending';
+        
+        return `
+        <tr style="background:${req.status === 'approved' ? '#f0fdf4' : req.status === 'rejected' ? '#fef2f2' : '#fffbeb'};">
+            <td>
+                <div style="font-weight:600;">${sanitizeHTML(req.userName)}</div>
+                <div style="font-size:12px;color:#6b7280;">${sanitizeHTML(req.userEmail)}</div>
+            </td>
+            <td>
+                <span style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${plan.color}22;color:${plan.color};">
+                    ${plan.label}
+                </span>
+                <div style="font-size:11px;color:#6b7280;margin-top:3px;">${plan.duration} · ${plan.price}</div>
+            </td>
+            <td>
+                <div style="font-size:13px;">${req.date}</div>
+                <div style="font-size:11px;color:#9ca3af;">${req.time}</div>
+            </td>
+            <td>
+                <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                    background:${req.status === 'approved' ? '#dcfce7' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7'};
+                    color:${req.status === 'approved' ? '#16a34a' : req.status === 'rejected' ? '#dc2626' : '#d97706'};">
+                    ${req.status === 'approved' ? '✅ Təsdiqləndi' : req.status === 'rejected' ? '❌ Rədd edildi' : '⏳ Gözləyir'}
+                </span>
+            </td>
+            <td>
+                ${isPending ? `
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="btn btn-success btn-sm" onclick="approvePremiumWithDuration(${req.userId}, ${req.id}, '${req.plan}')">
+                            <i class="fas fa-check"></i> Təsdiqlə
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
+                            <i class="fas fa-times"></i> Rədd Et
+                        </button>
+                    </div>
+                ` : req.status === 'approved' ? `
+                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
+                        <i class="fas fa-ban"></i> Ləğv Et
+                    </button>
+                ` : `<span style="color:#9ca3af;font-size:12px;">-</span>`}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function approvePremiumWithDuration(userId, requestId, planId) {
+    const planDurations = { premium1: 30, premium6: 180, premium12: 365 };
+    const duration = planDurations[planId] || 30;
+    
+    const planNames = { premium1: '1 Aylıq (30 gün)', premium6: '6 Aylıq (180 gün)', premium12: '1 İllik (365 gün)' };
+    const planName = planNames[planId] || `${duration} gün`;
+    
+    showConfirm(`Bu istifadəçiyə <strong>${planName}</strong> premium vermək istəyirsiniz?`, async () => {
+        const allUsers = Storage.get('allUsers') || [];
+        const user = allUsers.find(u => u.id === userId);
+        
+        if (user) {
+            user.premium = true;
+            user.premiumActivatedAt = new Date().toISOString();
+            user.premiumPlan = planId;
+            
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + duration);
+            user.premiumExpiresAt = expiryDate.toISOString();
+            
+            Storage.set('allUsers', allUsers);
+            
+            // Update request
+            const requests = Storage.get('premiumRequests') || [];
+            const req = requests.find(r => r.id === requestId);
+            if (req) {
+                req.status = 'approved';
+                req.approvedAt = new Date().toISOString();
+                req.approvedBy = getCurrentUser()?.name || 'Admin';
+                req.duration = duration;
+                Storage.set('premiumRequests', requests);
+            }
+            
+            // Sync to Upstash
+            if (typeof upstash !== 'undefined' && upstash) {
+                try {
+                    await upstash.set('allUsers', allUsers, 86400 * 30);
+                    await upstash.set('premiumRequests', requests, 86400 * 30);
+                } catch(e) { console.error('Upstash sync error:', e); }
+            }
+            
+            logActivity(user.name, `Premium aktivləşdirildi (${planName})`, 'success');
+            showNotification(`✅ ${user.name} üçün premium aktivləşdirildi (${planName})`, 'success');
+            loadPremiumRequestsEnhanced();
+            loadPremiumUsers();
+        }
+    });
 }
