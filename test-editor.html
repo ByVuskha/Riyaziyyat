@@ -476,7 +476,57 @@ function clearQuestionForm() {
 
 function saveTestInfo() {
     const testData = {
+        id: Date.now(),
         title: document.getElementById('testTitle').value,
+        description: document.getElementById('testDescription').value || '',
+        category: document.getElementById('testCategory').value || 'Ümumi',
+        difficulty: document.getElementById('testDifficulty').value || 'Orta',
+        duration: parseInt(document.getElementById('testDuration').value) || 30,
+        isPremium: false, // Default false
+        questions: questions.map((q, index) => ({
+            id: index + 1,
+            question: q.text,
+            options: [q.optionA, q.optionB, q.optionC, q.optionD],
+            correctAnswer: ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer),
+            explanation: q.explanation || '',
+            explanationVideo: q.explanationVideo || ''
+        })),
+        createdAt: new Date().toISOString()
+    };
+    
+    if (!testData.title) {
+        alert('❌ Sınaq adını daxil edin!');
+        return;
+    }
+    
+    if (questions.length === 0) {
+        alert('❌ Ən azı 1 sual əlavə edin!');
+        return;
+    }
+    
+    // Save to localStorage
+    const tests = Storage.get('tests') || [];
+    tests.push(testData);
+    Storage.set('tests', tests);
+    
+    console.log('✅ Sınaq saxlanıldı:', testData);
+    
+    alert(`✅ Sınaq uğurla saxlanıldı!\n\n📝 ${testData.title}\n❓ ${questions.length} sual\n⏱️ ${testData.duration} dəqiqə`);
+    
+    // Reset form
+    if (confirm('Yeni sınaq yaratmaq istəyirsiniz?')) {
+        location.reload();
+    } else {
+        window.location.href = 'admin.html';
+    }
+}
+
+renderQuestions();
+</script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
+</body>
+</html>
         category: document.getElementById('testCategory').value,
         duration: document.getElementById('testDuration').value,
         price: document.getElementById('testPrice').value,

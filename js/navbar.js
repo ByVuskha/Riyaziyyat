@@ -89,6 +89,12 @@ const FOOTER_HTML = `
 
 // Navbar-ı render et
 function renderNavbar() {
+    // Check if navbar already exists
+    if (document.querySelector('.navbar')) {
+        console.log('📌 Navbar already exists, skipping render');
+        return;
+    }
+    
     const navbarContainer = document.getElementById('navbar-container');
     if (navbarContainer) {
         navbarContainer.innerHTML = NAVBAR_HTML;
@@ -105,10 +111,18 @@ function renderNavbar() {
             link.classList.add('active');
         }
     });
+    
+    console.log('✅ Navbar rendered');
 }
 
 // Footer-ı render et
 function renderFooter() {
+    // Check if footer already exists
+    if (document.querySelector('.footer')) {
+        console.log('📌 Footer already exists, skipping render');
+        return;
+    }
+    
     const footerContainer = document.getElementById('footer-container');
     if (footerContainer) {
         footerContainer.innerHTML = FOOTER_HTML;
@@ -116,6 +130,8 @@ function renderFooter() {
         // Əgər container yoxdursa, body-nin sonuna əlavə et
         document.body.insertAdjacentHTML('beforeend', FOOTER_HTML);
     }
+    
+    console.log('✅ Footer rendered');
 }
 
 // Auto-initialize

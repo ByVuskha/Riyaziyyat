@@ -565,18 +565,15 @@ Müəllim ilə əlaqə saxlamaq üçün yuxarıdakı məlumatlardan istifadə ed
     
     alert(contactInfo);
 }
-    window.location.href = `videos.html?teacher=${teacherId}`;
-}
-
-function contactTeacher(teacherId) {
-    const teacher = teachers.find(t => t.id === teacherId);
-    alert(`${teacher.name} ilə əlaqə: info@riyazmath.az`);
-}
 
 document.addEventListener('DOMContentLoaded', loadTeachers);
 </script>
 
+<script src="js/config.js"></script>
 <script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
+<script src="js/navbar.js"></script>
+<script src="js/mobile-menu.js"></script>
+<script src="js/auth.js"></script>
 </body>
 </html>

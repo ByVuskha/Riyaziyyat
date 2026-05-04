@@ -15,25 +15,41 @@ document.addEventListener('DOMContentLoaded', () => {
 // Show section
 function showSection(section) {
     // Hide all sections
-    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.admin-section').forEach(s => {
+        s.style.display = 'none';
+        s.classList.remove('active');
+    });
+    
     // Show selected section
-    document.getElementById(section).classList.add('active');
+    const targetSection = document.getElementById(section);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        targetSection.classList.add('active');
+    }
     
     // Update menu
     document.querySelectorAll('.admin-menu-item').forEach(item => item.classList.remove('active'));
-    event.target.closest('.admin-menu-item').classList.add('active');
+    if (event && event.target) {
+        event.target.closest('.admin-menu-item').classList.add('active');
+    }
     
     // Update title
     const titles = {
         dashboard: 'Dashboard',
         users: 'İstifadəçilər',
+        teachers: 'Müəllimlər',
         videos: 'Video Dərslər',
         tests: 'Sınaqlar',
+        testResults: 'Sınaq Nəticələri',
+        siteEditor: 'Sayt Redaktoru',
         news: 'Xəbərlər',
         payments: 'Ödənişlər',
         settings: 'Tənzimləmələr'
     };
-    document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) {
+        pageTitle.textContent = titles[section] || 'Dashboard';
+    }
     
     // Load data for section
     if (section === 'users') loadUsers();
@@ -41,6 +57,7 @@ function showSection(section) {
     if (section === 'videos') loadVideos();
     if (section === 'tests') loadTests();
     if (section === 'testResults') loadTestResults();
+    if (section === 'siteEditor') loadSiteSettings();
     if (section === 'news') loadNews();
     if (section === 'payments') loadPayments();
 }
@@ -1020,11 +1037,181 @@ function resetSiteSettings() {
     alert('✅ Tənzimləmələr sıfırlandı!');
 }
 
-// Load settings when section is shown
-const originalShowSection = showSection;
-showSection = function(section) {
-    originalShowSection(section);
-    if (section === 'siteEditor') {
-        loadSiteSettings();
+
+// ==================== TEACHERS ====================
+
+function loadTeachers() {
+    const teachers = Storage.get('teachers') || [];
+    const tbody = document.getElementById('teachersTable');
+    
+    if (!tbody) {
+        console.warn('teachersTable not found');
+        return;
     }
-};
+    
+    if (teachers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:40px;">Müəllim yoxdur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = teachers.map(t => `
+        <tr>
+            <td>${t.id}</td>
+            <td>
+                <div style="font-weight:600;">${t.name}</div>
+                <div style="font-size:12px;color:var(--gray);">${t.email}</div>
+            </td>
+            <td>${t.title || 'Müəllim'}</td>
+            <td>${t.subjects || '-'}</td>
+            <td>${t.students || 0}</td>
+            <td>
+                <span style="color:#f59e0b;">★</span> ${t.rating || 5.0}
+            </td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-icon btn-edit" onclick="editTeacher(${t.id})" title="Redaktə">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="deleteTeacher(${t.id})" title="Sil">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function editTeacher(id) {
+    const teachers = Storage.get('teachers') || [];
+    const teacher = teachers.find(t => t.id === id);
+    
+    if (!teacher) {
+        alert('Müəllim tapılmadı!');
+        return;
+    }
+    
+    // Create edit modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = `
+        <div class="modal" style="max-width:600px;">
+            <h2>Müəllimi Redaktə Et</h2>
+            
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" class="form-control" id="editTeacherName" value="${teacher.name}">
+            </div>
+            
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" class="form-control" id="editTeacherEmail" value="${teacher.email}" disabled style="background:#f1f5f9;">
+            </div>
+            
+            <div class="form-group">
+                <label>Vəzifə/Başlıq</label>
+                <input type="text" class="form-control" id="editTeacherTitle" value="${teacher.title || ''}">
+            </div>
+            
+            <div class="form-group">
+                <label>Bio</label>
+                <textarea class="form-control" id="editTeacherBio" rows="3">${teacher.bio || ''}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Fənlər (vergüllə ayırın)</label>
+                <input type="text" class="form-control" id="editTeacherSubjects" value="${teacher.subjects || ''}">
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Telefon</label>
+                    <input type="tel" class="form-control" id="editTeacherPhone" value="${teacher.phone || ''}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Təcrübə (il)</label>
+                    <input type="number" class="form-control" id="editTeacherExperience" value="${teacher.experience || 0}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Reytinq</label>
+                    <input type="number" class="form-control" id="editTeacherRating" min="1" max="5" step="0.1" value="${teacher.rating || 5.0}">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Təhsil</label>
+                <textarea class="form-control" id="editTeacherEducation" rows="2">${teacher.education || ''}</textarea>
+            </div>
+            
+            <div style="display:flex;gap:10px;margin-top:25px;">
+                <button class="btn btn-primary" onclick="saveTeacherEdit(${id})">
+                    <i class="fas fa-save"></i> Yadda Saxla
+                </button>
+                <button class="btn btn-secondary" onclick="closeTeacherModal()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function saveTeacherEdit(id) {
+    const teachers = Storage.get('teachers') || [];
+    const index = teachers.findIndex(t => t.id === id);
+    
+    if (index === -1) {
+        alert('Müəllim tapılmadı!');
+        return;
+    }
+    
+    // Update teacher data
+    teachers[index] = {
+        ...teachers[index],
+        name: document.getElementById('editTeacherName').value,
+        title: document.getElementById('editTeacherTitle').value,
+        bio: document.getElementById('editTeacherBio').value,
+        subjects: document.getElementById('editTeacherSubjects').value,
+        phone: document.getElementById('editTeacherPhone').value,
+        experience: parseInt(document.getElementById('editTeacherExperience').value) || 0,
+        rating: parseFloat(document.getElementById('editTeacherRating').value) || 5.0,
+        education: document.getElementById('editTeacherEducation').value,
+        updatedAt: new Date().toISOString()
+    };
+    
+    Storage.set('teachers', teachers);
+    
+    // Also update in allUsers if exists
+    const allUsers = Storage.get('allUsers') || [];
+    const userIndex = allUsers.findIndex(u => u.email === teachers[index].email);
+    if (userIndex !== -1) {
+        allUsers[userIndex].name = teachers[index].name;
+        Storage.set('allUsers', allUsers);
+    }
+    
+    closeTeacherModal();
+    loadTeachers();
+    alert('✅ Müəllim məlumatları yeniləndi!');
+}
+
+function deleteTeacher(id) {
+    if (!confirm('Bu müəllimi silmək istədiyinizə əminsiniz?')) {
+        return;
+    }
+    
+    let teachers = Storage.get('teachers') || [];
+    teachers = teachers.filter(t => t.id !== id);
+    Storage.set('teachers', teachers);
+    
+    loadTeachers();
+    alert('✅ Müəllim silindi!');
+}
+
+function closeTeacherModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}

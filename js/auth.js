@@ -92,6 +92,28 @@ function register(name, email, password, userType = 'student') {
     // Save all users to storage
     Storage.set('allUsers', allUsers);
     
+    // If teacher, add to teachers list
+    if (userType === 'teacher') {
+        const teachers = Storage.get('teachers') || [];
+        const teacherData = {
+            id: Date.now(),
+            name: name,
+            email: email,
+            title: 'Müəllim', // Default title
+            bio: 'Peşəkar riyaziyyat müəllimi',
+            subjects: 'Riyaziyyat',
+            students: 0,
+            rating: 5.0,
+            phone: '',
+            experience: 0,
+            education: '',
+            createdAt: new Date().toISOString()
+        };
+        teachers.push(teacherData);
+        Storage.set('teachers', teachers);
+        console.log('✅ Müəllim siyahısına əlavə edildi:', teacherData);
+    }
+    
     // Set current user (without password)
     Storage.set('currentUser', newUser);
     
