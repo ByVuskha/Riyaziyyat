@@ -7,6 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- EmailJS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         .auth-page {
             min-height: 100vh;
@@ -109,8 +111,9 @@
     </div>
 </div>
 
-<script src="js/config.js"></script>
+<script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/email-service.js"></script>
 <script>
     if (isLoggedIn()) window.location.href = 'dashboard.html';
 
@@ -138,14 +141,7 @@
         else { bar.style.width = '100%'; bar.style.background = 'var(--success)'; }
     });
 
-    // Email verification simulation
-    function sendVerificationEmail(email) {
-        // In production, this would send actual email
-        const code = Math.floor(100000 + Math.random() * 900000);
-        return code;
-    }
-
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const name = document.getElementById('name').value.trim();
         const email = document.getElementById('email').value.trim();
@@ -161,16 +157,27 @@
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Email doğrulanır...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Email göndərilir...';
 
-        // Simulate email verification
-        setTimeout(() => {
-            const verificationCode = sendVerificationEmail(email);
+        try {
+            // Generate verification code
+            const verificationCode = generateVerificationCode();
             
-            // Show verification code in alert
-            alert(`📧 Email Doğrulama\n\nEmail ünvanınıza doğrulama kodu göndərildi.\n\n🔑 Doğrulama Kodu: ${verificationCode}\n\n(Demo rejimində kod burada göstərilir)`);
+            // Send email via EmailJS
+            const emailResult = await sendVerificationEmail(email, name, verificationCode);
             
-            const userCode = prompt('Doğrulama kodunu daxil edin:');
+            if (emailResult.demo) {
+                // Demo mode - show code in alert
+                alert(`📧 Email Doğrulama (Demo Rejimi)\n\nEmailJS konfiqurasiya edilməyib.\n\n🔑 Doğrulama Kodu: ${emailResult.code}\n\n⚙️ Real email göndərmək üçün:\n1. https://www.emailjs.com saytında qeydiyyatdan keçin\n2. js/email-service.js faylında konfiqurasiya edin`);
+            } else {
+                // Real email sent
+                alert(`📧 Email Göndərildi!\n\n${email} ünvanına doğrulama kodu göndərildi.\n\nZəhmət olmasa email qutunuzu yoxlayın.`);
+            }
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Doğrulama gözlənilir...';
+            
+            // Ask for verification code
+            const userCode = prompt('Email ünvanınıza göndərilən 6 rəqəmli doğrulama kodunu daxil edin:');
             
             if (!userCode) {
                 alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Email doğrulanmadı</div>';
@@ -179,7 +186,7 @@
                 return;
             }
 
-            if (userCode != verificationCode) {
+            if (userCode !== verificationCode) {
                 alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Yanlış doğrulama kodu</div>';
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
@@ -188,25 +195,35 @@
 
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Qeydiyyat tamamlanır...';
 
-            setTimeout(() => {
-                const result = register(name, email, password, userType);
-                if (result.success) {
-                    alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Qeydiyyat uğurlu oldu! Email doğrulandı.</div>';
-                    setTimeout(() => window.location.href = 'dashboard.html', 800);
-                } else {
-                    alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+            // Register user
+            const result = register(name, email, password, userType);
+            
+            if (result.success) {
+                alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ✅ Qeydiyyat uğurlu! Email doğrulandı.</div>';
+                
+                // Send welcome email (optional)
+                if (!emailResult.demo) {
+                    await sendWelcomeEmail(email, name);
                 }
-            }, 600);
-        }, 800);
+                
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } else {
+                alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+            }
+            
+        } catch (error) {
+            console.error('Registration error:', error);
+            alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Xəta baş verdi. Yenidən cəhd edin.</div>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
+        }
     });
 
     // Initialize user type style
     updateUserTypeStyle(document.querySelector('input[name="userType"]:checked'));
 </script>
 <script src="js/mobile-menu.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 </body>
 </html>

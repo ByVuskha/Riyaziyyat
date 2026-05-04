@@ -1,34 +1,24 @@
-# RiyazMath - Apache Configuration
-# Domain: bizimriyaziyyat.work.gd
+# 404 Error Page Configuration
+ErrorDocument 404 /404.html
 
 # Enable Rewrite Engine
 RewriteEngine On
 
-# Force HTTPS (if SSL available)
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
-# Remove .html extension
+# Redirect non-existent pages to 404
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([^\.]+)$ $1.html [NC,L]
-
-# Custom Error Pages
-ErrorDocument 404 /index.html
-ErrorDocument 403 /index.html
-ErrorDocument 500 /index.html
+RewriteRule ^(.*)$ 404.html [L]
 
 # Security Headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set X-XSS-Protection "1; mode=block"
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 # Compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
 </IfModule>
 
 # Browser Caching
@@ -43,12 +33,3 @@ ErrorDocument 500 /index.html
     ExpiresByType application/javascript "access plus 1 month"
     ExpiresByType text/javascript "access plus 1 month"
 </IfModule>
-
-# Disable Directory Browsing
-Options -Indexes
-
-# Protect sensitive files
-<FilesMatch "^\.">
-    Order allow,deny
-    Deny from all
-</FilesMatch>

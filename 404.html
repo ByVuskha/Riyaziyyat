@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Səhifə Tapılmadı - Bizim Riyaziyyat</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        .error-container {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .error-content {
+            max-width: 600px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .error-code {
+            font-size: 8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            line-height: 1;
+            animation: bounce 2s infinite;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            color: #1f2937;
+            margin: 1.5rem 0 1rem;
+            font-weight: 700;
+        }
+        
+        .error-message {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .error-btn {
+            padding: 0.875rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .error-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .error-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .error-btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .error-btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .error-illustration {
+            margin: 2rem 0;
+            font-size: 5rem;
+            opacity: 0.3;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 5rem;
+            }
+            
+            .error-title {
+                font-size: 1.5rem;
+            }
+            
+            .error-message {
+                font-size: 1rem;
+            }
+            
+            .error-actions {
+                flex-direction: column;
+            }
+            
+            .error-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html">
+                    <i class="fas fa-graduation-cap"></i>
+                    Bizim Riyaziyyat
+                </a>
+            </div>
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="navbar-menu" id="navbarMenu">
+                <a href="index.html"><i class="fas fa-home"></i> Ana Səhifə</a>
+                <a href="videos.html"><i class="fas fa-play-circle"></i> Videolar</a>
+                <a href="teachers.html"><i class="fas fa-chalkboard-teacher"></i> Müəllimlər</a>
+                <a href="faq.html"><i class="fas fa-question-circle"></i> FAQ</a>
+            </div>
+            <div class="navbar-actions">
+                <div id="guestButtons" style="display: flex; gap: 0.5rem;">
+                    <a href="login.html" class="btn btn-outline">Giriş</a>
+                    <a href="register.html" class="btn btn-primary">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display: none; gap: 1rem; align-items: center;">
+                    <div id="balanceBadge" class="balance-badge">
+                        <i class="fas fa-coins"></i>
+                        <span id="balanceAmount">0</span> AZN
+                    </div>
+                    <div class="user-menu">
+                        <button class="user-menu-btn">
+                            <i class="fas fa-user-circle"></i>
+                            <span id="navUserName">User</span>
+                        </button>
+                        <div class="user-menu-dropdown">
+                            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                            <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Çıxış</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Error Content -->
+    <div class="error-container">
+        <div class="error-content">
+            <div class="error-illustration">
+                <i class="fas fa-search"></i>
+            </div>
+            <h1 class="error-code">404</h1>
+            <h2 class="error-title">Səhifə Tapılmadı</h2>
+            <p class="error-message">
+                Axtardığınız səhifə mövcud deyil və ya köçürülüb. 
+                Zəhmət olmasa aşağıdakı düymələrdən istifadə edərək davam edin.
+            </p>
+            <div class="error-actions">
+                <a href="index.html" class="error-btn error-btn-primary">
+                    <i class="fas fa-home"></i>
+                    Ana Səhifəyə Qayıt
+                </a>
+                <a href="javascript:history.back()" class="error-btn error-btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Geri Qayıt
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3><i class="fas fa-graduation-cap"></i> Bizim Riyaziyyat</h3>
+                    <p>Riyaziyyatı asanlaşdırırıq</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Keçidlər</h4>
+                    <a href="index.html">Ana Səhifə</a>
+                    <a href="videos.html">Videolar</a>
+                    <a href="teachers.html">Müəllimlər</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Əlaqə</h4>
+                    <p><i class="fas fa-envelope"></i> info@bizimriyaziyyat.az</p>
+                    <p><i class="fas fa-phone"></i> +994 XX XXX XX XX</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/storage-wrapper.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/mobile-menu.js"></script>
+</body>
+</html>
