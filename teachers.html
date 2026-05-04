@@ -313,6 +313,12 @@
         <div class="teachers-grid" id="teachersGrid">
             <!-- Teachers will be loaded here -->
         </div>
+        
+        <div id="noTeachersMessage" style="display:none;text-align:center;padding:60px 20px;">
+            <i class="fas fa-chalkboard-teacher" style="font-size:80px;color:var(--border);margin-bottom:20px;"></i>
+            <h3 style="color:var(--gray);margin-bottom:10px;">Hələ müəllim əlavə edilməyib</h3>
+            <p style="color:var(--gray);">Admin paneldən müəllim əlavə edə bilərsiniz.</p>
+        </div>
 
         <div class="join-team">
             <h2>Komandamıza Qoşul</h2>
@@ -369,83 +375,9 @@
 </footer>
 
 <script>
-// Mock teacher data
-const MOCK_TEACHERS = [
-    {
-        id: 1,
-        name: 'Dr. Əli Məmmədov',
-        title: 'Riyaziyyat üzrə Professor',
-        icon: '👨‍🏫',
-        bio: '25 il təcrübəyə malik riyaziyyat professoru. Cəbr və Analiz sahəsində mütəxəssis.',
-        subjects: ['Cəbr', 'Analiz', 'Diferensial Tənliklər'],
-        students: 2500,
-        videos: 150,
-        rating: 4.9,
-        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    },
-    {
-        id: 2,
-        name: 'Leyla Həsənova',
-        title: 'Həndəsə Müəllimi',
-        icon: '👩‍🏫',
-        bio: '15 il təcrübə. Həndəsə və Triqonometriya üzrə mütəxəssis. Sadə izah üslubu ilə tanınır.',
-        subjects: ['Həndəsə', 'Triqonometriya', 'Stereometriya'],
-        students: 1800,
-        videos: 120,
-        rating: 4.8,
-        gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
-    },
-    {
-        id: 3,
-        name: 'Rəşad Əliyev',
-        title: 'Riyazi Analiz Mütəxəssisi',
-        icon: '👨‍💼',
-        bio: '20 il təcrübə. Limit, Törəmə və İnteqral mövzularında ekspert. Praktik yanaşma.',
-        subjects: ['Limit', 'Törəmə', 'İnteqral', 'Sıra'],
-        students: 2200,
-        videos: 180,
-        rating: 4.9,
-        gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
-    },
-    {
-        id: 4,
-        name: 'Günel Quliyeva',
-        title: 'Ədəd Nəzəriyyəsi Müəllimi',
-        icon: '👩‍💻',
-        bio: '12 il təcrübə. Ədəd Nəzəriyyəsi və Kombinatorika üzrə mütəxəssis. Olimpiada hazırlığı.',
-        subjects: ['Ədəd Nəzəriyyəsi', 'Kombinatorika', 'Ehtimal'],
-        students: 1500,
-        videos: 95,
-        rating: 4.7,
-        gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
-    },
-    {
-        id: 5,
-        name: 'Elçin Bayramov',
-        title: 'Tətbiqi Riyaziyyat Mütəxəssisi',
-        icon: '👨‍🔬',
-        bio: '18 il təcrübə. Tətbiqi Riyaziyyat və Statistika sahəsində ekspert. Real həyat nümunələri.',
-        subjects: ['Statistika', 'Ehtimal', 'Tətbiqi Riyaziyyat'],
-        students: 1900,
-        videos: 110,
-        rating: 4.8,
-        gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-    },
-    {
-        id: 6,
-        name: 'Səbinə Məmmədova',
-        title: 'Məktəb Riyaziyyatı Müəllimi',
-        icon: '👩‍🎓',
-        bio: '10 il təcrübə. 5-11-ci sinif riyaziyyatı üzrə mütəxəssis. Uşaqlarla işləmək təcrübəsi.',
-        subjects: ['Məktəb Riyaziyyatı', 'Əsaslar', 'DİM Hazırlığı'],
-        students: 3000,
-        videos: 200,
-        rating: 5.0,
-        gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
-    }
-];
+// No mock teachers - only show uploaded teachers
 
-// Load teachers from localStorage and merge
+// Load teachers from localStorage - only uploaded teachers
 function getAllTeachers() {
     const uploadedTeachers = Storage.get('teachers') || [];
     
@@ -458,6 +390,7 @@ function getAllTeachers() {
         
         return {
             id: 'uploaded_' + t.id,
+            realId: t.id,
             name: t.name,
             title: t.title,
             icon: t.image || '👨‍🏫',
@@ -467,17 +400,32 @@ function getAllTeachers() {
             videos: teacherVideos.length,
             rating: t.rating || 5.0,
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            image: t.image
+            image: t.image,
+            email: t.email,
+            phone: t.phone,
+            experience: t.experience
         };
     });
     
-    return [...formattedTeachers, ...MOCK_TEACHERS];
+    // Return only uploaded teachers (no mock data)
+    return formattedTeachers;
 }
 
 // Load teachers
 function loadTeachers() {
     const teachers = getAllTeachers();
     const grid = document.getElementById('teachersGrid');
+    const noTeachersMsg = document.getElementById('noTeachersMessage');
+    
+    if (teachers.length === 0) {
+        grid.style.display = 'none';
+        noTeachersMsg.style.display = 'block';
+        return;
+    }
+    
+    grid.style.display = 'grid';
+    noTeachersMsg.style.display = 'none';
+    
     grid.innerHTML = teachers.map(teacher => {
         // Use image if available, otherwise use icon/emoji
         const imageHtml = teacher.image && teacher.image.startsWith('http') 
@@ -549,25 +497,122 @@ function contactTeacher(teacherId) {
         return;
     }
     
-    // Əlaqə məlumatları
-    const contactInfo = `
-📧 Əlaqə Məlumatları
+    // Show contact modal
+    showContactModal(teacher);
+}
 
-👤 ${teacher.name}
-📚 ${teacher.title}
-
-📞 Telefon: +994 50 123 45 67
-📧 Email: ${teacher.name.toLowerCase().replace(/\s+/g, '.')}@riyazmath.az
-💬 WhatsApp: +994 50 123 45 67
-📱 Telegram: @riyazmath
-
-⏰ İş saatları: 09:00 - 18:00
-📍 Ünvan: Bakı, Azərbaycan
-
-Müəllim ilə əlaqə saxlamaq üçün yuxarıdakı məlumatlardan istifadə edə bilərsiniz.
-    `.trim();
+function showContactModal(teacher) {
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal" style="max-width:600px;">
+            <button class="modal-close" onclick="closeContactModal()">&times;</button>
+            <h2 style="margin-bottom:20px;">
+                <i class="fas fa-user-circle"></i> ${teacher.name}
+            </h2>
+            
+            <div style="background:#f8fafc;padding:20px;border-radius:12px;margin-bottom:20px;">
+                <div style="display:grid;gap:15px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-briefcase" style="width:40px;height:40px;background:#eef2ff;color:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Vəzifə</div>
+                            <div style="font-weight:600;">${teacher.title}</div>
+                        </div>
+                    </div>
+                    
+                    ${teacher.email ? `
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-envelope" style="width:40px;height:40px;background:#ecfdf5;color:var(--success);border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Email</div>
+                            <div style="font-weight:600;">${teacher.email}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${teacher.phone ? `
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-phone" style="width:40px;height:40px;background:#fffbeb;color:var(--warning);border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Telefon</div>
+                            <div style="font-weight:600;">${teacher.phone}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${teacher.experience ? `
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-award" style="width:40px;height:40px;background:#fef2f2;color:var(--danger);border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Təcrübə</div>
+                            <div style="font-weight:600;">${teacher.experience} il</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-video" style="width:40px;height:40px;background:#f0fdf4;color:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Video Dərslər</div>
+                            <div style="font-weight:600;">${teacher.videos} video</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-star" style="width:40px;height:40px;background:#fef3c7;color:#f59e0b;border-radius:10px;display:flex;align-items:center;justify-content:center;"></i>
+                        <div>
+                            <div style="font-size:12px;color:var(--gray);">Reytinq</div>
+                            <div style="font-weight:600;">${teacher.rating} ⭐</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${teacher.bio ? `
+            <div style="margin-bottom:20px;">
+                <h4 style="font-size:14px;margin-bottom:10px;color:var(--gray);">Haqqında</h4>
+                <p style="line-height:1.6;">${teacher.bio}</p>
+            </div>
+            ` : ''}
+            
+            ${teacher.subjects && teacher.subjects.length > 0 ? `
+            <div style="margin-bottom:20px;">
+                <h4 style="font-size:14px;margin-bottom:10px;color:var(--gray);">İxtisas sahələri</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    ${teacher.subjects.map(s => `<span class="badge badge-primary">${s}</span>`).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" onclick="viewTeacherVideos('${teacher.id}')">
+                    <i class="fas fa-play"></i> Dərsləri İzlə
+                </button>
+                <button class="btn btn-secondary" onclick="closeContactModal()">
+                    <i class="fas fa-times"></i> Bağla
+                </button>
+            </div>
+        </div>
+    `;
     
-    alert(contactInfo);
+    document.body.appendChild(modal);
+    
+    // Close on overlay click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeContactModal();
+        }
+    });
+}
+
+function closeContactModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', loadTeachers);
