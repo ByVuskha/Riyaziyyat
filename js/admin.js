@@ -45,6 +45,7 @@ function showSection(section) {
         news: 'Xəbərlər',
         payments: 'Ödənişlər',
         suspicious: 'Şübhəli Fəaliyyətlər',
+        premium: 'Premium İdarəetməsi',
         settings: 'Tənzimləmələr'
     };
     const pageTitle = document.getElementById('pageTitle');
@@ -64,6 +65,10 @@ function showSection(section) {
     if (section === 'suspicious') {
         loadSuspiciousActivities();
         loadFrozenAccounts();
+    }
+    if (section === 'premium') {
+        loadPremiumRequests();
+        loadPremiumUsers();
     }
 }
 
@@ -2077,4 +2082,201 @@ function restoreBalance(userId) {
             loadUsers();
         }
     });
+}
+
+
+// ==================== PREMIUM MANAGEMENT ====================
+
+function loadPremiumRequests() {
+    const requests = Storage.get('premiumRequests') || [];
+    const tbody = document.getElementById('premiumRequestsTable');
+    
+    if (!tbody) return;
+    
+    if (requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Premium müraciət yoxdur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = requests.map(req => `
+        <tr style="background: ${req.status === 'approved' ? '#d1fae5' : req.status === 'rejected' ? '#fee2e2' : '#fff'};">
+            <td>${req.id}</td>
+            <td>
+                <strong>${req.userName}</strong><br>
+                <small style="color:#6b7280;">${req.userEmail}</small>
+            </td>
+            <td>
+                <strong style="color:#667eea;">${req.packageName || 'Premium'}</strong><br>
+                <small style="color:#6b7280;">${req.duration} gün - ${req.price} AZN</small>
+            </td>
+            <td>
+                ${req.date}<br>
+                <small style="color:#6b7280;">${req.time}</small>
+            </td>
+            <td>
+                <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;
+                    background:${req.status === 'approved' ? '#10b981' : req.status === 'rejected' ? '#ef4444' : '#f59e0b'};
+                    color:white;">
+                    ${req.status === 'approved' ? 'Təsdiqləndi' : req.status === 'rejected' ? 'Rədd edildi' : 'Gözləyir'}
+                </span>
+            </td>
+            <td>
+                ${req.status === 'pending' ? `
+                    <button class="btn btn-success btn-sm" onclick="approvePremiumRequest(${req.userId}, ${req.id}, ${req.duration})">
+                        <i class="fas fa-check"></i> Təsdiqlə
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
+                        <i class="fas fa-times"></i> Rədd Et
+                    </button>
+                ` : req.status === 'approved' ? `
+                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
+                        <i class="fas fa-ban"></i> Ləğv Et
+                    </button>
+                ` : '-'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function approvePremiumRequest(userId, requestId, duration) {
+    showConfirm(`Bu istifadəçiyə ${duration} günlük premium vermək istəyirsiniz?`, async () => {
+        const allUsers = Storage.get('allUsers') || [];
+        const user = allUsers.find(u => u.id === userId);
+        
+        if (user) {
+            user.premium = true;
+            user.premiumActivatedAt = new Date().toISOString();
+            
+            // Set expiry date based on package duration
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + duration);
+            user.premiumExpiresAt = expiryDate.toISOString();
+            
+            Storage.set('allUsers', allUsers);
+            
+            // Update request status
+            const requests = Storage.get('premiumRequests') || [];
+            const request = requests.find(r => r.id === requestId);
+            if (request) {
+                request.status = 'approved';
+                request.approvedAt = new Date().toISOString();
+                request.approvedBy = getCurrentUser()?.name || 'Admin';
+                Storage.set('premiumRequests', requests);
+            }
+            
+            // Log activity
+            logActivity(user.name, `Premium aktivləşdirildi (${duration} gün)`, 'success');
+            
+            showNotification(`${duration} günlük premium verildi`, 'success');
+            loadPremiumRequests();
+            loadPremiumUsers();
+            loadUsers();
+        }
+    });
+}
+
+function rejectPremium(requestId) {
+    showConfirm('Bu müraciəti rədd etmək istəyirsiniz?', () => {
+        const requests = Storage.get('premiumRequests') || [];
+        const request = requests.find(r => r.id === requestId);
+        
+        if (request) {
+            request.status = 'rejected';
+            request.rejectedAt = new Date().toISOString();
+            request.rejectedBy = getCurrentUser()?.name || 'Admin';
+            Storage.set('premiumRequests', requests);
+            
+            showNotification('Müraciət rədd edildi', 'info');
+            loadPremiumRequests();
+        }
+    });
+}
+
+function revokePremium(userId) {
+    showConfirm('Bu istifadəçinin premium-unu ləğv etmək istəyirsiniz?', () => {
+        const allUsers = Storage.get('allUsers') || [];
+        const user = allUsers.find(u => u.id === userId);
+        
+        if (user) {
+            user.premium = false;
+            user.premiumRevokedAt = new Date().toISOString();
+            Storage.set('allUsers', allUsers);
+            
+            logActivity(user.name, 'Premium ləğv edildi', 'warning');
+            
+            showNotification('Premium ləğv edildi', 'warning');
+            loadPremiumRequests();
+            loadUsers();
+        }
+    });
+}
+
+function loadPremiumUsers() {
+    const allUsers = Storage.get('allUsers') || [];
+    const premiumUsers = allUsers.filter(u => u.premium);
+    const tbody = document.getElementById('premiumUsersTable');
+    
+    if (!tbody) return;
+    
+    if (premiumUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;">Premium istifadəçi yoxdur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = premiumUsers.map(user => {
+        const expiryDate = user.premiumExpiresAt ? new Date(user.premiumExpiresAt) : null;
+        const daysLeft = expiryDate ? Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
+        const isExpired = expiryDate && expiryDate < new Date();
+        
+        return `
+            <tr style="background:${isExpired ? '#fee2e2' : '#d1fae5'};">
+                <td>${user.id}</td>
+                <td>
+                    <strong>${user.name}</strong><br>
+                    <small style="color:#6b7280;">${user.email}</small>
+                </td>
+                <td>
+                    ${new Date(user.premiumActivatedAt).toLocaleDateString('az-AZ')}
+                </td>
+                <td>
+                    ${expiryDate ? `
+                        ${expiryDate.toLocaleDateString('az-AZ')}<br>
+                        <small style="color:${isExpired ? '#dc2626' : daysLeft <= 7 ? '#f59e0b' : '#10b981'};">
+                            ${isExpired ? 'Bitib' : `${daysLeft} gün qalıb`}
+                        </small>
+                    ` : '<span style="color:#10b981;font-weight:600;">Ömürlük</span>'}
+                </td>
+                <td>
+                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${user.id})">
+                        <i class="fas fa-ban"></i> Ləğv Et
+                    </button>
+                    ${expiryDate ? `
+                        <button class="btn btn-primary btn-sm" onclick="extendPremium(${user.id})">
+                            <i class="fas fa-plus"></i> Uzat
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function extendPremium(userId) {
+    const days = prompt('Neçə gün uzatmaq istəyirsiniz?', '30');
+    if (!days || isNaN(days)) return;
+    
+    const allUsers = Storage.get('allUsers') || [];
+    const user = allUsers.find(u => u.id === userId);
+    
+    if (user && user.premiumExpiresAt) {
+        const currentExpiry = new Date(user.premiumExpiresAt);
+        const newExpiry = new Date(currentExpiry);
+        newExpiry.setDate(newExpiry.getDate() + parseInt(days));
+        
+        user.premiumExpiresAt = newExpiry.toISOString();
+        Storage.set('allUsers', allUsers);
+        
+        showNotification(`Premium ${days} gün uzadıldı`, 'success');
+        loadPremiumUsers();
+    }
 }

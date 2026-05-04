@@ -28,9 +28,19 @@ function updateNavbar() {
     if (user) {
         if (guestButtons) guestButtons.style.display = 'none';
         if (userButtons) userButtons.style.display = 'flex';
-        if (balanceBadge) balanceBadge.style.display = 'flex';
+        
+        // Show premium badge instead of balance
+        if (balanceBadge) {
+            if (user.premium) {
+                balanceBadge.style.display = 'flex';
+                balanceBadge.innerHTML = '<i class="fas fa-crown"></i> Premium';
+                balanceBadge.style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
+            } else {
+                balanceBadge.style.display = 'none';
+            }
+        }
+        
         if (navUserName) navUserName.textContent = user.name;
-        if (balanceAmount) balanceAmount.textContent = user.balance || 0;
         
         // Show admin link if user is admin
         if (user.role === 'admin') {
@@ -515,8 +525,11 @@ function register(name, email, password, userType = 'student') {
         email, 
         role: 'user', 
         userType: userType, // 'student' or 'teacher'
-        balance: 0, 
-        demoTests: 0,
+        premium: false, // Premium status
+        premiumRequestedAt: null,
+        premiumActivatedAt: null,
+        premiumExpiresAt: null,
+        demoTests: 3, // Free demo tests
         emailVerified: true,
         registeredAt: new Date().toISOString()
     };
@@ -534,7 +547,7 @@ function register(name, email, password, userType = 'student') {
             id: Date.now(),
             name: name,
             email: email,
-            title: 'Müəllim', // Default title
+            title: 'Müəllim',
             bio: 'Peşəkar riyaziyyat müəllimi',
             subjects: 'Riyaziyyat',
             students: 0,
@@ -595,4 +608,176 @@ if (typeof window !== 'undefined') {
     
     // Also check periodically (every 30 seconds)
     setInterval(validateDeviceSession, 30000);
+}
+
+
+// ==================== PREMIUM SYSTEM ====================
+
+// Premium packages
+const PREMIUM_PACKAGES = {
+    monthly: {
+        name: '1 Aylıq Premium',
+        duration: 30,
+        price: 10,
+        description: '1 ay ərzində bütün premium məzmuna giriş'
+    },
+    halfYearly: {
+        name: '6 Aylıq Premium',
+        duration: 180,
+        price: 50,
+        description: '6 ay ərzində bütün premium məzmuna giriş',
+        discount: '17% endirim'
+    },
+    yearly: {
+        name: '1 İllik Premium',
+        duration: 365,
+        price: 100,
+        description: '1 il ərzində bütün premium məzmuna giriş',
+        discount: '17% endirim'
+    }
+};
+
+// Request premium access with package selection
+function requestPremium(packageType = 'monthly') {
+    const user = getCurrentUser();
+    if (!user) {
+        return { success: false, message: 'Giriş etməlisiniz' };
+    }
+    
+    if (user.premium) {
+        return { success: false, message: 'Artıq premium üzvlüyünüz var' };
+    }
+    
+    const package = PREMIUM_PACKAGES[packageType];
+    if (!package) {
+        return { success: false, message: 'Yanlış paket seçimi' };
+    }
+    
+    // Update user
+    const allUsers = Storage.get('allUsers') || [];
+    const userIndex = allUsers.findIndex(u => u.id === user.id);
+    
+    if (userIndex !== -1) {
+        allUsers[userIndex].premiumRequestedAt = new Date().toISOString();
+        allUsers[userIndex].requestedPackage = packageType;
+        Storage.set('allUsers', allUsers);
+        
+        // Update current user
+        user.premiumRequestedAt = allUsers[userIndex].premiumRequestedAt;
+        user.requestedPackage = packageType;
+        Storage.set('currentUser', user);
+        
+        // Add to premium requests
+        const requests = Storage.get('premiumRequests') || [];
+        requests.unshift({
+            id: Date.now(),
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            packageType: packageType,
+            packageName: package.name,
+            price: package.price,
+            duration: package.duration,
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+            date: new Date().toLocaleDateString('az-AZ'),
+            time: new Date().toLocaleTimeString('az-AZ')
+        });
+        Storage.set('premiumRequests', requests);
+        
+        // Log activity
+        logActivity(user.name, `Premium müraciət göndərdi (${package.name})`);
+        
+        return { 
+            success: true, 
+            message: 'Müraciətiniz göndərildi',
+            package: package
+        };
+    }
+    
+    return { success: false, message: 'Xəta baş verdi' };
+}
+
+// Check if user has premium access
+function hasPremiumAccess() {
+    const user = getCurrentUser();
+    if (!user) return false;
+    
+    // Check if premium and not expired
+    if (user.premium) {
+        if (user.premiumExpiresAt) {
+            const expiryDate = new Date(user.premiumExpiresAt);
+            if (expiryDate > new Date()) {
+                return true;
+            } else {
+                // Premium expired - auto downgrade
+                autoDowngradePremium(user.id);
+                return false;
+            }
+        }
+        return true; // Lifetime premium (admin special)
+    }
+    
+    return false;
+}
+
+// Auto downgrade expired premium
+function autoDowngradePremium(userId) {
+    const allUsers = Storage.get('allUsers') || [];
+    const userIndex = allUsers.findIndex(u => u.id === userId);
+    
+    if (userIndex !== -1) {
+        allUsers[userIndex].premium = false;
+        allUsers[userIndex].premiumExpiredAt = new Date().toISOString();
+        Storage.set('allUsers', allUsers);
+        
+        // Update current user if logged in
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.id === userId) {
+            currentUser.premium = false;
+            currentUser.premiumExpiredAt = allUsers[userIndex].premiumExpiredAt;
+            Storage.set('currentUser', currentUser);
+        }
+        
+        console.log(`⏰ Premium müddəti bitdi: User ${userId}`);
+        logActivity(allUsers[userIndex].name, 'Premium müddəti bitdi', 'warning');
+    }
+}
+
+// Get premium status text
+function getPremiumStatusText() {
+    const user = getCurrentUser();
+    if (!user) return 'Giriş edin';
+    
+    if (user.premium) {
+        if (user.premiumExpiresAt) {
+            const expiryDate = new Date(user.premiumExpiresAt);
+            const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+            
+            if (daysLeft > 0) {
+                return `Premium (${daysLeft} gün qalıb)`;
+            } else {
+                return 'Premium bitib';
+            }
+        }
+        return 'Premium (Ömürlük)';
+    }
+    
+    if (user.premiumRequestedAt) {
+        const package = PREMIUM_PACKAGES[user.requestedPackage];
+        return `Müraciət göndərilib (${package ? package.name : 'Premium'})`;
+    }
+    
+    return 'Pulsuz';
+}
+
+// Get days until premium expires
+function getPremiumDaysLeft() {
+    const user = getCurrentUser();
+    if (!user || !user.premium || !user.premiumExpiresAt) return null;
+    
+    const expiryDate = new Date(user.premiumExpiresAt);
+    const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+    
+    return daysLeft > 0 ? daysLeft : 0;
 }

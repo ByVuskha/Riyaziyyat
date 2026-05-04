@@ -139,13 +139,22 @@
                     <p>Demo Sınaq</p>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:#ecfdf5;">💰</div>
+            <div class="stat-card" id="premiumCard" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white;">
+                <div class="stat-icon" style="background:rgba(255,255,255,0.2);">👑</div>
                 <div>
-                    <h3 id="balanceDisplay">0 ₼</h3>
-                    <p>Balans</p>
+                    <h3 id="premiumStatus" style="color:white;">Pulsuz</h3>
+                    <p style="color:rgba(255,255,255,0.9);">Premium Status</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Premium Request Banner -->
+        <div id="premiumBanner" style="display:none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px; color: white; text-align: center;">
+            <h2 style="margin: 0 0 10px 0; font-size: 28px;">👑 Premium Üzvlük</h2>
+            <p style="margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">Bütün videolara və sınağlara limitsiz giriş əldə edin!</p>
+            <button onclick="sendPremiumRequest()" class="btn" style="background: white; color: #667eea; font-weight: 600; padding: 12px 30px; font-size: 16px;">
+                <i class="fas fa-paper-plane"></i> Premium Müraciət Göndər
+            </button>
         </div>
 
         <h3 style="margin-bottom:20px;font-size:20px;">Sürətli Keçidlər</h3>
@@ -170,11 +179,6 @@
                 <h4>Xəbərlər</h4>
                 <p>Son yeniliklər</p>
             </a>
-            <a href="payment.html" class="quick-link">
-                <i class="fas fa-wallet"></i>
-                <h4>Balans Yüklə</h4>
-                <p>Kart ilə ödəniş et</p>
-            </a>
             <a href="profile-edit.html" class="quick-link">
                 <i class="fas fa-user-edit"></i>
                 <h4>Profili Redaktə Et</h4>
@@ -196,8 +200,31 @@
         }
         const user = getCurrentUser();
         document.getElementById('userName').textContent = user.name;
-        document.getElementById('balanceDisplay').textContent = (user.balance || 0) + ' ₼';
-        document.getElementById('demoTestsDisplay').textContent = user.demoTests || 0;
+        
+        // Update premium status
+        const premiumStatus = document.getElementById('premiumStatus');
+        const premiumBanner = document.getElementById('premiumBanner');
+        
+        if (user.premium) {
+            premiumStatus.textContent = getPremiumStatusText();
+            if (premiumBanner) premiumBanner.style.display = 'none';
+        } else {
+            premiumStatus.textContent = 'Pulsuz';
+            if (user.premiumRequestedAt) {
+                if (premiumBanner) {
+                    premiumBanner.innerHTML = `
+                        <h2 style="margin: 0 0 10px 0; font-size: 24px;">⏳ Müraciətiniz Göndərilib</h2>
+                        <p style="margin: 0; font-size: 16px; opacity: 0.9;">Admin tərəfindən yoxlanılır. Təşəkkür edirik!</p>
+                    `;
+                    premiumBanner.style.display = 'block';
+                }
+            } else {
+                if (premiumBanner) premiumBanner.style.display = 'block';
+            }
+        }
+        
+        // Update stats
+        document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
         // Profil şəklini göstər
         const avatar = document.getElementById('profileAvatar');
@@ -205,11 +232,19 @@
             avatar.innerHTML = `<img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         }
     });
+    
+    function sendPremiumRequest() {
+        const result = requestPremium();
+        if (result.success) {
+            alert('✅ ' + result.message + '\n\nAdmin tərəfindən yoxlanılacaq və sizə bildiriş göndəriləcək.');
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    }
 </script>
 <script src="js/notifications.js"></script>
 <script src="js/popup-replacer.js"></script>
 <script src="js/mobile-menu.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 </body>
 </html>
