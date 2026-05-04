@@ -11,6 +11,9 @@ const NAVBAR_HTML = `
             <a href="index.html" class="navbar-logo">
                 <span>BR</span> Bizim Riyaziyyat
             </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
             <div class="navbar-menu">
                 <a href="index.html" data-page="index">Ana Səhifə</a>
                 <a href="videos.html" data-page="videos">Dərslər</a>
@@ -39,6 +42,14 @@ const NAVBAR_HTML = `
         </div>
     </div>
 </nav>
+<div class="mobile-menu" id="mobileMenu">
+    <a href="index.html" data-page="index">Ana Səhifə</a>
+    <a href="videos.html" data-page="videos">Dərslər</a>
+    <a href="tests.html" data-page="tests">Sınaqlar</a>
+    <a href="teachers.html" data-page="teachers">Müəllimlər</a>
+    <a href="news.html" data-page="news">Xəbərlər</a>
+    <a href="faq.html" data-page="faq">FAQ</a>
+</div>
 `;
 
 // Footer HTML
@@ -93,6 +104,7 @@ function renderNavbar() {
     if (document.querySelector('.navbar')) {
         console.log('📌 Navbar already exists, updating auth state only');
         // Just update auth state, don't create new navbar
+        updateActiveLinks();
         return;
     }
     
@@ -104,16 +116,31 @@ function renderNavbar() {
         document.body.insertAdjacentHTML('afterbegin', NAVBAR_HTML);
     }
     
-    // Active link-i təyin et
+    updateActiveLinks();
+    console.log('✅ Navbar rendered');
+}
+
+// Active link-ləri yenilə
+function updateActiveLinks() {
     const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
-    const links = document.querySelectorAll('.navbar-menu a[data-page]');
-    links.forEach(link => {
+    
+    // Desktop menu
+    const desktopLinks = document.querySelectorAll('.navbar-menu a[data-page]');
+    desktopLinks.forEach(link => {
+        link.classList.remove('active');
         if (link.dataset.page === currentPage) {
             link.classList.add('active');
         }
     });
     
-    console.log('✅ Navbar rendered');
+    // Mobile menu
+    const mobileLinks = document.querySelectorAll('.mobile-menu a[data-page]');
+    mobileLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.page === currentPage) {
+            link.classList.add('active');
+        }
+    });
 }
 
 // Footer-ı render et
