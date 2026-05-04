@@ -97,6 +97,13 @@
     </div>
 </footer>
 
+<!-- Load config first -->
+<script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- Then run page code -->
 <script>
 // Default news
 const DEFAULT_NEWS = [
@@ -176,11 +183,7 @@ document.getElementById('sidebarNews').innerHTML = NEWS.slice(0,4).map(n => `
     </div>
 `).join('');
 </script>
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 <script src="js/navbar.js"></script>
 <script src="js/mobile-menu.js"></script>
-<script src="js/auth.js"></script>
 </body>
 </html>
