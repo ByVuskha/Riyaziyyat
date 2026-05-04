@@ -150,6 +150,11 @@ function openVideo(id) {
     // Track user video watch
     trackUserVideoWatch(id);
     
+    // Award points for watching video (only once per video)
+    if (user && typeof awardVideoPoints === 'function') {
+        awardVideoPoints(id, video.title);
+    }
+    
     document.getElementById('modalTitle').textContent = video.title;
     document.getElementById('modalDesc').innerHTML = `
         ${video.desc}

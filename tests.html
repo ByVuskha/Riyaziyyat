@@ -65,9 +65,14 @@
 <script src="js/config.js"></script>
 <script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
+<script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
 <script src="js/navbar.js"></script>
 <script src="js/mobile-menu.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/security.js"></script>
+<script src="js/points.js"></script>
 <script>
 const MOCK_TESTS = [
     {
@@ -390,15 +395,28 @@ function showResult() {
     // Sınaq statistikasını yenilə
     updateTestStats(currentTest.id);
     
+    // Award points based on score
+    let earnedPoints = 0;
+    if (typeof awardTestPoints === 'function') {
+        earnedPoints = awardTestPoints(currentTest.title, score, currentTest.questions);
+    }
+    
     const modal = document.createElement('div');
     modal.id = 'resultModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
     modal.innerHTML = `
-        <div style="background:white;border-radius:15px;padding:40px;max-width:400px;width:90%;text-align:center;">
+        <div style="background:white;border-radius:15px;padding:40px;max-width:420px;width:90%;text-align:center;">
             <div style="font-size:60px;margin-bottom:20px;">${pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚'}</div>
             <h2 style="font-size:48px;font-weight:800;color:${pct >= 60 ? '#10b981' : '#ef4444'};margin-bottom:10px;">${score}/${currentTest.questions}</h2>
-            <p style="color:var(--gray);margin-bottom:25px;">${pct >= 80 ? 'Əla!' : pct >= 60 ? 'Yaxşı!' : 'Daha çox məşq lazımdır'}</p>
-            <button onclick="closeResult()" class="btn btn-primary">Bağla</button>
+            <p style="color:var(--gray);margin-bottom:15px;">${pct >= 80 ? 'Əla!' : pct >= 60 ? 'Yaxşı!' : 'Daha çox məşq lazımdır'}</p>
+            ${earnedPoints > 0 ? `
+                <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:12px;padding:12px 20px;margin-bottom:20px;display:inline-block;">
+                    <span style="color:white;font-weight:700;font-size:18px;">+${earnedPoints} xal qazandınız! 🎉</span>
+                </div>
+            ` : ''}
+            <div style="margin-bottom:20px;">
+                <button onclick="closeResult()" class="btn btn-primary">Bağla</button>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);

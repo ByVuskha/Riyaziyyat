@@ -146,6 +146,13 @@
                     <p style="color:rgba(255,255,255,0.9);">Premium Status</p>
                 </div>
             </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="stat-icon" style="background:rgba(255,255,255,0.2);">⭐</div>
+                <div>
+                    <h3 id="userPointsDisplay" style="color:white;">0</h3>
+                    <p style="color:rgba(255,255,255,0.9);">Xal</p>
+                </div>
+            </div>
         </div>
 
         <!-- Premium Request Banner -->
@@ -193,6 +200,7 @@
 <script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/security.js"></script>
+<script src="js/points.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         if (!isLoggedIn()) {
@@ -226,6 +234,13 @@
         
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
+        
+        // Load user points
+        if (typeof getUserPoints === 'function') {
+            const pointsData = getUserPoints(user.id);
+            const pointsEl = document.getElementById('userPointsDisplay');
+            if (pointsEl) pointsEl.textContent = pointsData.total || 0;
+        }
         
         // Profil şəklini göstər
         const avatar = document.getElementById('profileAvatar');

@@ -46,6 +46,7 @@ function showSection(section) {
         payments: 'Ödənişlər',
         suspicious: 'Şübhəli Fəaliyyətlər',
         premium: 'Premium İdarəetməsi',
+        leaderboard: 'Xal Liderliyi',
         settings: 'Tənzimləmələr'
     };
     const pageTitle = document.getElementById('pageTitle');
@@ -66,6 +67,7 @@ function showSection(section) {
         loadSuspiciousActivities();
         loadFrozenAccounts();
     }
+    if (section === 'leaderboard') loadPointsLeaderboard();
     if (section === 'premium') {
         loadPremiumRequestsEnhanced();
         loadPremiumUsers();
@@ -2577,4 +2579,70 @@ function approvePremiumWithDuration(userId, requestId, planId) {
             loadPremiumUsers();
         }
     });
+}
+
+
+// ==================== POINTS LEADERBOARD ====================
+
+async function loadPointsLeaderboard() {
+    const container = document.getElementById('leaderboardTable');
+    if (!container) return;
+    
+    container.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Yüklənir...</td></tr>';
+    
+    // Load from Upstash
+    let allPoints = {};
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('userPoints');
+            if (cloud) allPoints = cloud;
+        } catch (e) {}
+    }
+    if (!Object.keys(allPoints).length) {
+        allPoints = Storage.get('userPoints') || {};
+    }
+    
+    const allUsers = Storage.get('allUsers') || [];
+    
+    const leaderboard = Object.values(allPoints)
+        .map(p => {
+            const user = allUsers.find(u => u.id === p.userId);
+            return {
+                userId: p.userId,
+                userName: user ? user.name : 'Naməlum',
+                userEmail: user ? user.email : '',
+                premium: user ? user.premium : false,
+                total: p.total || 0,
+                watchedCount: (p.watchedVideos || []).length,
+                historyCount: (p.history || []).length
+            };
+        })
+        .sort((a, b) => b.total - a.total);
+    
+    if (leaderboard.length === 0) {
+        container.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;">Xal məlumatı yoxdur</td></tr>';
+        return;
+    }
+    
+    const medals = ['🥇', '🥈', '🥉'];
+    
+    container.innerHTML = leaderboard.map((entry, i) => `
+        <tr style="background:${i < 3 ? '#fffbeb' : 'white'};">
+            <td style="font-size:20px;text-align:center;">${medals[i] || (i + 1)}</td>
+            <td>
+                <strong>${entry.userName}</strong><br>
+                <small style="color:#6b7280;">${entry.userEmail}</small>
+            </td>
+            <td>
+                ${entry.premium ? '<span style="background:#fbbf24;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">👑 Premium</span>' : '<span style="color:#9ca3af;font-size:12px;">Pulsuz</span>'}
+            </td>
+            <td style="text-align:center;">
+                <span style="font-size:12px;color:#6b7280;">${entry.watchedCount} video</span>
+            </td>
+            <td>
+                <span style="font-size:20px;font-weight:800;color:#667eea;">${entry.total}</span>
+                <span style="color:#9ca3af;font-size:12px;"> xal</span>
+            </td>
+        </tr>
+    `).join('');
 }
