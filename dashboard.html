@@ -247,13 +247,21 @@
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
-        // Load user points — show from localStorage immediately, then refresh from Upstash
+        // Load user points — fetch directly from Upstash, fallback localStorage
         async function renderPoints() {
-            // upstash:loaded event fired means storage-wrapper already loaded all keys
-            // Just read from localStorage which is now fresh
-            const allPoints = Storage.get('userPoints') || {};
-            const pointsData = allPoints[user.id] || { total: 0 };
+            let allPoints = {};
+            if (typeof upstash !== 'undefined' && upstash) {
+                try {
+                    const cloud = await upstash.get('userPoints');
+                    if (cloud) {
+                        allPoints = cloud;
+                        Storage.set('userPoints', cloud);
+                    }
+                } catch (e) {}
+            }
+            if (!Object.keys(allPoints).length) allPoints = Storage.get('userPoints') || {};
 
+            const pointsData = allPoints[user.id] || { total: 0 };
             const pointsEl = document.getElementById('userPointsDisplay');
             if (pointsEl) pointsEl.textContent = (pointsData.total || 0).toLocaleString();
 
@@ -268,7 +276,6 @@
         }
 
         renderPoints();
-        window.addEventListener('upstash:loaded', renderPoints);
         
         // Profil şəklini göstər
         const avatar = document.getElementById('profileAvatar');

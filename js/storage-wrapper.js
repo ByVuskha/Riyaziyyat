@@ -105,16 +105,24 @@ window.Storage = {
     // Load all keys from Upstash into localStorage (called once on page load)
     window.loadFromUpstash = async function() {
         let ok = 0, fail = 0;
-        const promises = UPSTASH_KEYS.map(async key => {
-            try {
-                const val = await upstash.get(key);
-                if (val !== null && val !== undefined) {
-                    _origSet(key, val);
-                    ok++;
+
+        const fetchKey = async (key, retries = 2) => {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const val = await upstash.get(key);
+                    if (val !== null && val !== undefined) {
+                        _origSet(key, val);
+                        ok++;
+                    }
+                    return;
+                } catch (e) {
+                    if (i === retries) fail++;
+                    else await new Promise(r => setTimeout(r, 500 * (i + 1)));
                 }
-            } catch { fail++; }
-        });
-        await Promise.all(promises);
+            }
+        };
+
+        await Promise.all(UPSTASH_KEYS.map(key => fetchKey(key)));
         console.log(`📥 Upstash yükləndi: ${ok} uğurlu, ${fail} xəta`);
         return { success: ok, errors: fail };
     };

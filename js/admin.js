@@ -99,32 +99,47 @@ function showSection(section) {
 }
 
 // Load Dashboard Stats
-function loadDashboardStats() {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    const videos = Storage.get('videos') || [];
-    const tests = Storage.get('tests') || [];
-    const teachers = Storage.get('teachers') || [];
-    const payments = Storage.get('payments') || [];
-    
-    document.getElementById('totalUsers').textContent = users.length;
+async function loadDashboardStats() {
+    // Load fresh data from Upstash
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const [cloudUsers, cloudPayments, cloudRevenue] = await Promise.all([
+                upstash.get('allUsers'),
+                upstash.get('payments'),
+                upstash.get('revenue')
+            ]);
+            if (cloudUsers)   Storage.set('allUsers',  cloudUsers);
+            if (cloudPayments) Storage.set('payments', cloudPayments);
+            if (cloudRevenue)  Storage.set('revenue',  cloudRevenue);
+        } catch (e) { console.warn('Upstash dashboard load error:', e); }
+    }
+
+    const users    = Storage.get('allUsers')  || MOCK_USERS;
+    const videos   = Storage.get('videos')    || [];
+    const tests    = Storage.get('tests')     || [];
+    const payments = Storage.get('payments')  || [];
+
+    document.getElementById('totalUsers').textContent  = users.length;
     document.getElementById('totalVideos').textContent = videos.length;
-    document.getElementById('totalTests').textContent = tests.length;
-    
-    const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    document.getElementById('totalRevenue').textContent = totalRevenue + ' ₼';
-    
+    document.getElementById('totalTests').textContent  = tests.length;
+
+    // Revenue — prefer stored revenue total, fallback to payments sum
+    const revenueData = Storage.get('revenue') || {};
+    const totalRevenue = revenueData.total || payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2) + ' ₼';
+
     // Active users count
     const activeUsers = Storage.get('activeUsers') || {};
     const now = Date.now();
     const activeCount = Object.values(activeUsers).filter(u => now - u.lastSeen < 5 * 60 * 1000).length;
     const activeEl = document.getElementById('activeUsersCount');
     if (activeEl) activeEl.textContent = activeCount;
-    
+
     // Premium users count
     const premiumUsers = users.filter(u => u.premium).length;
     const premiumEl = document.getElementById('totalPremiumUsers');
     if (premiumEl) premiumEl.textContent = premiumUsers;
-    
+
     // Pending premium requests
     const requests = Storage.get('premiumRequests') || [];
     const pendingCount = requests.filter(r => r.status === 'pending').length;
@@ -133,8 +148,7 @@ function loadDashboardStats() {
         badge.textContent = pendingCount;
         badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
     }
-    
-    // Load charts and activity
+
     loadRecentRegistrations();
     loadActiveUsers();
     loadActivityLog();
@@ -2283,7 +2297,14 @@ function revokePremium(userId) {
     });
 }
 
-function loadPremiumUsers() {
+async function loadPremiumUsers() {
+    // Fetch fresh from Upstash
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('allUsers');
+            if (cloud) Storage.set('allUsers', cloud);
+        } catch (e) {}
+    }
     const allUsers = Storage.get('allUsers') || [];
     const premiumUsers = allUsers.filter(u => u.premium);
     const tbody = document.getElementById('premiumUsersTable');

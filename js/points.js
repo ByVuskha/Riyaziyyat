@@ -122,7 +122,7 @@ function awardTestPoints(testTitle, score, total, testId) {
 
 // ==================== DAILY LOGIN ====================
 
-let _dailyLoginAwarded = false; // Prevent double-award within same page load
+let _dailyLoginAwarded = false;
 
 function awardDailyLoginPoints() {
     if (_dailyLoginAwarded) return;
@@ -130,18 +130,19 @@ function awardDailyLoginPoints() {
     if (!user || user.role === 'admin') return;
 
     const data = getUserPoints(user.id);
-    const today = new Date().toDateString(); // e.g. "Tue May 05 2026"
 
-    // Normalize stored date — old records may use ISO format
-    let storedDate = data.lastLoginDate;
-    if (storedDate && storedDate.includes('T')) {
-        storedDate = new Date(storedDate).toDateString();
-    }
+    // Use timestamp-based check: award once per calendar day (midnight reset)
+    const todayKey = new Date().toISOString().slice(0, 10); // "2026-05-05"
+    const storedKey = data.lastLoginDate
+        ? (data.lastLoginDate.length === 10
+            ? data.lastLoginDate                              // already "YYYY-MM-DD"
+            : new Date(data.lastLoginDate).toISOString().slice(0, 10)) // convert old formats
+        : null;
 
-    if (storedDate === today) return; // Already awarded today
+    if (storedKey === todayKey) return; // Already awarded today
 
     _dailyLoginAwarded = true;
-    data.lastLoginDate = today;
+    data.lastLoginDate = todayKey;
     saveUserPoints(user.id, data);
     addPoints(user.id, user.name, POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
 }
