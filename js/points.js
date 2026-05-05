@@ -58,9 +58,23 @@ function addPoints(userId, userName, amount, reason) {
 
     saveUserPoints(userId, data);
 
-    // Show notification if on page
+    // Show notification safely
     if (typeof showNotification === 'function') {
         showNotification(`+${amount} xal qazandınız! (${reason})`, 'success', 3000);
+    } else {
+        // Fallback - create simple toast
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position:fixed;bottom:20px;right:20px;z-index:99999;
+            background:linear-gradient(135deg,#fbbf24,#f59e0b);
+            color:white;padding:14px 20px;border-radius:12px;
+            font-weight:700;font-size:15px;
+            box-shadow:0 4px 15px rgba(245,158,11,0.4);
+            animation:slideInRight 0.3s ease;
+        `;
+        toast.textContent = `+${amount} xal! ${reason}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
     }
 
     console.log(`✅ +${amount} xal: ${userName} - ${reason}`);
@@ -92,7 +106,7 @@ function awardVideoPoints(videoId, videoTitle) {
 
 function awardTestPoints(testTitle, score, total) {
     const user = getCurrentUser();
-    if (!user || user.role === 'admin') return;
+    if (!user || user.role === 'admin') return 0;
 
     const percentage = Math.round((score / total) * 100);
     let points = POINTS_CONFIG.testFail;
@@ -109,7 +123,7 @@ function awardTestPoints(testTitle, score, total) {
         label = 'Keçid';
     }
 
-    addPoints(user.id, user.name, points, `"${testTitle}" sınağı - ${percentage}% (${label})`);
+    addPoints(user.id, user.name, points, `"${testTitle}" - ${percentage}% (${label})`);
     return points;
 }
 
