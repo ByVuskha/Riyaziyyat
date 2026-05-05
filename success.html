@@ -156,23 +156,10 @@ function getInitial(name) {
 }
 
 async function loadLeaderboard() {
-    // allUsers — try Upstash, fallback localStorage
-    let allUsers = Storage.get('allUsers') || [];
-    if (!allUsers.length && typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloud = await upstash.get('allUsers');
-            if (cloud) { allUsers = cloud; Storage.set('allUsers', cloud); }
-        } catch (e) {}
-    }
-
-    // userPoints — try Upstash, fallback localStorage
+    // storage-wrapper's loadFromUpstash already populated localStorage before firing upstash:loaded
+    // Read from localStorage (which is now fresh from Upstash)
     let allPoints = Storage.get('userPoints') || {};
-    if (!Object.keys(allPoints).length && typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloud = await upstash.get('userPoints');
-            if (cloud) { allPoints = cloud; Storage.set('userPoints', cloud); }
-        } catch (e) {}
-    }
+    let allUsers  = Storage.get('allUsers')   || [];
 
     // Build leaderboard
     const leaderboard = Object.values(allPoints)
@@ -287,8 +274,9 @@ async function loadLeaderboard() {
     }).join('');
 }
 
+// Show from localStorage immediately on DOM ready
 document.addEventListener('DOMContentLoaded', loadLeaderboard);
-// Refresh after Upstash loads fresh data
+// Then refresh with fresh Upstash data
 window.addEventListener('upstash:loaded', loadLeaderboard);
 </script>
 </body>

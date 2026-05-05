@@ -247,8 +247,10 @@
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
-        // Load user points — show immediately from localStorage, refresh after Upstash loads
-        function renderPoints() {
+        // Load user points — show from localStorage immediately, then refresh from Upstash
+        async function renderPoints() {
+            // upstash:loaded event fired means storage-wrapper already loaded all keys
+            // Just read from localStorage which is now fresh
             const allPoints = Storage.get('userPoints') || {};
             const pointsData = allPoints[user.id] || { total: 0 };
 
