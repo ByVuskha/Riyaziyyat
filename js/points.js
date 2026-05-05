@@ -1,133 +1,115 @@
 /**
- * Points (Xal) System - Bizim Riyaziyyat
- * Video izləmə və sınaq nəticəsinə görə xal
+ * Points (Xal) Sistemi - Bizim Riyaziyyat
  */
 
 const POINTS_CONFIG = {
-    videoWatch: 10,        // Video izləmə üçün xal
-    testPerfect: 50,       // 100% sınaq üçün xal
-    testGood: 30,          // 80-99% sınaq üçün xal
-    testPass: 15,          // 60-79% sınaq üçün xal
-    testFail: 5,           // 60%-dən az sınaq üçün xal (cəhd üçün)
-    dailyLogin: 2,         // Gündəlik giriş üçün xal
+    videoWatch:  10,
+    testPerfect: 50,
+    testGood:    30,
+    testPass:    15,
+    testFail:     5,
+    dailyLogin:   2,
 };
 
-// ==================== CORE FUNCTIONS ====================
+// ==================== CORE ====================
 
 function getUserPoints(userId) {
-    const allPoints = Storage.get('userPoints') || {};
-    return allPoints[userId] || {
-        userId,
-        total: 0,
-        history: [],
-        watchedVideos: [],
-        lastLoginDate: null
-    };
+    const all = Storage.get('userPoints') || {};
+    return all[userId] || { userId, total: 0, history: [], watchedVideos: [], completedTests: [], lastLoginDate: null };
 }
 
-function saveUserPoints(userId, pointsData) {
-    const allPoints = Storage.get('userPoints') || {};
-    allPoints[userId] = pointsData;
-    Storage.set('userPoints', allPoints);
+function saveUserPoints(userId, data) {
+    const all = Storage.get('userPoints') || {};
+    all[userId] = data;
+    Storage.set('userPoints', all);
 
-    // Force immediate Upstash sync
-    if (typeof upstash !== 'undefined' && upstash) {
-        upstash.set('userPoints', allPoints, 86400 * 90)
-            .then(() => console.log('✅ Points synced to Upstash'))
-            .catch(e => console.error('Points sync error:', e));
+    // Immediate flush — points are critical
+    if (typeof Storage.flush === 'function') {
+        Storage.flush('userPoints');
     }
 
-    // Update leaderboard
     updateLeaderboard();
 }
 
 function addPoints(userId, userName, amount, reason) {
     const data = getUserPoints(userId);
     data.total = (data.total || 0) + amount;
-    data.history = data.history || [];
+    if (!Array.isArray(data.history)) data.history = [];
     data.history.unshift({
-        amount,
-        reason,
+        amount, reason,
         date: new Date().toLocaleDateString('az-AZ'),
         time: new Date().toLocaleTimeString('az-AZ'),
         timestamp: Date.now()
     });
-
-    // Keep last 50 history entries
     if (data.history.length > 50) data.history.length = 50;
 
     saveUserPoints(userId, data);
-
-    // Show notification safely
-    if (typeof showNotification === 'function') {
-        showNotification(`+${amount} xal qazandınız! (${reason})`, 'success', 3000);
-    } else {
-        // Fallback - create simple toast
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            position:fixed;bottom:20px;right:20px;z-index:99999;
-            background:linear-gradient(135deg,#fbbf24,#f59e0b);
-            color:white;padding:14px 20px;border-radius:12px;
-            font-weight:700;font-size:15px;
-            box-shadow:0 4px 15px rgba(245,158,11,0.4);
-            animation:slideInRight 0.3s ease;
-        `;
-        toast.textContent = `+${amount} xal! ${reason}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-
-    console.log(`✅ +${amount} xal: ${userName} - ${reason}`);
+    _showPointsToast(amount, reason);
+    console.log(`✅ +${amount} xal: ${userName} — ${reason}`);
     return data.total;
 }
 
-// ==================== VIDEO POINTS ====================
+function _showPointsToast(amount, reason) {
+    if (typeof showNotification === 'function') {
+        showNotification(`+${amount} xal qazandınız! (${reason})`, 'success', 3000);
+        return;
+    }
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:99999;
+        background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;
+        padding:14px 20px;border-radius:12px;font-weight:700;font-size:15px;
+        box-shadow:0 4px 15px rgba(245,158,11,0.4);`;
+    t.textContent = `+${amount} xal! ${reason}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// ==================== VIDEO ====================
 
 function awardVideoPoints(videoId, videoTitle) {
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return;
 
     const data = getUserPoints(user.id);
-    data.watchedVideos = data.watchedVideos || [];
-
-    // Only award once per video
-    if (data.watchedVideos.includes(String(videoId))) {
-        console.log('Video already watched, no points awarded');
-        return;
-    }
+    if (!Array.isArray(data.watchedVideos)) data.watchedVideos = [];
+    if (data.watchedVideos.includes(String(videoId))) return;
 
     data.watchedVideos.push(String(videoId));
     saveUserPoints(user.id, data);
-
     addPoints(user.id, user.name, POINTS_CONFIG.videoWatch, `"${videoTitle}" videosu izləndi`);
 }
 
-// ==================== TEST POINTS ====================
+// ==================== TEST ====================
 
-function awardTestPoints(testTitle, score, total) {
+function awardTestPoints(testTitle, score, total, testId) {
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return 0;
 
-    const percentage = Math.round((score / total) * 100);
+    const data = getUserPoints(user.id);
+    if (!Array.isArray(data.completedTests)) data.completedTests = [];
+
+    // Only award once per test
+    if (testId && data.completedTests.includes(String(testId))) {
+        console.log('Bu sınaqdan artıq xal qazanılıb');
+        return 0;
+    }
+
+    const pct = Math.round((score / total) * 100);
     let points = POINTS_CONFIG.testFail;
     let label = 'Zəif';
 
-    if (percentage === 100) {
-        points = POINTS_CONFIG.testPerfect;
-        label = 'Mükəmməl';
-    } else if (percentage >= 80) {
-        points = POINTS_CONFIG.testGood;
-        label = 'Yaxşı';
-    } else if (percentage >= 60) {
-        points = POINTS_CONFIG.testPass;
-        label = 'Keçid';
-    }
+    if (pct === 100)      { points = POINTS_CONFIG.testPerfect; label = 'Mükəmməl'; }
+    else if (pct >= 80)   { points = POINTS_CONFIG.testGood;    label = 'Yaxşı'; }
+    else if (pct >= 60)   { points = POINTS_CONFIG.testPass;    label = 'Keçid'; }
 
-    addPoints(user.id, user.name, points, `"${testTitle}" - ${percentage}% (${label})`);
+    if (testId) data.completedTests.push(String(testId));
+    saveUserPoints(user.id, data);
+
+    addPoints(user.id, user.name, points, `"${testTitle}" — ${pct}% (${label})`);
     return points;
 }
 
-// ==================== DAILY LOGIN POINTS ====================
+// ==================== DAILY LOGIN ====================
 
 function awardDailyLoginPoints() {
     const user = getCurrentUser();
@@ -135,12 +117,10 @@ function awardDailyLoginPoints() {
 
     const data = getUserPoints(user.id);
     const today = new Date().toDateString();
-
-    if (data.lastLoginDate === today) return; // Already awarded today
+    if (data.lastLoginDate === today) return;
 
     data.lastLoginDate = today;
     saveUserPoints(user.id, data);
-
     addPoints(user.id, user.name, POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
 }
 
@@ -148,37 +128,36 @@ function awardDailyLoginPoints() {
 
 function updateLeaderboard() {
     const allPoints = Storage.get('userPoints') || {};
-    const allUsers = Storage.get('allUsers') || [];
+    const allUsers  = Storage.get('allUsers')   || [];
 
-    const leaderboard = Object.values(allPoints)
+    const lb = Object.values(allPoints)
         .map(p => {
-            const user = allUsers.find(u => u.id === p.userId);
+            const u = allUsers.find(u => u.id === p.userId);
+            if (!u) return null;
             return {
-                userId: p.userId,
-                userName: user ? user.name : 'Naməlum',
-                total: p.total || 0,
-                watchedCount: (p.watchedVideos || []).length
+                userId:       p.userId,
+                userName:     u.name,
+                premium:      u.premium || false,
+                total:        p.total || 0,
+                watchedCount: (p.watchedVideos  || []).length,
+                testCount:    (p.completedTests || []).length
             };
         })
-        .filter(p => p.total > 0)
+        .filter(p => p && p.total > 0)
         .sort((a, b) => b.total - a.total)
-        .slice(0, 20); // Top 20
+        .slice(0, 50);
 
-    Storage.set('leaderboard', leaderboard);
-
-    if (typeof upstash !== 'undefined' && upstash) {
-        upstash.set('leaderboard', leaderboard, 86400 * 7).catch(() => {});
-    }
-
-    return leaderboard;
+    Storage.set('leaderboard', lb);
+    if (typeof Storage.flush === 'function') Storage.flush('leaderboard');
+    return lb;
 }
 
 async function getLeaderboard() {
-    // Try Upstash first
+    // Fresh from Upstash
     if (typeof upstash !== 'undefined' && upstash) {
         try {
             const cloud = await upstash.get('leaderboard');
-            if (cloud) return cloud;
+            if (cloud && cloud.length) return cloud;
         } catch (e) {}
     }
     return Storage.get('leaderboard') || [];
@@ -186,11 +165,19 @@ async function getLeaderboard() {
 
 // ==================== INIT ====================
 
-// Award daily login points on page load
+// Run after Upstash data is loaded so daily login uses fresh data
+function _initPoints() {
+    setTimeout(awardDailyLoginPoints, 500);
+}
+
 if (typeof window !== 'undefined') {
+    window.addEventListener('upstash:loaded', _initPoints);
+    // Fallback if Upstash is disabled
     window.addEventListener('load', () => {
-        setTimeout(awardDailyLoginPoints, 1000);
+        if (typeof UPSTASH_CONFIG === 'undefined' || !UPSTASH_CONFIG.enabled) {
+            setTimeout(awardDailyLoginPoints, 800);
+        }
     });
 }
 
-console.log('🏆 Points system loaded');
+console.log('🏆 Points sistemi yükləndi');

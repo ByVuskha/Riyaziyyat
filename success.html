@@ -287,6 +287,8 @@ async function loadLeaderboard() {
 }
 
 document.addEventListener('DOMContentLoaded', loadLeaderboard);
+// Refresh after Upstash loads fresh data
+window.addEventListener('upstash:loaded', loadLeaderboard);
 </script>
 </body>
 </html>

@@ -247,31 +247,26 @@
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
-        // Load user points from Upstash
+        // Load user points — refresh after Upstash loads
         const loadPoints = async () => {
-            let pointsData = getUserPoints(user.id);
-            
-            // Try Upstash for latest data
+            // Get latest from Upstash
             if (typeof upstash !== 'undefined' && upstash) {
                 try {
                     const cloud = await upstash.get('userPoints');
-                    if (cloud && cloud[user.id]) {
-                        pointsData = cloud[user.id];
-                        // Update local cache
-                        const local = Storage.get('userPoints') || {};
-                        local[user.id] = pointsData;
-                        localStorage.setItem('userPoints', JSON.stringify(local));
+                    if (cloud) {
+                        localStorage.setItem('userPoints', JSON.stringify(cloud));
                     }
                 } catch (e) {}
             }
-            
+
+            const pointsData = getUserPoints(user.id);
             const pointsEl = document.getElementById('userPointsDisplay');
             if (pointsEl) pointsEl.textContent = (pointsData.total || 0).toLocaleString();
-            
-            // Show rank
+
+            // Rank
             const rankEl = document.getElementById('userRankDisplay');
             if (rankEl) {
-                let allPoints = Storage.get('userPoints') || {};
+                const allPoints = Storage.get('userPoints') || {};
                 const sorted = Object.values(allPoints)
                     .filter(p => p.total > 0)
                     .sort((a, b) => b.total - a.total);
@@ -279,7 +274,9 @@
                 rankEl.textContent = rank > 0 ? `#${rank}` : '-';
             }
         };
+
         loadPoints();
+        window.addEventListener('upstash:loaded', loadPoints);
         
         // Profil şəklini göstər
         const avatar = document.getElementById('profileAvatar');

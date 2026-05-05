@@ -8,13 +8,16 @@ class UpstashClient {
     }
     
     async request(command, ...args) {
-        const url = `${this.url}/${command}/${args.join('/')}`;
+        const url = `${this.url}`;
         
         try {
             const response = await fetch(url, {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify([command, ...args])
             });
             
             if (!response.ok) {
@@ -31,20 +34,19 @@ class UpstashClient {
     // Set key-value with optional TTL (seconds)
     async set(key, value, ttl = null) {
         const jsonValue = JSON.stringify(value);
-        const encodedValue = encodeURIComponent(jsonValue);
         
         if (ttl) {
-            return await this.request('SET', key, encodedValue, 'EX', ttl);
+            return await this.request('SET', key, jsonValue, 'EX', ttl);
         }
-        return await this.request('SET', key, encodedValue);
+        return await this.request('SET', key, jsonValue);
     }
     
     // Get value by key
     async get(key) {
         const response = await this.request('GET', key);
-        if (response && response.result) {
+        if (response && response.result !== null && response.result !== undefined) {
             try {
-                return JSON.parse(decodeURIComponent(response.result));
+                return JSON.parse(response.result);
             } catch {
                 return response.result;
             }
@@ -95,14 +97,14 @@ class UpstashClient {
     // Hash operations
     async hset(key, field, value) {
         const jsonValue = JSON.stringify(value);
-        return await this.request('HSET', key, field, encodeURIComponent(jsonValue));
+        return await this.request('HSET', key, field, jsonValue);
     }
     
     async hget(key, field) {
         const response = await this.request('HGET', key, field);
-        if (response && response.result) {
+        if (response && response.result !== null && response.result !== undefined) {
             try {
-                return JSON.parse(decodeURIComponent(response.result));
+                return JSON.parse(response.result);
             } catch {
                 return response.result;
             }
@@ -117,13 +119,13 @@ class UpstashClient {
     
     // List operations
     async lpush(key, ...values) {
-        const encodedValues = values.map(v => encodeURIComponent(JSON.stringify(v)));
-        return await this.request('LPUSH', key, ...encodedValues);
+        const jsonValues = values.map(v => JSON.stringify(v));
+        return await this.request('LPUSH', key, ...jsonValues);
     }
     
     async rpush(key, ...values) {
-        const encodedValues = values.map(v => encodeURIComponent(JSON.stringify(v)));
-        return await this.request('RPUSH', key, ...encodedValues);
+        const jsonValues = values.map(v => JSON.stringify(v));
+        return await this.request('RPUSH', key, ...jsonValues);
     }
     
     async lrange(key, start, stop) {
@@ -131,7 +133,7 @@ class UpstashClient {
         if (response && response.result) {
             return response.result.map(item => {
                 try {
-                    return JSON.parse(decodeURIComponent(item));
+                    return JSON.parse(item);
                 } catch {
                     return item;
                 }

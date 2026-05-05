@@ -65,9 +65,6 @@
 <script src="js/config.js"></script>
 <script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 <script src="js/navbar.js"></script>
 <script src="js/mobile-menu.js"></script>
 <script src="js/auth.js"></script>
@@ -379,24 +376,12 @@ function showResult() {
     const pct = Math.round((score / currentTest.questions) * 100);
     const user = getCurrentUser();
     
-    // Check if user already earned points for this test
-    const pointsData = typeof getUserPoints === 'function' ? getUserPoints(user.id) : null;
-    const completedTests = pointsData ? (pointsData.completedTests || []) : [];
-    const alreadyEarned = completedTests.includes(String(currentTest.id));
-    
-    // Award points only first time
+    // Award points (awardTestPoints handles duplicate check internally via testId)
     let earnedPoints = 0;
-    if (!alreadyEarned && typeof awardTestPoints === 'function') {
-        earnedPoints = awardTestPoints(currentTest.title, score, currentTest.questions);
-        
-        // Mark test as completed for points
-        if (pointsData) {
-            pointsData.completedTests = completedTests;
-            pointsData.completedTests.push(String(currentTest.id));
-            if (typeof saveUserPoints === 'function') {
-                saveUserPoints(user.id, pointsData);
-            }
-        }
+    const pointsData = typeof getUserPoints === 'function' ? getUserPoints(user.id) : null;
+    const alreadyEarned = pointsData && (pointsData.completedTests || []).includes(String(currentTest.id));
+    if (typeof awardTestPoints === 'function') {
+        earnedPoints = awardTestPoints(currentTest.title, score, currentTest.questions, currentTest.id);
     }
     
     // Save test result
@@ -528,16 +513,11 @@ function updateTestStats(testId) {
 
 renderTests();
 
-// Load from Upstash on page load
-if (typeof loadFromUpstash !== 'undefined') {
-    console.log('📥 Upstash-dan yüklənir...');
-    loadFromUpstash().then(() => {
-        console.log('✅ Upstash-dan yükləndi, testlər yenilənir...');
-        renderTests(); // Re-render after loading
-    }).catch(err => {
-        console.error('❌ Upstash yükləmə xətası:', err);
-    });
-}
+// Re-render after Upstash loads fresh data
+window.addEventListener('upstash:loaded', () => {
+    console.log('✅ Upstash yükləndi, sınaqlar yenilənir...');
+    renderTests();
+});
 </script>
 </body>
 </html>
