@@ -156,38 +156,39 @@ function getInitial(name) {
 }
 
 async function loadLeaderboard() {
-    // Load from Upstash first
-    let allPoints = {};
-    if (typeof upstash !== 'undefined' && upstash) {
+    // allUsers — try Upstash, fallback localStorage
+    let allUsers = Storage.get('allUsers') || [];
+    if (!allUsers.length && typeof upstash !== 'undefined' && upstash) {
         try {
-            const cloud = await upstash.get('userPoints');
-            if (cloud) {
-                allPoints = cloud;
-                localStorage.setItem('userPoints', JSON.stringify(allPoints));
-            }
+            const cloud = await upstash.get('allUsers');
+            if (cloud) { allUsers = cloud; Storage.set('allUsers', cloud); }
         } catch (e) {}
     }
-    if (!Object.keys(allPoints).length) {
-        allPoints = Storage.get('userPoints') || {};
+
+    // userPoints — try Upstash, fallback localStorage
+    let allPoints = Storage.get('userPoints') || {};
+    if (!Object.keys(allPoints).length && typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('userPoints');
+            if (cloud) { allPoints = cloud; Storage.set('userPoints', cloud); }
+        } catch (e) {}
     }
 
-    const allUsers = Storage.get('allUsers') || [];
-
-    // Build leaderboard from real users only
+    // Build leaderboard
     const leaderboard = Object.values(allPoints)
         .map(p => {
             const user = allUsers.find(u => u.id === p.userId);
-            if (!user) return null; // Skip if user not in system
+            // If allUsers is empty (new device), still show with stored name
+            const name = user ? user.name : (p.userName || 'İstifadəçi');
             return {
-                userId: p.userId,
-                userName: user.name,
-                premium: user.premium || false,
-                total: p.total || 0,
-                watchedCount: (p.watchedVideos || []).length,
-                historyCount: (p.history || []).length
+                userId:       p.userId,
+                userName:     name,
+                premium:      user ? (user.premium || false) : false,
+                total:        p.total || 0,
+                watchedCount: (p.watchedVideos  || []).length,
             };
         })
-        .filter(p => p !== null && p.total > 0)
+        .filter(p => p.total > 0)
         .sort((a, b) => b.total - a.total);
 
     const currentUser = getCurrentUser();

@@ -478,37 +478,25 @@ function saveTestResult(result) {
 // Sınaq statistikasını yenilə
 function updateTestStats(testId) {
     const stats = Storage.get('testStats') || {};
-    
+
     if (!stats[testId]) {
-        stats[testId] = {
-            testId: testId,
-            totalAttempts: 0,
-            uniqueUsers: new Set()
-        };
+        stats[testId] = { testId, totalAttempts: 0, uniqueUsers: [] };
     }
-    
+
     stats[testId].totalAttempts++;
-    
+
+    // uniqueUsers həmişə array kimi saxla
+    if (!Array.isArray(stats[testId].uniqueUsers)) {
+        stats[testId].uniqueUsers = [];
+    }
+
     const user = getCurrentUser();
-    if (user && user.email) {
-        if (!stats[testId].uniqueUsers) {
-            stats[testId].uniqueUsers = new Set();
-        }
-        stats[testId].uniqueUsers.add(user.email);
+    if (user && user.email && !stats[testId].uniqueUsers.includes(user.email)) {
+        stats[testId].uniqueUsers.push(user.email);
     }
-    
-    // Set-i array-ə çevir (localStorage üçün)
-    const statsToSave = {};
-    for (const [key, value] of Object.entries(stats)) {
-        statsToSave[key] = {
-            testId: value.testId,
-            totalAttempts: value.totalAttempts,
-            uniqueUsers: Array.from(value.uniqueUsers || [])
-        };
-    }
-    
-    Storage.set('testStats', statsToSave);
-    console.log('📊 Statistika yeniləndi:', statsToSave[testId]);
+
+    Storage.set('testStats', stats);
+    console.log('📊 Statistika yeniləndi:', stats[testId]);
 }
 
 renderTests();

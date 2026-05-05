@@ -247,36 +247,26 @@
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
-        // Load user points — refresh after Upstash loads
-        const loadPoints = async () => {
-            // Get latest from Upstash
-            if (typeof upstash !== 'undefined' && upstash) {
-                try {
-                    const cloud = await upstash.get('userPoints');
-                    if (cloud) {
-                        localStorage.setItem('userPoints', JSON.stringify(cloud));
-                    }
-                } catch (e) {}
-            }
+        // Load user points — show immediately from localStorage, refresh after Upstash loads
+        function renderPoints() {
+            const allPoints = Storage.get('userPoints') || {};
+            const pointsData = allPoints[user.id] || { total: 0 };
 
-            const pointsData = getUserPoints(user.id);
             const pointsEl = document.getElementById('userPointsDisplay');
             if (pointsEl) pointsEl.textContent = (pointsData.total || 0).toLocaleString();
 
-            // Rank
             const rankEl = document.getElementById('userRankDisplay');
             if (rankEl) {
-                const allPoints = Storage.get('userPoints') || {};
                 const sorted = Object.values(allPoints)
-                    .filter(p => p.total > 0)
+                    .filter(p => (p.total || 0) > 0)
                     .sort((a, b) => b.total - a.total);
                 const rank = sorted.findIndex(p => p.userId === user.id) + 1;
                 rankEl.textContent = rank > 0 ? `#${rank}` : '-';
             }
-        };
+        }
 
-        loadPoints();
-        window.addEventListener('upstash:loaded', loadPoints);
+        renderPoints();
+        window.addEventListener('upstash:loaded', renderPoints);
         
         // Profil şəklini göstər
         const avatar = document.getElementById('profileAvatar');

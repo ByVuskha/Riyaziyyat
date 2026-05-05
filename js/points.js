@@ -28,15 +28,17 @@ function getUserPoints(userId) {
 }
 
 function saveUserPoints(userId, data) {
+    // Store userName in points data so leaderboard works cross-device
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    if (user && user.id === userId && user.name) {
+        data.userName = user.name;
+    }
+
     const all = Storage.get('userPoints') || {};
     all[userId] = data;
     Storage.set('userPoints', all);
 
-    // Immediate flush — points are critical
-    if (typeof Storage.flush === 'function') {
-        Storage.flush('userPoints');
-    }
-
+    if (typeof Storage.flush === 'function') Storage.flush('userPoints');
     updateLeaderboard();
 }
 
@@ -120,14 +122,25 @@ function awardTestPoints(testTitle, score, total, testId) {
 
 // ==================== DAILY LOGIN ====================
 
+let _dailyLoginAwarded = false; // Prevent double-award within same page load
+
 function awardDailyLoginPoints() {
+    if (_dailyLoginAwarded) return;
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return;
 
     const data = getUserPoints(user.id);
-    const today = new Date().toDateString();
-    if (data.lastLoginDate === today) return;
+    const today = new Date().toDateString(); // e.g. "Tue May 05 2026"
 
+    // Normalize stored date — old records may use ISO format
+    let storedDate = data.lastLoginDate;
+    if (storedDate && storedDate.includes('T')) {
+        storedDate = new Date(storedDate).toDateString();
+    }
+
+    if (storedDate === today) return; // Already awarded today
+
+    _dailyLoginAwarded = true;
     data.lastLoginDate = today;
     saveUserPoints(user.id, data);
     addPoints(user.id, user.name, POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
@@ -142,17 +155,17 @@ function updateLeaderboard() {
     const lb = Object.values(allPoints)
         .map(p => {
             const u = allUsers.find(u => u.id === p.userId);
-            if (!u) return null;
+            const name = u ? u.name : (p.userName || 'İstifadəçi');
             return {
                 userId:       p.userId,
-                userName:     u.name,
-                premium:      u.premium || false,
+                userName:     name,
+                premium:      u ? (u.premium || false) : false,
                 total:        p.total || 0,
                 watchedCount: (p.watchedVideos  || []).length,
                 testCount:    (p.completedTests || []).length
             };
         })
-        .filter(p => p && p.total > 0)
+        .filter(p => p.total > 0)
         .sort((a, b) => b.total - a.total)
         .slice(0, 50);
 
