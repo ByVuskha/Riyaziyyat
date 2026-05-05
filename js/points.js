@@ -15,7 +15,16 @@ const POINTS_CONFIG = {
 
 function getUserPoints(userId) {
     const all = Storage.get('userPoints') || {};
-    return all[userId] || { userId, total: 0, history: [], watchedVideos: [], completedTests: [], lastLoginDate: null };
+    const defaults = { userId, total: 0, history: [], watchedVideos: [], completedTests: [], lastLoginDate: null };
+    if (!all[userId]) return defaults;
+    // Merge with defaults to handle old records missing fields
+    return {
+        ...defaults,
+        ...all[userId],
+        history:        Array.isArray(all[userId].history)        ? all[userId].history        : [],
+        watchedVideos:  Array.isArray(all[userId].watchedVideos)  ? all[userId].watchedVideos  : [],
+        completedTests: Array.isArray(all[userId].completedTests) ? all[userId].completedTests : [],
+    };
 }
 
 function saveUserPoints(userId, data) {
