@@ -30,9 +30,11 @@ function saveUserPoints(userId, pointsData) {
     allPoints[userId] = pointsData;
     Storage.set('userPoints', allPoints);
 
-    // Force Upstash sync
+    // Force immediate Upstash sync
     if (typeof upstash !== 'undefined' && upstash) {
-        upstash.set('userPoints', allPoints, 86400 * 90).catch(() => {});
+        upstash.set('userPoints', allPoints, 86400 * 90)
+            .then(() => console.log('✅ Points synced to Upstash'))
+            .catch(e => console.error('Points sync error:', e));
     }
 
     // Update leaderboard

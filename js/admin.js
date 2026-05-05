@@ -2240,20 +2240,45 @@ function rejectPremium(requestId) {
 }
 
 function revokePremium(userId) {
-    showConfirm('Bu istifadəçinin premium-unu ləğv etmək istəyirsiniz?', () => {
+    showConfirm('Bu istifadəçinin premium-unu ləğv etmək istəyirsiniz?', async () => {
         const allUsers = Storage.get('allUsers') || [];
         const user = allUsers.find(u => u.id === userId);
         
         if (user) {
+            const plan = user.premiumPlan || 'premium1';
+            const price = user.premiumPrice || 0;
+            
             user.premium = false;
             user.premiumRevokedAt = new Date().toISOString();
             Storage.set('allUsers', allUsers);
             
-            logActivity(user.name, 'Premium ləğv edildi', 'warning');
+            // Record revenue reversal
+            if (price > 0) {
+                recordRevenue({
+                    type: 'premium_revoked',
+                    userId: user.id,
+                    userName: user.name,
+                    userEmail: user.email,
+                    plan: plan,
+                    planName: user.premiumPlan || '-',
+                    amount: -price,
+                    revokedBy: getCurrentUser()?.name || 'Admin',
+                    date: new Date().toLocaleDateString('az-AZ'),
+                    time: new Date().toLocaleTimeString('az-AZ'),
+                    timestamp: Date.now()
+                });
+            }
             
+            // Sync to Upstash
+            if (typeof upstash !== 'undefined' && upstash) {
+                upstash.set('allUsers', allUsers, 86400 * 30).catch(() => {});
+            }
+            
+            logActivity(user.name, 'Premium ləğv edildi', 'warning');
             showNotification('Premium ləğv edildi', 'warning');
-            loadPremiumRequests();
-            loadUsers();
+            loadPremiumRequestsEnhanced();
+            loadPremiumUsers();
+            loadRevenueStats();
         }
     });
 }
@@ -2534,7 +2559,9 @@ function loadPremiumRequestsEnhanced() {
 
 function approvePremiumWithDuration(userId, requestId, planId) {
     const planDurations = { premium1: 30, premium6: 180, premium12: 365 };
+    const planPrices = { premium1: 15, premium6: 75, premium12: 120 };
     const duration = planDurations[planId] || 30;
+    const price = planPrices[planId] || 15;
     
     const planNames = { premium1: '1 Aylıq (30 gün)', premium6: '6 Aylıq (180 gün)', premium12: '1 İllik (365 gün)' };
     const planName = planNames[planId] || `${duration} gün`;
@@ -2547,6 +2574,7 @@ function approvePremiumWithDuration(userId, requestId, planId) {
             user.premium = true;
             user.premiumActivatedAt = new Date().toISOString();
             user.premiumPlan = planId;
+            user.premiumPrice = price;
             
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + duration);
@@ -2565,6 +2593,22 @@ function approvePremiumWithDuration(userId, requestId, planId) {
                 Storage.set('premiumRequests', requests);
             }
             
+            // Record revenue
+            recordRevenue({
+                type: 'premium_activated',
+                userId: user.id,
+                userName: user.name,
+                userEmail: user.email,
+                plan: planId,
+                planName: planName,
+                amount: price,
+                duration: duration,
+                approvedBy: getCurrentUser()?.name || 'Admin',
+                date: new Date().toLocaleDateString('az-AZ'),
+                time: new Date().toLocaleTimeString('az-AZ'),
+                timestamp: Date.now()
+            });
+            
             // Sync to Upstash
             if (typeof upstash !== 'undefined' && upstash) {
                 try {
@@ -2573,10 +2617,11 @@ function approvePremiumWithDuration(userId, requestId, planId) {
                 } catch(e) { console.error('Upstash sync error:', e); }
             }
             
-            logActivity(user.name, `Premium aktivləşdirildi (${planName})`, 'success');
-            showNotification(`✅ ${user.name} üçün premium aktivləşdirildi (${planName})`, 'success');
+            logActivity(user.name, `Premium aktivləşdirildi (${planName}) - ${price}₼`, 'success');
+            showNotification(`✅ ${user.name} üçün premium aktivləşdirildi (${planName}) - +${price}₼`, 'success');
             loadPremiumRequestsEnhanced();
             loadPremiumUsers();
+            loadRevenueStats();
         }
     });
 }
@@ -2642,6 +2687,140 @@ async function loadPointsLeaderboard() {
             <td>
                 <span style="font-size:20px;font-weight:800;color:#667eea;">${entry.total}</span>
                 <span style="color:#9ca3af;font-size:12px;"> xal</span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+
+// ==================== REVENUE SYSTEM ====================
+
+function recordRevenue(entry) {
+    const revenue = Storage.get('revenue') || { total: 0, entries: [] };
+    
+    revenue.total = (revenue.total || 0) + entry.amount;
+    revenue.entries = revenue.entries || [];
+    revenue.entries.unshift(entry);
+    
+    // Keep last 200 entries
+    if (revenue.entries.length > 200) revenue.entries.length = 200;
+    
+    Storage.set('revenue', revenue);
+    
+    // Sync to Upstash immediately
+    if (typeof upstash !== 'undefined' && upstash) {
+        upstash.set('revenue', revenue, 86400 * 365).catch(() => {});
+    }
+    
+    console.log(`💰 Gəlir qeydə alındı: ${entry.amount > 0 ? '+' : ''}${entry.amount}₼ (${entry.planName})`);
+}
+
+async function loadRevenueStats() {
+    // Load from Upstash
+    let revenue = { total: 0, entries: [] };
+    
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('revenue');
+            if (cloud) {
+                revenue = cloud;
+                localStorage.setItem('revenue', JSON.stringify(revenue));
+            } else {
+                revenue = Storage.get('revenue') || { total: 0, entries: [] };
+            }
+        } catch (e) {
+            revenue = Storage.get('revenue') || { total: 0, entries: [] };
+        }
+    } else {
+        revenue = Storage.get('revenue') || { total: 0, entries: [] };
+    }
+    
+    const allUsers = Storage.get('allUsers') || [];
+    const premiumUsers = allUsers.filter(u => u.premium);
+    
+    // Calculate stats
+    const entries = revenue.entries || [];
+    const activations = entries.filter(e => e.type === 'premium_activated');
+    const revocations = entries.filter(e => e.type === 'premium_revoked');
+    
+    // Monthly revenue
+    const now = new Date();
+    const thisMonth = entries.filter(e => {
+        const d = new Date(e.timestamp);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const monthlyRevenue = thisMonth.reduce((sum, e) => sum + (e.amount || 0), 0);
+    
+    // Plan breakdown
+    const planStats = {
+        premium1: activations.filter(e => e.plan === 'premium1').length,
+        premium6: activations.filter(e => e.plan === 'premium6').length,
+        premium12: activations.filter(e => e.plan === 'premium12').length
+    };
+    
+    // Update UI
+    const totalEl = document.getElementById('revenueTotalAmount');
+    const monthEl = document.getElementById('revenueMonthAmount');
+    const premiumCountEl = document.getElementById('revenuePremiumCount');
+    const activationsEl = document.getElementById('revenueActivations');
+    const revocationsEl = document.getElementById('revenueRevocations');
+    
+    if (totalEl) totalEl.textContent = (revenue.total || 0).toFixed(2) + ' ₼';
+    if (monthEl) monthEl.textContent = monthlyRevenue.toFixed(2) + ' ₼';
+    if (premiumCountEl) premiumCountEl.textContent = premiumUsers.length;
+    if (activationsEl) activationsEl.textContent = activations.length;
+    if (revocationsEl) revocationsEl.textContent = revocations.length;
+    
+    // Plan breakdown
+    const p1El = document.getElementById('plan1Count');
+    const p6El = document.getElementById('plan6Count');
+    const p12El = document.getElementById('plan12Count');
+    if (p1El) p1El.textContent = planStats.premium1;
+    if (p6El) p6El.textContent = planStats.premium6;
+    if (p12El) p12El.textContent = planStats.premium12;
+    
+    // Load entries table
+    const tbody = document.getElementById('revenueEntriesTable');
+    if (!tbody) return;
+    
+    if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-coins" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>Gəlir qeydi yoxdur</td></tr>';
+        return;
+    }
+    
+    const planLabels = {
+        premium1: '⭐ Premium 1',
+        premium6: '💎 Premium 6',
+        premium12: '🏆 Premium 12'
+    };
+    
+    tbody.innerHTML = entries.slice(0, 50).map(e => `
+        <tr style="background:${e.amount > 0 ? '#f0fdf4' : '#fef2f2'};">
+            <td>
+                <span style="font-size:18px;font-weight:800;color:${e.amount > 0 ? '#16a34a' : '#dc2626'};">
+                    ${e.amount > 0 ? '+' : ''}${e.amount} ₼
+                </span>
+            </td>
+            <td>
+                <div style="font-weight:600;">${e.userName || ''}</div>
+                <div style="font-size:12px;color:#6b7280;">${e.userEmail || ''}</div>
+            </td>
+            <td>
+                <span style="padding:4px 10px;border-radius:10px;font-size:12px;font-weight:600;
+                    background:${e.amount > 0 ? '#dcfce7' : '#fee2e2'};
+                    color:${e.amount > 0 ? '#16a34a' : '#dc2626'};">
+                    ${e.type === 'premium_activated' ? '✅ Aktivləşdirildi' : '❌ Ləğv edildi'}
+                </span>
+            </td>
+            <td>
+                <span style="font-size:13px;">${planLabels[e.plan] || e.planName || '-'}</span>
+            </td>
+            <td>
+                <div style="font-size:13px;">${e.date || ''}</div>
+                <div style="font-size:11px;color:#9ca3af;">${e.time || ''}</div>
+            </td>
+            <td style="font-size:12px;color:#6b7280;">
+                ${e.approvedBy || e.revokedBy || 'Admin'}
             </td>
         </tr>
     `).join('');

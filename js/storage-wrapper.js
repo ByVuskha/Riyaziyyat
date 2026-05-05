@@ -62,7 +62,8 @@ window.Storage = {
         'suspiciousActivities',
         'activeUsers',
         'userPoints',
-        'leaderboard'
+        'leaderboard',
+        'revenue'
     ];
     
     // Check if key should use Upstash
