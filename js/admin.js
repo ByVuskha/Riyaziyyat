@@ -2115,22 +2115,69 @@ function loadSuspiciousActivities() {
                 </span>
             </td>
             <td>
-                <small>${activity.deviceId.substring(0, 20)}...</small>
+                <small style="font-family:monospace;">${activity.deviceId ? activity.deviceId.substring(0, 20) + '...' : '-'}</small>
             </td>
             <td>
                 ${activity.date}<br>
                 <small style="color:#6b7280;">${activity.time}</small>
             </td>
             <td>
-                ${activity.status === 'blocked' ? 
-                    `<button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${activity.userId})">
-                        <i class="fas fa-unlock"></i> Aç
-                    </button>` :
-                    `<span style="color:#f59e0b;"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq</span>`
-                }
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    ${activity.status === 'blocked' ? 
+                        `<button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${activity.userId})">
+                            <i class="fas fa-unlock"></i> Hesabı Aç
+                        </button>` :
+                        `<span style="color:#f59e0b;font-size:12px;"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq</span>`
+                    }
+                    <button class="btn btn-primary btn-sm" 
+                        onclick="authorizeDeviceFromActivity(${activity.userId}, '${activity.deviceId}')"
+                        title="Bu cihaza giriş icazəsi ver">
+                        <i class="fas fa-mobile-alt"></i> Cihaza İcazə Ver
+                    </button>
+                </div>
             </td>
         </tr>
     `).join('');
+}
+
+async function authorizeDeviceFromActivity(userId, deviceId) {
+    showConfirm(
+        `Bu cihaza (${deviceId.substring(0, 20)}...) giriş icazəsi vermək istədiyinizə əminsiniz?\n\nİstifadəçi bu cihazdan serbestce giriş edə biləcək.`,
+        async () => {
+            // Update session with new authorized device
+            const sessions = Storage.get('userSessions') || {};
+            sessions[userId] = {
+                deviceId: deviceId,
+                loginTime: new Date().toISOString(),
+                lastActivity: new Date().toISOString(),
+                loginAttempts: 0,
+                authorizedBy: getCurrentUser()?.name || 'Admin',
+                authorizedAt: new Date().toISOString()
+            };
+            Storage.set('userSessions', sessions);
+
+            // Sync to Upstash
+            if (typeof upstash !== 'undefined' && upstash) {
+                try {
+                    await upstash.set(`user_session:${userId}`, sessions[userId], 86400 * 30);
+                    await upstash.set('userSessions', sessions, 86400 * 30);
+                } catch (e) {
+                    console.error('Upstash device auth sync error:', e);
+                }
+            }
+
+            // If account was frozen, unfreeze it too
+            const allUsers = Storage.get('allUsers') || [];
+            const user = allUsers.find(u => u.id === userId);
+            if (user && user.frozen) {
+                await unfreezeAccount(userId);
+            }
+
+            showNotification(`✅ Cihaza icazə verildi — istifadəçi artıq bu cihazdan giriş edə bilər`, 'success');
+            loadSuspiciousActivities();
+            loadUsers();
+        }
+    );
 }
 
 function unfreezeUserAccount(userId) {
