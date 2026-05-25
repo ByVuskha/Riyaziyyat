@@ -1243,12 +1243,16 @@ function showAddNewsModal() {
     
     if (title && category && content) {
         const news = Storage.get('news') || [];
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2,'0');
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        const yyyy = now.getFullYear();
         const newNews = {
-            id: news.length + 1,
+            id: Date.now(),
             title: title,
             category: category,
             content: content,
-            date: new Date().toLocaleDateString('az-AZ'),
+            date: `${dd}.${mm}.${yyyy}`,
             status: 'published'
         };
         news.push(newNews);

@@ -150,10 +150,7 @@ function openVideo(id) {
     // Track user video watch
     trackUserVideoWatch(id);
     
-    // Award points for watching video (only once per video)
-    if (user && typeof awardVideoPoints === 'function') {
-        awardVideoPoints(id, video.title);
-    }
+    // Points will be awarded based on watch time — see video player setup below
     
     document.getElementById('modalTitle').textContent = video.title;
     document.getElementById('modalDesc').innerHTML = `
@@ -168,23 +165,91 @@ function openVideo(id) {
     
     if (video.source === 'upload' && video.videoUrl) {
         playerContainer.innerHTML = `
-            <video controls style="width:100%;border-radius:10px;background:#000;" autoplay>
+            <video id="mainVideoPlayer" controls style="width:100%;border-radius:10px;background:#000;" autoplay>
                 <source src="${video.videoUrl}" type="video/mp4">
                 Brauzeriniz video təqdimatını dəstəkləmir.
             </video>
         `;
+        // Track watch percentage for uploaded videos
+        setTimeout(() => {
+            const videoEl = document.getElementById('mainVideoPlayer');
+            if (videoEl && user) {
+                let maxPct = 0;
+                let pointsGiven = false;
+                videoEl.addEventListener('timeupdate', () => {
+                    if (!videoEl.duration) return;
+                    const pct = Math.round((videoEl.currentTime / videoEl.duration) * 100);
+                    if (pct > maxPct) maxPct = pct;
+                    // Award at 80% threshold
+                    if (!pointsGiven && maxPct >= 80) {
+                        pointsGiven = true;
+                        if (typeof awardVideoPoints === 'function') awardVideoPoints(id, video.title, maxPct);
+                    }
+                });
+                videoEl.addEventListener('ended', () => {
+                    if (!pointsGiven) {
+                        pointsGiven = true;
+                        if (typeof awardVideoPoints === 'function') awardVideoPoints(id, video.title, 100);
+                    }
+                });
+            }
+        }, 300);
     } else if (video.youtubeUrl) {
         const videoId = extractYouTubeId(video.youtubeUrl);
         if (videoId) {
+            // Parse duration to seconds for time-based tracking
+            const durationParts = (video.duration || '0:00').split(':').map(Number);
+            const totalSecs = durationParts.length === 3
+                ? durationParts[0]*3600 + durationParts[1]*60 + durationParts[2]
+                : durationParts[0]*60 + (durationParts[1] || 0);
+
             playerContainer.innerHTML = `
                 <iframe 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                    id="ytPlayer"
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1" 
                     style="width:100%;aspect-ratio:16/9;border-radius:10px;"
                     frameborder="0" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowfullscreen>
                 </iframe>
             `;
+            // For YouTube, use time-based estimation since postMessage API is limited
+            if (user && totalSecs > 0) {
+                let pointsGiven = false;
+                const checkInterval = setInterval(() => {
+                    // Check if modal is still open
+                    if (!document.getElementById('videoModal')?.classList.contains('active')) {
+                        clearInterval(checkInterval);
+                        return;
+                    }
+                }, 5000);
+
+                // Award partial points after 40% of duration, full after 80%
+                const halfTime = totalSecs * 0.4 * 1000;
+                const fullTime = totalSecs * 0.8 * 1000;
+
+                setTimeout(() => {
+                    if (!pointsGiven && document.getElementById('videoModal')?.classList.contains('active')) {
+                        pointsGiven = true;
+                        if (typeof awardVideoPoints === 'function') awardVideoPoints(id, video.title, 50);
+                    }
+                }, halfTime);
+
+                setTimeout(() => {
+                    if (document.getElementById('videoModal')?.classList.contains('active')) {
+                        // Upgrade to full points if still watching
+                        if (typeof awardVideoPoints === 'function') awardVideoPoints(id, video.title, 90);
+                    }
+                    clearInterval(checkInterval);
+                }, fullTime);
+            } else if (user) {
+                // No duration info — award after 2 minutes
+                setTimeout(() => {
+                    if (document.getElementById('videoModal')?.classList.contains('active')) {
+                        if (typeof awardVideoPoints === 'function') awardVideoPoints(id, video.title, 80);
+                    }
+                }, 120000);
+            }
         } else {
             playerContainer.innerHTML = `
                 <div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:white;">

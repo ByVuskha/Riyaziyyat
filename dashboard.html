@@ -247,7 +247,7 @@
         // Update stats
         document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
         
-        // Render points from localStorage (saveUserPoints writes there immediately)
+        // Render points — reads directly from localStorage (saveUserPoints writes there instantly)
         function renderPoints() {
             const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
             const pointsData = allPoints[user.id] || { total: 0 };
@@ -266,9 +266,7 @@
         }
 
         renderPoints();
-        // Re-render whenever points change (same page, e.g. daily login award)
         window.addEventListener('points:updated', renderPoints);
-        // Re-render after Upstash loads fresh data on page start
         window.addEventListener('upstash:loaded', renderPoints);
         
         // Profil şəklini göstər
