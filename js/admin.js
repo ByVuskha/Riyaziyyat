@@ -327,19 +327,29 @@ function loadUsers() {
     const tbody = document.getElementById('usersTable');
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);">İstifadəçi yoxdur</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);">İstifadəçi yoxdur</td></tr>';
         return;
     }
     
     tbody.innerHTML = users.map(user => {
         const userTypeIcon = user.userType === 'teacher' ? '<i class="fas fa-chalkboard-teacher" style="color:var(--success);"></i>' : '<i class="fas fa-user-graduate" style="color:var(--primary);"></i>';
         const userTypeText = user.userType === 'teacher' ? 'Müəllim' : 'Şagird';
+        const pwId = `tblpw_${user.id}`;
         
         return `
         <tr>
             <td>${user.id}</td>
             <td><strong>${user.name}</strong></td>
             <td>${user.email}</td>
+            <td>
+                <span style="display:inline-flex;align-items:center;gap:6px;">
+                    <span id="${pwId}" style="font-family:monospace;font-size:13px;">••••••</span>
+                    <button onclick="toggleTablePassword('${pwId}','${(user.password||'').replace(/'/g,"\\'")}')"
+                        style="border:none;background:none;cursor:pointer;color:#9ca3af;padding:0;" title="Göstər">
+                        <i class="fas fa-eye" style="font-size:12px;"></i>
+                    </button>
+                </span>
+            </td>
             <td><span class="badge badge-${user.role === 'admin' ? 'danger' : 'primary'}">${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}</span></td>
             <td>${userTypeIcon} ${userTypeText}</td>
             <td>${user.balance || 0} ₼</td>
@@ -359,6 +369,18 @@ function loadUsers() {
             </td>
         </tr>
     `}).join('');
+}
+
+function toggleTablePassword(elId, password) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (el.dataset.visible === '1') {
+        el.textContent = '••••••';
+        el.dataset.visible = '0';
+    } else {
+        el.textContent = password || '(yoxdur)';
+        el.dataset.visible = '1';
+    }
 }
 
 // Load Videos
@@ -649,6 +671,14 @@ function viewUser(id) {
                     <p><strong>Email:</strong> ${user.email}</p>
                     <p><strong>Rol:</strong> ${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}</p>
                     <p><strong>Tip:</strong> ${userTypeText}</p>
+                    <p style="display:flex;align-items:center;gap:8px;">
+                        <strong>Şifrə:</strong>
+                        <span id="pw_${user.id}" style="font-family:monospace;background:#e2e8f0;padding:2px 8px;border-radius:4px;letter-spacing:2px;">••••••••</span>
+                        <button onclick="togglePassword(${user.id},'${(user.password||'').replace(/'/g,"\\'")}')
+" style="border:none;background:none;cursor:pointer;color:#667eea;font-size:12px;" title="Göstər/Gizlət">
+                            <i class="fas fa-eye" id="pwIcon_${user.id}"></i>
+                        </button>
+                    </p>
                 </div>
                 <div>
                     <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Statistika</h4>
@@ -694,6 +724,17 @@ function editUserInline(id) {
                     <input type="email" class="form-control" id="editUserEmail_${id}" value="${user.email}" disabled style="background:#e2e8f0;">
                 </div>
                 <div class="form-group">
+                    <label>Şifrə</label>
+                    <div style="position:relative;">
+                        <input type="text" class="form-control" id="editUserPassword_${id}"
+                            value="${user.password || ''}"
+                            style="padding-right:40px;font-family:monospace;">
+                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;">
+                            <i class="fas fa-key"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Balans (₼)</label>
                     <input type="number" class="form-control" id="editUserBalance_${id}" value="${user.balance || 0}">
                 </div>
@@ -722,15 +763,23 @@ function saveUserEdit(id) {
     const index = users.findIndex(u => u.id === id);
     if (index === -1) return;
     
-    const name = document.getElementById(`editUserName_${id}`).value;
-    const balance = parseFloat(document.getElementById(`editUserBalance_${id}`).value) || 0;
-    const role = document.getElementById(`editUserRole_${id}`).value;
-    
-    users[index].name = name;
-    users[index].balance = balance;
-    users[index].role = role;
+    const name     = document.getElementById(`editUserName_${id}`).value.trim();
+    const password = document.getElementById(`editUserPassword_${id}`).value.trim();
+    const balance  = parseFloat(document.getElementById(`editUserBalance_${id}`).value) || 0;
+    const role     = document.getElementById(`editUserRole_${id}`).value;
+
+    if (!name) { alert('Ad boş ola bilməz'); return; }
+    if (!password) { alert('Şifrə boş ola bilməz'); return; }
+
+    users[index].name     = name;
+    users[index].balance  = balance;
+    users[index].role     = role;
+    users[index].password = password;
     
     Storage.set('allUsers', users);
+    if (typeof upstash !== 'undefined' && upstash) {
+        upstash.set('allUsers', users, 86400 * 30).catch(() => {});
+    }
     
     document.querySelector('.user-details-row').remove();
     loadUsers();
@@ -741,6 +790,21 @@ function editUser(id) {
     editUserInline(id);
     // Scroll to the row
     event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function togglePassword(userId, password) {
+    const el   = document.getElementById(`pw_${userId}`);
+    const icon = document.getElementById(`pwIcon_${userId}`);
+    if (!el) return;
+    if (el.dataset.visible === '1') {
+        el.textContent = '••••••••';
+        el.dataset.visible = '0';
+        if (icon) { icon.className = 'fas fa-eye'; }
+    } else {
+        el.textContent = password || '(şifrə yoxdur)';
+        el.dataset.visible = '1';
+        if (icon) { icon.className = 'fas fa-eye-slash'; }
+    }
 }
 
 function deleteUser(id) {
