@@ -502,10 +502,7 @@ function updateTestStats(testId) {
 renderTests();
 
 // Re-render after Upstash loads fresh data
-window.addEventListener('upstash:loaded', () => {
-    console.log('✅ Upstash yükləndi, sınaqlar yenilənir...');
-    renderTests();
-});
+window.addEventListener('upstash:loaded', renderTests);
 </script>
 </body>
 </html>

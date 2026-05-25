@@ -363,6 +363,9 @@ document.addEventListener('DOMContentLoaded', function() {
     renderVideos();
 });
 
+// Re-render after Upstash loads fresh data
+window.addEventListener('upstash:loaded', renderVideos);
+
 
 // Show premium prompt when user tries to access premium content
 function showPremiumPrompt(type = 'video', expired = false) {

@@ -237,13 +237,15 @@ async function getLeaderboard() {
 // ==================== INIT ====================
 
 function _initPoints() {
-    setTimeout(awardDailyLoginPoints, 300);
+    setTimeout(awardDailyLoginPoints, 100);
 }
 
 if (typeof window !== 'undefined') {
+    // upstash:loaded fires after DOMContentLoaded + Upstash fetch
     window.addEventListener('upstash:loaded', _initPoints);
+    // Fallback: if Upstash disabled, run after page fully loads
     window.addEventListener('load', () => {
-        setTimeout(() => { if (!_dailyLoginAwarded) awardDailyLoginPoints(); }, 1500);
+        if (!_dailyLoginAwarded) setTimeout(awardDailyLoginPoints, 500);
     });
 }
 

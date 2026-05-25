@@ -278,7 +278,7 @@ function buildLeaderboard() {
     const allUsers  = JSON.parse(localStorage.getItem('allUsers')   || '[]');
     return Object.values(allPoints)
         .map(p => {
-            const u = allUsers.find(u => u.id === p.userId);
+            const u = allUsers.find(u => String(u.id) === String(p.userId));
             return {
                 userId:       p.userId,
                 userName:     u ? u.name : (p.userName || 'İstifadəçi'),
@@ -297,7 +297,6 @@ function buildLeaderboard() {
 function renderAll() {
     _leaderboard = buildLeaderboard();
     const currentUser = getCurrentUser();
-
     // My rank banner + stats bar
     if (currentUser) {
         const idx = _leaderboard.findIndex(e => e.userId === currentUser.id);
@@ -424,8 +423,12 @@ function renderHistory() {
         return;
     }
 
-    const me = _leaderboard.find(e => e.userId === currentUser.id);
-    const history = me ? me.history : [];
+    const me = _leaderboard.find(e => String(e.userId) === String(currentUser.id));
+    // Also read history directly from localStorage in case leaderboard is stale
+    const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const myRaw = allPoints[currentUser.id] || allPoints[String(currentUser.id)] || null;
+    const history = (myRaw && Array.isArray(myRaw.history)) ? myRaw.history
+                  : (me ? me.history : []);
 
     if (history.length === 0) {
         document.getElementById('lbBody').innerHTML = `
@@ -446,8 +449,9 @@ function renderHistory() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', renderAll);
+// upstash:loaded fires after DOMContentLoaded + Upstash fetch (from storage-wrapper.js)
 window.addEventListener('upstash:loaded', renderAll);
+// When points change on this page
 window.addEventListener('points:updated', () => setTimeout(renderAll, 30));
 </script>
 </body>

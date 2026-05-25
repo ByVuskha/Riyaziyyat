@@ -1,6 +1,6 @@
 // Admin Panel JavaScript
 
-// Check admin access
+// Check admin access — wait for upstash:loaded so data is fresh
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     if (!user || user.role !== 'admin') {
@@ -8,6 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'index.html';
         return;
     }
+    // Initial render with whatever is in localStorage
+    loadDashboardStats();
+    loadUsers();
+});
+
+// Re-load after Upstash data arrives
+window.addEventListener('upstash:loaded', () => {
+    const user = getCurrentUser();
+    if (!user || user.role !== 'admin') return;
     loadDashboardStats();
     loadUsers();
 });
