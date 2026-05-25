@@ -2938,64 +2938,80 @@ function approvePremiumWithDuration(userId, requestId, planId) {
 async function loadPointsLeaderboard() {
     const container = document.getElementById('leaderboardTable');
     if (!container) return;
-    
-    container.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Yüklənir...</td></tr>';
-    
-    // Load from Upstash
+
+    container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Yüklənir...</td></tr>';
+
+    // Load fresh from Upstash
     let allPoints = {};
+    let allUsers  = [];
     if (typeof upstash !== 'undefined' && upstash) {
         try {
-            const cloud = await upstash.get('userPoints');
-            if (cloud) allPoints = cloud;
-        } catch (e) {}
+            const [cloudPts, cloudUsers] = await Promise.all([
+                upstash.get('userPoints'),
+                upstash.get('allUsers')
+            ]);
+            if (cloudPts)   { allPoints = cloudPts;   Storage.set('userPoints', cloudPts); }
+            if (cloudUsers) { allUsers  = cloudUsers;  Storage.set('allUsers',   cloudUsers); }
+        } catch (e) { console.warn('Upstash leaderboard load:', e); }
     }
-    if (!Object.keys(allPoints).length) {
-        allPoints = Storage.get('userPoints') || {};
-    }
-    
-    const allUsers = Storage.get('allUsers') || [];
-    
-    const leaderboard = Object.values(allPoints)
-        .map(p => {
-            const user = allUsers.find(u => u.id === p.userId);
+    if (!Object.keys(allPoints).length) allPoints = Storage.get('userPoints') || {};
+    if (!allUsers.length)               allUsers  = Storage.get('allUsers')   || [];
+
+    // Build: all users + their points
+    const entries = allUsers
+        .filter(u => u.role !== 'admin')
+        .map(u => {
+            const p = allPoints[u.id] || allPoints[String(u.id)] || {};
             return {
-                userId: p.userId,
-                userName: user ? user.name : 'Naməlum',
-                userEmail: user ? user.email : '',
-                premium: user ? user.premium : false,
-                total: p.total || 0,
-                watchedCount: (p.watchedVideos || []).length,
-                historyCount: (p.history || []).length
+                userId:       u.id,
+                userName:     u.name,
+                userEmail:    u.email,
+                userType:     u.userType || 'student',
+                premium:      u.premium || false,
+                total:        p.total || 0,
+                watchedCount: (p.watchedVideos  || []).length,
+                testCount:    (p.completedTests || []).length,
             };
         })
         .sort((a, b) => b.total - a.total);
-    
-    if (leaderboard.length === 0) {
-        container.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;">Xal məlumatı yoxdur</td></tr>';
+
+    if (!entries.length) {
+        container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">İstifadəçi yoxdur</td></tr>';
         return;
     }
-    
-    const medals = ['🥇', '🥈', '🥉'];
-    
-    container.innerHTML = leaderboard.map((entry, i) => `
-        <tr style="background:${i < 3 ? '#fffbeb' : 'white'};">
-            <td style="font-size:20px;text-align:center;">${medals[i] || (i + 1)}</td>
+
+    const MEDAL = { 0:'🥇', 1:'🥈', 2:'🥉' };
+    const withPts    = entries.filter(e => e.total > 0);
+    const withoutPts = entries.filter(e => e.total === 0);
+
+    const rows = [...withPts, ...withoutPts].map((e, i) => {
+        const rankInPts = withPts.indexOf(e);
+        const rankCell  = rankInPts >= 0
+            ? (MEDAL[rankInPts] || `<strong>#${rankInPts + 1}</strong>`)
+            : '<span style="color:#d1d5db;">—</span>';
+        const typeIcon  = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+        return `
+        <tr style="background:${rankInPts >= 0 && rankInPts < 3 ? '#fffbeb' : 'white'};">
+            <td style="font-size:18px;text-align:center;">${rankCell}</td>
             <td>
-                <strong>${entry.userName}</strong><br>
-                <small style="color:#6b7280;">${entry.userEmail}</small>
-            </td>
-            <td>
-                ${entry.premium ? '<span style="background:#fbbf24;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">👑 Premium</span>' : '<span style="color:#9ca3af;font-size:12px;">Pulsuz</span>'}
+                <strong>${typeIcon} ${e.userName}</strong><br>
+                <small style="color:#6b7280;">${e.userEmail}</small>
             </td>
             <td style="text-align:center;">
-                <span style="font-size:12px;color:#6b7280;">${entry.watchedCount} video</span>
+                ${e.premium
+                    ? '<span style="background:#fbbf24;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">👑 Premium</span>'
+                    : '<span style="color:#9ca3af;font-size:12px;">Pulsuz</span>'}
             </td>
+            <td style="text-align:center;font-size:12px;color:#6b7280;">${e.watchedCount} video</td>
+            <td style="text-align:center;font-size:12px;color:#6b7280;">${e.testCount} sınaq</td>
             <td>
-                <span style="font-size:20px;font-weight:800;color:#667eea;">${entry.total}</span>
+                <span style="font-size:18px;font-weight:800;color:${e.total > 0 ? '#667eea' : '#d1d5db'};">${e.total}</span>
                 <span style="color:#9ca3af;font-size:12px;"> xal</span>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = rows;
 }
 
 
