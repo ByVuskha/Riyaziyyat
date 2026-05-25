@@ -3,129 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uğurlar - Bizim Riyaziyyat</title>
+    <title>Uğurlar & Reytinq — Bizim Riyaziyyat</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .page-header { background: linear-gradient(135deg, #1e1b4b, #4338ca); color: white; padding: 60px 0 40px; }
-        .page-header h1 { font-size: 40px; font-weight: 800; margin-bottom: 8px; }
-        .page-header p { opacity: 0.85; font-size: 16px; }
+        /* ── Hero ── */
+        .hero {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white; padding: 70px 0 50px; position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .hero-inner { position: relative; z-index: 1; }
+        .hero h1 { font-size: 42px; font-weight: 900; margin-bottom: 8px; }
+        .hero p  { opacity: .8; font-size: 16px; }
+        .hero-stats {
+            display: flex; gap: 30px; margin-top: 28px; flex-wrap: wrap;
+        }
+        .hero-stat { text-align: center; }
+        .hero-stat .n { font-size: 32px; font-weight: 900; display: block; }
+        .hero-stat .l { font-size: 12px; opacity: .7; text-transform: uppercase; letter-spacing: .5px; }
 
-        /* My rank banner */
-        .my-rank-banner {
+        /* ── My card ── */
+        .my-card {
             background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white; border-radius: 16px; padding: 22px 28px;
-            margin: 30px 0 10px; display: none;
-            align-items: center; gap: 20px; flex-wrap: wrap;
+            border-radius: 20px; color: white;
+            padding: 24px 28px; margin: 32px 0 0;
+            display: none; align-items: center; gap: 20px; flex-wrap: wrap;
+            box-shadow: 0 8px 32px rgba(102,126,234,.35);
         }
-        .my-rank-banner .rank-num { font-size: 52px; font-weight: 900; line-height: 1; }
-        .my-rank-banner h3 { margin: 0 0 3px; font-size: 18px; }
-        .my-rank-banner p  { margin: 0; opacity: .85; font-size: 13px; }
-        .my-rank-banner .pts { margin-left: auto; text-align: right; }
-        .my-rank-banner .pts span { font-size: 32px; font-weight: 800; display: block; }
-        .my-rank-banner .pts small { font-size: 13px; opacity: .85; }
+        .my-card .rank-badge {
+            background: rgba(255,255,255,.2); border-radius: 14px;
+            padding: 10px 18px; text-align: center; min-width: 72px;
+        }
+        .my-card .rank-badge .n { font-size: 30px; font-weight: 900; display: block; line-height: 1; }
+        .my-card .rank-badge .l { font-size: 11px; opacity: .8; }
+        .my-card .info h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+        .my-card .info p  { margin: 0; opacity: .8; font-size: 13px; }
+        .my-card .mini-stats { display: flex; gap: 16px; margin-left: auto; flex-wrap: wrap; }
+        .my-card .mini-stat { text-align: center; }
+        .my-card .mini-stat .n { font-size: 22px; font-weight: 800; display: block; }
+        .my-card .mini-stat .l { font-size: 11px; opacity: .75; }
+        .my-card .go-btn {
+            background: white; color: #667eea; border-radius: 10px;
+            padding: 10px 20px; font-weight: 700; text-decoration: none;
+            font-size: 14px; white-space: nowrap; margin-left: auto;
+        }
 
-        /* Podium */
-        .podium-wrap { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 16px; margin: 30px 0; align-items: end; }
+        /* ── Podium ── */
+        .section-title {
+            font-size: 20px; font-weight: 800; margin: 36px 0 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-title::after {
+            content: ''; flex: 1; height: 2px;
+            background: linear-gradient(90deg, var(--border), transparent);
+        }
+
+        .podium-wrap {
+            display: grid; grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 16px; align-items: end; margin-bottom: 40px;
+        }
         .podium-card {
-            background: white; border-radius: 16px; box-shadow: var(--shadow);
-            padding: 28px 16px; text-align: center; position: relative;
-            transition: transform .2s;
+            background: white; border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.08);
+            padding: 28px 16px 22px; text-align: center;
+            position: relative; transition: transform .25s, box-shadow .25s;
+            cursor: default;
         }
-        .podium-card:hover { transform: translateY(-4px); }
-        .podium-card.gold   { border-top: 4px solid #f59e0b; transform: translateY(-12px); }
-        .podium-card.silver { border-top: 4px solid #94a3b8; }
-        .podium-card.bronze { border-top: 4px solid #cd7c2f; }
-        .podium-card.gold:hover   { transform: translateY(-16px); }
-        .podium-medal { font-size: 44px; margin-bottom: 8px; }
-        .podium-avatar {
-            width: 68px; height: 68px; border-radius: 50%;
-            margin: 0 auto 10px; display: flex; align-items: center;
-            justify-content: center; font-size: 28px; font-weight: 800; color: white;
-        }
-        .podium-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-        .podium-score { font-size: 26px; font-weight: 800; color: var(--primary); }
-        .podium-label { font-size: 11px; color: var(--gray); }
-        .podium-meta  { margin-top: 6px; font-size: 11px; color: var(--gray); }
-        .podium-premium { font-size: 11px; color: #f59e0b; margin-bottom: 2px; }
-        .podium-me { outline: 3px solid #667eea; }
+        .podium-card:hover { transform: translateY(-6px); box-shadow: 0 12px 36px rgba(0,0,0,.14); }
+        .podium-card.gold   { border-top: 5px solid #f59e0b; transform: translateY(-14px); }
+        .podium-card.silver { border-top: 5px solid #94a3b8; }
+        .podium-card.bronze { border-top: 5px solid #cd7c2f; }
+        .podium-card.gold:hover { transform: translateY(-20px); }
+        .podium-card.is-me { box-shadow: 0 0 0 3px #667eea, 0 8px 28px rgba(102,126,234,.3); }
 
-        /* Tabs */
-        .lb-tabs { display: flex; gap: 8px; margin: 30px 0 16px; }
-        .lb-tab {
-            padding: 8px 20px; border-radius: 20px; border: 2px solid var(--border);
+        .podium-medal { font-size: 40px; margin-bottom: 6px; }
+        .podium-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            margin: 0 auto 12px; display: flex; align-items: center;
+            justify-content: center; font-size: 28px; font-weight: 900; color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,.2);
+        }
+        .podium-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; color: #1f2937; }
+        .podium-score { font-size: 28px; font-weight: 900; color: var(--primary); line-height: 1; }
+        .podium-unit  { font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+        .podium-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+        .chip {
+            background: #f1f5f9; color: #475569; border-radius: 20px;
+            padding: 3px 10px; font-size: 11px; font-weight: 600;
+        }
+        .chip.gold-chip   { background: #fef3c7; color: #92400e; }
+        .chip.purple-chip { background: #ede9fe; color: #5b21b6; }
+
+        /* ── Tabs ── */
+        .tabs-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 9px 22px; border-radius: 22px; border: 2px solid var(--border);
             background: white; cursor: pointer; font-size: 14px; font-weight: 600;
             color: var(--gray); transition: all .2s;
         }
-        .lb-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .tab-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
 
-        /* Leaderboard table */
-        .lb-card { background: white; border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 40px; }
-        .lb-head {
-            background: linear-gradient(135deg, var(--dark), var(--primary));
-            color: white; padding: 18px 24px;
+        /* ── Leaderboard ── */
+        .lb-wrap { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.07); overflow: hidden; margin-bottom: 50px; }
+        .lb-header {
+            background: linear-gradient(135deg, #1e1b4b, #4338ca);
+            color: white; padding: 18px 26px;
             display: flex; justify-content: space-between; align-items: center;
         }
-        .lb-head h3 { margin: 0; font-size: 17px; font-weight: 700; }
+        .lb-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+        .lb-header span { font-size: 12px; opacity: .75; }
+
         .lb-row {
-            display: flex; align-items: center; gap: 14px;
-            padding: 13px 24px; border-bottom: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 48px 44px 1fr auto auto;
+            align-items: center; gap: 12px;
+            padding: 13px 26px; border-bottom: 1px solid #f1f5f9;
             transition: background .15s;
         }
         .lb-row:last-child { border-bottom: none; }
-        .lb-row:hover { background: #f8fafc; }
-        .lb-row.me { background: #eef2ff !important; border-left: 4px solid var(--primary); }
-        .lb-rank {
-            width: 34px; height: 34px; border-radius: 50%;
+        .lb-row:hover { background: #fafbff; }
+        .lb-row.is-me { background: #eef2ff !important; border-left: 4px solid #667eea; }
+
+        .lb-rank-cell {
+            width: 36px; height: 36px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 13px; flex-shrink: 0;
-            background: #f1f5f9; color: var(--gray);
+            font-weight: 800; font-size: 13px;
+            background: #f1f5f9; color: #64748b;
         }
-        .lb-avatar {
-            width: 38px; height: 38px; border-radius: 50%;
+        .lb-avatar-cell {
+            width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 16px; font-weight: 800; color: white; flex-shrink: 0;
+            font-size: 16px; font-weight: 800; color: white;
         }
-        .lb-info { flex: 1; min-width: 0; }
-        .lb-info h4 { font-size: 14px; font-weight: 600; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .lb-info span { font-size: 11px; color: var(--gray); }
-        .lb-score { font-size: 17px; font-weight: 800; color: var(--primary); white-space: nowrap; }
-        .lb-badge { font-size: 13px; }
+        .lb-name { font-size: 14px; font-weight: 600; color: #1f2937; }
+        .lb-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+        .lb-score-cell { font-size: 16px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+        .lb-badge-cell { font-size: 14px; }
 
-        /* Stats bar */
-        .stats-bar {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 14px; margin: 0 0 30px;
+        /* ── History ── */
+        .hist-row {
+            display: grid; grid-template-columns: 60px 1fr auto;
+            align-items: center; gap: 14px;
+            padding: 12px 26px; border-bottom: 1px solid #f1f5f9;
         }
-        .stats-bar-item {
-            background: white; border-radius: 12px; box-shadow: var(--shadow);
-            padding: 16px 18px; text-align: center;
+        .hist-row:last-child { border-bottom: none; }
+        .hist-amount {
+            font-size: 16px; font-weight: 800; color: #10b981;
+            text-align: center;
         }
-        .stats-bar-item .val { font-size: 26px; font-weight: 800; color: var(--primary); }
-        .stats-bar-item .lbl { font-size: 12px; color: var(--gray); margin-top: 2px; }
+        .hist-reason { font-size: 13px; color: #374151; }
+        .hist-date   { font-size: 11px; color: #9ca3af; text-align: right; white-space: nowrap; }
 
-        /* Empty */
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--gray); }
-        .empty-state i { font-size: 56px; opacity: .25; display: block; margin-bottom: 14px; }
+        /* ── Loading skeleton ── */
+        .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-        /* History panel */
-        .history-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 11px 24px; border-bottom: 1px solid var(--border);
-        }
-        .history-item:last-child { border-bottom: none; }
-        .history-amount {
-            font-size: 15px; font-weight: 800; color: #10b981;
-            white-space: nowrap; min-width: 52px; text-align: right;
-        }
-        .history-reason { flex: 1; font-size: 13px; color: #374151; }
-        .history-date { font-size: 11px; color: var(--gray); white-space: nowrap; }
+        /* ── Empty ── */
+        .empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty i { font-size: 52px; opacity: .2; display: block; margin-bottom: 14px; }
+        .empty p { font-size: 15px; margin-bottom: 16px; }
 
-        @media(max-width: 640px) {
+        @media(max-width:640px) {
             .podium-wrap { grid-template-columns: 1fr; }
             .podium-card.gold { transform: none; }
-            .podium-card.gold:hover { transform: translateY(-4px); }
+            .podium-card.gold:hover { transform: translateY(-6px); }
+            .hero h1 { font-size: 30px; }
+            .lb-row { grid-template-columns: 40px 38px 1fr auto; }
+            .lb-badge-cell { display: none; }
         }
     </style>
 </head>
@@ -162,73 +213,85 @@
     </div>
 </nav>
 
-<div class="page-header">
-    <div class="container">
+<!-- Hero -->
+<div class="hero">
+    <div class="container hero-inner">
         <h1>🏆 Uğurlar</h1>
-        <p>Ən çox xal toplayan tələbələr — sən də çalış!</p>
+        <p>Ən çox xal toplayan tələbələr — sən də çalış, sıralamaya gir!</p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="n" id="heroParticipants">—</span>
+                <span class="l">İştirakçı</span>
+            </div>
+            <div class="hero-stat">
+                <span class="n" id="heroTotalPoints">—</span>
+                <span class="l">Ümumi Xal</span>
+            </div>
+            <div class="hero-stat">
+                <span class="n" id="heroTopScore">—</span>
+                <span class="l">Ən Yüksək Xal</span>
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="container">
 
-    <!-- My rank banner -->
-    <div id="myRankBanner" class="my-rank-banner">
-        <div class="rank-num" id="myRankNum">#-</div>
-        <div>
-            <h3 id="myRankName">Siz</h3>
-            <p id="myRankDesc">Sıralamada yeriniz</p>
+    <!-- My card -->
+    <div id="myCard" class="my-card">
+        <div class="rank-badge">
+            <span class="n" id="mcRank">#-</span>
+            <span class="l">Sıra</span>
         </div>
-        <div class="pts">
-            <span id="myRankPoints">0</span>
-            <small>xal</small>
+        <div class="info">
+            <h3 id="mcName">—</h3>
+            <p id="mcDesc">—</p>
         </div>
-    </div>
-
-    <!-- Stats bar -->
-    <div class="stats-bar" id="statsBar" style="display:none;">
-        <div class="stats-bar-item">
-            <div class="val" id="sbTotal">0</div>
-            <div class="lbl">Ümumi Xal</div>
-        </div>
-        <div class="stats-bar-item">
-            <div class="val" id="sbVideos">0</div>
-            <div class="lbl">İzlənən Video</div>
-        </div>
-        <div class="stats-bar-item">
-            <div class="val" id="sbTests">0</div>
-            <div class="lbl">Tamamlanan Sınaq</div>
-        </div>
-        <div class="stats-bar-item">
-            <div class="val" id="sbRank">#-</div>
-            <div class="lbl">Sıralama</div>
+        <div class="mini-stats">
+            <div class="mini-stat">
+                <span class="n" id="mcPoints">0</span>
+                <span class="l">Xal</span>
+            </div>
+            <div class="mini-stat">
+                <span class="n" id="mcVideos">0</span>
+                <span class="l">Video</span>
+            </div>
+            <div class="mini-stat">
+                <span class="n" id="mcTests">0</span>
+                <span class="l">Sınaq</span>
+            </div>
         </div>
     </div>
 
     <!-- Podium -->
-    <h2 style="font-size:22px;font-weight:800;margin:10px 0 0;">🥇 Top 3</h2>
-    <div class="podium-wrap" id="podiumContainer">
-        <div class="empty-state" style="grid-column:1/-1;">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Yüklənir...</p>
+    <div class="section-title">🥇 Top 3 Lider</div>
+    <div class="podium-wrap" id="podiumWrap">
+        <div style="grid-column:1/-1;padding:40px;text-align:center;">
+            <div class="skeleton" style="height:180px;border-radius:20px;"></div>
         </div>
     </div>
 
     <!-- Tabs -->
-    <div class="lb-tabs">
-        <button class="lb-tab active" onclick="switchTab('all', this)">📊 Ümumi Reytinq</button>
-        <button class="lb-tab" onclick="switchTab('history', this)" id="historyTabBtn" style="display:none;">📋 Xal Tarixçəm</button>
+    <div class="tabs-row">
+        <button class="tab-btn active" onclick="switchTab('all',this)">
+            <i class="fas fa-list-ol"></i> Tam Reytinq
+        </button>
+        <button class="tab-btn" onclick="switchTab('history',this)" id="histBtn" style="display:none;">
+            <i class="fas fa-history"></i> Xal Tarixçəm
+        </button>
     </div>
 
-    <!-- Leaderboard -->
-    <div class="lb-card" id="lbCard">
-        <div class="lb-head">
-            <h3 id="lbTitle">📊 Tam Reytinq Cədvəli</h3>
-            <span id="lbCount" style="font-size:12px;opacity:.8;"></span>
+    <!-- Board -->
+    <div class="lb-wrap">
+        <div class="lb-header">
+            <h3 id="boardTitle">📊 Tam Reytinq Cədvəli</h3>
+            <span id="boardSub"></span>
         </div>
-        <div id="lbBody">
-            <div class="empty-state">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Yüklənir...</p>
+        <div id="boardBody">
+            <div style="padding:20px;">
+                <div class="skeleton" style="height:52px;margin-bottom:8px;"></div>
+                <div class="skeleton" style="height:52px;margin-bottom:8px;"></div>
+                <div class="skeleton" style="height:52px;"></div>
             </div>
         </div>
     </div>
@@ -249,44 +312,40 @@
 <script src="js/points.js"></script>
 <script src="js/mobile-menu.js"></script>
 <script>
-const COLORS = ['#667eea','#764ba2','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899'];
-function avatarColor(name) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const PALETTE = ['#667eea','#764ba2','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+function aColor(name) {
     let h = 0;
-    for (const c of (name||'?')) h = c.charCodeAt(0) + ((h<<5)-h);
-    return COLORS[Math.abs(h) % COLORS.length];
+    for (const c of (name || '?')) h = c.charCodeAt(0) + ((h << 5) - h);
+    return PALETTE[Math.abs(h) % PALETTE.length];
 }
-function initial(name) { return (name||'?')[0].toUpperCase(); }
+function aInit(name) { return (name || '?')[0].toUpperCase(); }
 
-let _currentTab = 'all';
-let _leaderboard = [];
+let _tab = 'all';
+let _lb  = [];   // full leaderboard array
 
 function switchTab(tab, btn) {
-    _currentTab = tab;
-    document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+    _tab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderTab();
+    renderBoard();
 }
 
-function renderTab() {
-    if (_currentTab === 'all') renderLeaderboard();
-    else renderHistory();
-}
-
-// ── Build leaderboard from localStorage ──────────────────────────────────────
-function buildLeaderboard() {
-    const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const allUsers  = JSON.parse(localStorage.getItem('allUsers')   || '[]');
-    return Object.values(allPoints)
+// ── Build leaderboard from localStorage (populated by storage-wrapper) ────────
+function buildLB() {
+    const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const users = JSON.parse(localStorage.getItem('allUsers')   || '[]');
+    return Object.values(pts)
         .map(p => {
-            const u = allUsers.find(u => String(u.id) === String(p.userId));
+            const u = users.find(u => String(u.id) === String(p.userId));
             return {
-                userId:       p.userId,
-                userName:     u ? u.name : (p.userName || 'İstifadəçi'),
-                premium:      u ? (u.premium || false) : false,
-                total:        p.total || 0,
-                watchedCount: (p.watchedVideos  || []).length,
-                testCount:    (p.completedTests || []).length,
-                history:      Array.isArray(p.history) ? p.history : [],
+                userId:   p.userId,
+                name:     u ? u.name : (p.userName || 'İstifadəçi'),
+                premium:  u ? !!u.premium : false,
+                total:    p.total || 0,
+                videos:   (p.watchedVideos  || []).length,
+                tests:    (p.completedTests || []).length,
+                history:  Array.isArray(p.history) ? p.history : [],
             };
         })
         .filter(p => p.total > 0)
@@ -295,164 +354,178 @@ function buildLeaderboard() {
 
 // ── Main render ───────────────────────────────────────────────────────────────
 function renderAll() {
-    _leaderboard = buildLeaderboard();
-    const currentUser = getCurrentUser();
-    // My rank banner + stats bar
-    if (currentUser) {
-        const idx = _leaderboard.findIndex(e => e.userId === currentUser.id);
-        const me  = _leaderboard[idx];
-        const banner = document.getElementById('myRankBanner');
+    _lb = buildLB();
+    const me = getCurrentUser();
 
-        if (me) {
-            document.getElementById('myRankNum').textContent    = `#${idx + 1}`;
-            document.getElementById('myRankName').textContent   = currentUser.name;
-            document.getElementById('myRankDesc').textContent   = `${_leaderboard.length} iştirakçı arasında`;
-            document.getElementById('myRankPoints').textContent = me.total.toLocaleString();
-            banner.style.display = 'flex';
+    // Hero stats
+    const totalPts = _lb.reduce((s, e) => s + e.total, 0);
+    document.getElementById('heroParticipants').textContent = _lb.length;
+    document.getElementById('heroTotalPoints').textContent  = totalPts.toLocaleString();
+    document.getElementById('heroTopScore').textContent     = _lb[0] ? _lb[0].total.toLocaleString() : '0';
 
-            // Stats bar
-            document.getElementById('sbTotal').textContent  = me.total.toLocaleString();
-            document.getElementById('sbVideos').textContent = me.watchedCount;
-            document.getElementById('sbTests').textContent  = me.testCount;
-            document.getElementById('sbRank').textContent   = `#${idx + 1}`;
-            document.getElementById('statsBar').style.display = 'grid';
+    // My card
+    if (me) {
+        const idx  = _lb.findIndex(e => String(e.userId) === String(me.id));
+        const myE  = _lb[idx];
+        const card = document.getElementById('myCard');
+
+        if (myE) {
+            document.getElementById('mcRank').textContent   = `#${idx + 1}`;
+            document.getElementById('mcName').textContent   = me.name;
+            document.getElementById('mcDesc').textContent   = `${_lb.length} iştirakçı arasında`;
+            document.getElementById('mcPoints').textContent = myE.total.toLocaleString();
+            document.getElementById('mcVideos').textContent = myE.videos;
+            document.getElementById('mcTests').textContent  = myE.tests;
+            card.style.display = 'flex';
         } else {
-            // Not in leaderboard yet
-            banner.innerHTML = `
-                <div style="font-size:38px;">🎯</div>
-                <div>
-                    <h3 style="margin:0 0 3px;">Hələ sıralamada deyilsiniz</h3>
-                    <p style="margin:0;opacity:.85;font-size:13px;">Video izləyin, sınaqlar həll edin — xal qazanın!</p>
+            card.innerHTML = `
+                <div style="font-size:36px;">🎯</div>
+                <div class="info">
+                    <h3 style="margin:0 0 4px;">Hələ sıralamada deyilsiniz</h3>
+                    <p style="margin:0;opacity:.8;font-size:13px;">Video izləyin, sınaqlar həll edin — xal qazanın!</p>
                 </div>
-                <a href="videos.html" style="margin-left:auto;background:white;color:#667eea;padding:9px 18px;border-radius:10px;font-weight:600;text-decoration:none;white-space:nowrap;">Başla →</a>
+                <a href="videos.html" class="go-btn">Başla →</a>
             `;
-            banner.style.display = 'flex';
+            card.style.display = 'flex';
         }
-
-        // Show history tab only for logged-in users
-        document.getElementById('historyTabBtn').style.display = 'inline-block';
+        document.getElementById('histBtn').style.display = 'inline-block';
     }
 
-    renderPodium(currentUser);
-    renderTab();
+    renderPodium(me);
+    renderBoard();
 }
 
 // ── Podium ────────────────────────────────────────────────────────────────────
-function renderPodium(currentUser) {
-    const top3 = _leaderboard.slice(0, 3);
-    const container = document.getElementById('podiumContainer');
+function renderPodium(me) {
+    const wrap = document.getElementById('podiumWrap');
+    const top3 = _lb.slice(0, 3);
 
-    if (top3.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state" style="grid-column:1/-1;">
+    if (!top3.length) {
+        wrap.innerHTML = `
+            <div class="empty" style="grid-column:1/-1;">
                 <i class="fas fa-trophy"></i>
                 <p>Hələ heç kim xal qazanmayıb. İlk siz olun!</p>
-                <a href="videos.html" class="btn btn-primary" style="margin-top:14px;">Video İzlə</a>
+                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
             </div>`;
         return;
     }
 
-    // Podium order: 2nd | 1st | 3rd
+    // Visual order: silver | gold | bronze
     const order   = [top3[1], top3[0], top3[2]].filter(Boolean);
-    const classes = top3[1] ? ['silver','gold','bronze'] : ['gold','bronze'];
+    const cls     = top3[1] ? ['silver','gold','bronze'] : ['gold','bronze'];
     const medals  = top3[1] ? ['🥈','🥇','🥉'] : ['🥇','🥉'];
 
-    container.innerHTML = order.map((e, i) => {
-        const rank = _leaderboard.indexOf(e) + 1;
-        const isMe = currentUser && e.userId === currentUser.id;
+    wrap.innerHTML = order.map((e, i) => {
+        const rank  = _lb.indexOf(e) + 1;
+        const isMe  = me && String(e.userId) === String(me.id);
+        const color = aColor(e.name);
         return `
-        <div class="podium-card ${classes[i]}${isMe ? ' podium-me' : ''}">
+        <div class="podium-card ${cls[i]}${isMe ? ' is-me' : ''}">
             <div class="podium-medal">${medals[i]}</div>
-            <div class="podium-avatar" style="background:${avatarColor(e.userName)};">${initial(e.userName)}</div>
-            <div class="podium-name">${e.userName}${isMe ? ' <span style="font-size:10px;color:#667eea;">(Siz)</span>' : ''}</div>
-            ${e.premium ? '<div class="podium-premium">👑 Premium</div>' : ''}
+            <div class="podium-avatar" style="background:${color};">${aInit(e.name)}</div>
+            <div class="podium-name">
+                ${e.name}
+                ${isMe ? '<span style="font-size:10px;color:#667eea;"> (Siz)</span>' : ''}
+            </div>
             <div class="podium-score">${e.total.toLocaleString()}</div>
-            <div class="podium-label">xal</div>
-            <div class="podium-meta">${e.watchedCount} video · ${e.testCount} sınaq</div>
+            <div class="podium-unit">xal</div>
+            <div class="podium-chips">
+                <span class="chip"><i class="fas fa-play" style="font-size:9px;"></i> ${e.videos}</span>
+                <span class="chip purple-chip"><i class="fas fa-pen" style="font-size:9px;"></i> ${e.tests}</span>
+                ${e.premium ? '<span class="chip gold-chip">👑 Premium</span>' : ''}
+            </div>
         </div>`;
     }).join('');
 }
 
-// ── Full leaderboard ──────────────────────────────────────────────────────────
+// ── Board (leaderboard or history) ───────────────────────────────────────────
+function renderBoard() {
+    if (_tab === 'all') renderLeaderboard();
+    else renderHistory();
+}
+
 function renderLeaderboard() {
-    document.getElementById('lbTitle').textContent = '📊 Tam Reytinq Cədvəli';
-    document.getElementById('lbCount').textContent = `${_leaderboard.length} iştirakçı`;
-    const currentUser = getCurrentUser();
+    document.getElementById('boardTitle').textContent = '📊 Tam Reytinq Cədvəli';
+    document.getElementById('boardSub').textContent   = `${_lb.length} iştirakçı`;
+    const me = getCurrentUser();
     const MEDAL = { 1:'🥇', 2:'🥈', 3:'🥉' };
 
-    if (_leaderboard.length === 0) {
-        document.getElementById('lbBody').innerHTML = `
-            <div class="empty-state">
+    if (!_lb.length) {
+        document.getElementById('boardBody').innerHTML = `
+            <div class="empty">
                 <i class="fas fa-users"></i>
                 <p>Hələ heç kim xal qazanmayıb</p>
+                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
             </div>`;
         return;
     }
 
-    document.getElementById('lbBody').innerHTML = _leaderboard.map((e, i) => {
+    document.getElementById('boardBody').innerHTML = _lb.map((e, i) => {
         const rank = i + 1;
-        const isMe = currentUser && e.userId === currentUser.id;
+        const isMe = me && String(e.userId) === String(me.id);
         return `
-        <div class="lb-row${isMe ? ' me' : ''}">
-            <div class="lb-rank" style="${rank<=3?'background:transparent;font-size:20px;':''}">
+        <div class="lb-row${isMe ? ' is-me' : ''}">
+            <div class="lb-rank-cell" style="${rank<=3?'background:transparent;font-size:22px;':''}">
                 ${MEDAL[rank] || rank}
             </div>
-            <div class="lb-avatar" style="background:${avatarColor(e.userName)};">${initial(e.userName)}</div>
-            <div class="lb-info">
-                <h4>${e.userName}${isMe ? ' <span style="color:#667eea;font-size:10px;">(Siz)</span>' : ''}</h4>
-                <span>${e.watchedCount} video · ${e.testCount} sınaq</span>
+            <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
+            <div>
+                <div class="lb-name">
+                    ${e.name}
+                    ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
+                </div>
+                <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
             </div>
-            <div class="lb-badge">${e.premium ? '👑' : ''}</div>
-            <div class="lb-score">${e.total.toLocaleString()} xal</div>
+            <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
+            <div class="lb-score-cell">${e.total.toLocaleString()} xal</div>
         </div>`;
     }).join('');
 }
 
-// ── History tab ───────────────────────────────────────────────────────────────
 function renderHistory() {
-    const currentUser = getCurrentUser();
-    document.getElementById('lbTitle').textContent = '📋 Xal Tarixçəm';
-    document.getElementById('lbCount').textContent = '';
+    document.getElementById('boardTitle').textContent = '📋 Xal Tarixçəm';
+    document.getElementById('boardSub').textContent   = '';
+    const me = getCurrentUser();
 
-    if (!currentUser) {
-        document.getElementById('lbBody').innerHTML = `
-            <div class="empty-state">
+    if (!me) {
+        document.getElementById('boardBody').innerHTML = `
+            <div class="empty">
                 <i class="fas fa-lock"></i>
                 <p>Tarixçəni görmək üçün giriş edin</p>
+                <a href="login.html" class="btn btn-primary">Giriş Et</a>
             </div>`;
         return;
     }
 
-    const me = _leaderboard.find(e => String(e.userId) === String(currentUser.id));
-    // Also read history directly from localStorage in case leaderboard is stale
-    const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const myRaw = allPoints[currentUser.id] || allPoints[String(currentUser.id)] || null;
-    const history = (myRaw && Array.isArray(myRaw.history)) ? myRaw.history
-                  : (me ? me.history : []);
+    // Read directly from localStorage (most up-to-date)
+    const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const myRaw = pts[me.id] || pts[String(me.id)] || null;
+    const hist  = myRaw && Array.isArray(myRaw.history) ? myRaw.history : [];
 
-    if (history.length === 0) {
-        document.getElementById('lbBody').innerHTML = `
-            <div class="empty-state">
+    if (!hist.length) {
+        document.getElementById('boardBody').innerHTML = `
+            <div class="empty">
                 <i class="fas fa-history"></i>
                 <p>Hələ xal qazanmamısınız</p>
+                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
             </div>`;
         return;
     }
 
-    document.getElementById('lbBody').innerHTML = history.map(h => `
-        <div class="history-item">
-            <div class="history-amount">+${h.amount}</div>
-            <div class="history-reason">${h.reason}</div>
-            <div class="history-date">${h.date}<br><span style="font-size:10px;">${h.time||''}</span></div>
+    document.getElementById('boardBody').innerHTML = hist.map(h => `
+        <div class="hist-row">
+            <div class="hist-amount">+${h.amount} xal</div>
+            <div>
+                <div class="hist-reason">${h.reason}</div>
+            </div>
+            <div class="hist-date">${h.date}<br>${h.time || ''}</div>
         </div>
     `).join('');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-// upstash:loaded fires after DOMContentLoaded + Upstash fetch (from storage-wrapper.js)
 window.addEventListener('upstash:loaded', renderAll);
-// When points change on this page
-window.addEventListener('points:updated', () => setTimeout(renderAll, 30));
+window.addEventListener('points:updated', () => setTimeout(renderAll, 40));
 </script>
 </body>
 </html>
