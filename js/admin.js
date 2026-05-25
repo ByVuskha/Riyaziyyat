@@ -322,7 +322,14 @@ function loadActivityLog() {
 }
 
 // Load Users
-function loadUsers() {
+async function loadUsers() {
+    // Fetch fresh from Upstash so newly registered teachers appear
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('allUsers');
+            if (cloud) Storage.set('allUsers', cloud);
+        } catch (e) {}
+    }
     const users = Storage.get('allUsers') || MOCK_USERS;
     const tbody = document.getElementById('usersTable');
     
