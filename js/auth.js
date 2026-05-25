@@ -171,38 +171,36 @@ function checkDeviceSessionSync(userId) {
 // Record unauthorized login attempt
 async function recordUnauthorizedAttempt(userId, userName, email) {
     const currentDeviceId = getDeviceId();
-    
-    // Get current session from Upstash
-    let attempts = 1;
-    
+
+    // Read current attempt count from localStorage first (always available)
+    const sessions = Storage.get('userSessions') || {};
+    const localSession = sessions[userId] || {};
+    let attempts = (localSession.loginAttempts || 0) + 1;
+
+    // Try to get from Upstash and take the higher value
     if (typeof upstash !== 'undefined' && upstash) {
         try {
             const sessionKey = `user_session:${userId}`;
-            const session = await upstash.get(sessionKey);
-            
-            if (session) {
-                attempts = (session.loginAttempts || 0) + 1;
-                session.loginAttempts = attempts;
-                session.lastAttempt = new Date().toISOString();
-                session.lastAttemptDevice = currentDeviceId;
-                
-                // Update in Upstash
-                await upstash.set(sessionKey, session, 86400 * 7);
-                console.log(`⚠️ Yetkisiz cəhd qeydə alındı: User ${userId}, Cəhd ${attempts}`);
+            const cloudSession = await upstash.get(sessionKey);
+            if (cloudSession) {
+                const cloudAttempts = (cloudSession.loginAttempts || 0) + 1;
+                attempts = Math.max(attempts, cloudAttempts);
+                cloudSession.loginAttempts = attempts;
+                cloudSession.lastAttempt = new Date().toISOString();
+                cloudSession.lastAttemptDevice = currentDeviceId;
+                await upstash.set(sessionKey, cloudSession, 86400 * 7);
             }
         } catch (error) {
             console.error('Failed to record attempt in Upstash:', error);
         }
     }
-    
-    // Also update LocalStorage
-    const sessions = Storage.get('userSessions') || {};
-    const userSession = sessions[userId] || {};
-    userSession.loginAttempts = attempts;
-    userSession.lastAttempt = new Date().toISOString();
-    sessions[userId] = userSession;
+
+    // Update localStorage with final attempt count
+    localSession.loginAttempts = attempts;
+    localSession.lastAttempt = new Date().toISOString();
+    sessions[userId] = localSession;
     Storage.set('userSessions', sessions);
-    
+
     // Add to suspicious activities
     const suspicious = Storage.get('suspiciousActivities') || [];
     suspicious.unshift({
@@ -218,19 +216,16 @@ async function recordUnauthorizedAttempt(userId, userName, email) {
         time: new Date().toLocaleTimeString('az-AZ'),
         status: attempts >= 2 ? 'blocked' : 'warning'
     });
-    
-    // Keep only last 100 activities
-    if (suspicious.length > 100) {
-        suspicious.length = 100;
-    }
-    
+
+    if (suspicious.length > 100) suspicious.length = 100;
     Storage.set('suspiciousActivities', suspicious);
-    
-    // If 2nd attempt, freeze account
+
+    console.log(`⚠️ Yetkisiz cəhd: User ${userId}, Cəhd ${attempts}`);
+
     if (attempts >= 2) {
         await freezeAccount(userId);
     }
-    
+
     return attempts;
 }
 
