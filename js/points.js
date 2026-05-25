@@ -1,14 +1,16 @@
 /**
  * Points (Xal) Sistemi - Bizim Riyaziyyat
- * - Gündəlik giriş: 24 saatda 1 dəfə (tarix əsaslı)
- * - Video: izlənmə müddətinə görə, hər videodan 1 dəfə
+ *
+ * Qaydalar:
+ * - Gündəlik giriş: gündə 1 dəfə, yalnız Upstash data yüklənəndən sonra
+ * - Video: izlənmə faizinə görə, hər videodan 1 dəfə
  * - Sınaq: hər sınaqdan 1 dəfə
  */
 
 const POINTS_CONFIG = {
-    videoFull:   10,  // 80%+ izlənibsə
-    videoHalf:    5,  // 40-79% izlənibsə
-    videoMin:     2,  // 10-39% izlənibsə
+    videoFull:   10,  // 80%+
+    videoHalf:    5,  // 40-79%
+    videoMin:     2,  // 10-39%
     testPerfect: 50,
     testGood:    30,
     testPass:    15,
@@ -16,9 +18,7 @@ const POINTS_CONFIG = {
     dailyLogin:   2,
 };
 
-// ==================== HELPERS ====================
-
-// Always read/write directly from localStorage to avoid wrapper timing issues
+// ── Storage helpers (bypass wrapper to avoid timing issues) ───────────────────
 function _getAll() {
     try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; }
 }
@@ -26,21 +26,21 @@ function _setAll(all) {
     localStorage.setItem('userPoints', JSON.stringify(all));
 }
 
+// ── Core ──────────────────────────────────────────────────────────────────────
 function getUserPoints(userId) {
     const all = _getAll();
-    const defaults = { userId, total: 0, history: [], watchedVideos: [], completedTests: [], lastLoginDate: null };
-    if (!all[userId]) return defaults;
-    const rec = all[userId];
+    const def = { userId, total: 0, history: [], watchedVideos: [], completedTests: [], lastLoginDate: null };
+    if (!all[userId]) return def;
+    const r = all[userId];
     return {
-        ...defaults, ...rec,
-        history:        Array.isArray(rec.history)        ? rec.history        : [],
-        watchedVideos:  Array.isArray(rec.watchedVideos)  ? rec.watchedVideos  : [],
-        completedTests: Array.isArray(rec.completedTests) ? rec.completedTests : [],
+        ...def, ...r,
+        history:        Array.isArray(r.history)        ? r.history        : [],
+        watchedVideos:  Array.isArray(r.watchedVideos)  ? r.watchedVideos  : [],
+        completedTests: Array.isArray(r.completedTests) ? r.completedTests : [],
     };
 }
 
 function saveUserPoints(userId, data) {
-    // Store userName for cross-device leaderboard
     const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     if (user && user.id === userId && user.name) data.userName = user.name;
 
@@ -48,41 +48,35 @@ function saveUserPoints(userId, data) {
     all[userId] = data;
     _setAll(all);
 
-    // Sync to Upstash immediately (non-blocking)
+    // Sync to Upstash (non-blocking)
     if (typeof upstash !== 'undefined' && upstash) {
         upstash.set('userPoints', all, 86400 * 30)
             .then(() => console.log('✅ userPoints → Upstash'))
-            .catch(e => console.warn('userPoints sync error:', e));
+            .catch(e => console.warn('userPoints sync:', e));
     }
 
-    // Update leaderboard
-    _buildAndSaveLeaderboard(all);
+    _buildLeaderboard(all);
 
-    // Notify UI listeners
+    // Notify UI (dashboard, success page)
     window.dispatchEvent(new CustomEvent('points:updated', { detail: { userId, total: data.total } }));
 }
 
-function _addHistoryEntry(data, amount, reason) {
+function _addEntry(data, amount, reason) {
     data.total = (data.total || 0) + amount;
     if (!Array.isArray(data.history)) data.history = [];
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
     data.history.unshift({
         amount, reason,
-        date: _formatDate(new Date()),
-        time: new Date().toLocaleTimeString('az-AZ'),
+        date: `${dd}.${mm}.${d.getFullYear()}`,
+        time: d.toLocaleTimeString('az-AZ'),
         timestamp: Date.now()
     });
     if (data.history.length > 50) data.history.length = 50;
 }
 
-function _formatDate(d) {
-    // Always DD.MM.YYYY — avoids locale "pil" issue
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}.${mm}.${yyyy}`;
-}
-
-function _showPointsToast(amount, reason) {
+function _toast(amount, reason) {
     if (typeof showNotification === 'function') {
         showNotification(`+${amount} xal qazandınız! (${reason})`, 'success', 3000);
         return;
@@ -91,139 +85,105 @@ function _showPointsToast(amount, reason) {
     t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:99999;
         background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;
         padding:14px 20px;border-radius:12px;font-weight:700;font-size:15px;
-        box-shadow:0 4px 15px rgba(245,158,11,0.4);`;
+        box-shadow:0 4px 15px rgba(245,158,11,.4);`;
     t.textContent = `+${amount} xal! ${reason}`;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
 }
 
-// ==================== VIDEO ====================
-
-/**
- * Call this when video ends or enough time has passed.
- * watchedPercent: 0-100 (how much of the video was watched)
- */
+// ── Video ─────────────────────────────────────────────────────────────────────
 function awardVideoPoints(videoId, videoTitle, watchedPercent) {
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return;
 
     const data = getUserPoints(user.id);
-    if (data.watchedVideos.includes(String(videoId))) {
-        console.log('Video artıq izlənib, xal verilmir');
-        return;
-    }
+    if (data.watchedVideos.includes(String(videoId))) return;
 
-    const pct = watchedPercent || 100; // default 100 if not provided (backward compat)
-    let points = 0;
-    let label = '';
-
-    if (pct >= 80)      { points = POINTS_CONFIG.videoFull; label = 'tam izləndi'; }
+    const pct = watchedPercent || 100;
+    let points = 0, label = '';
+    if      (pct >= 80) { points = POINTS_CONFIG.videoFull; label = 'tam izləndi'; }
     else if (pct >= 40) { points = POINTS_CONFIG.videoHalf; label = 'yarı izləndi'; }
     else if (pct >= 10) { points = POINTS_CONFIG.videoMin;  label = 'qismən izləndi'; }
-    else {
-        console.log('Video az izləndi, xal verilmir (<10%)');
-        return;
-    }
+    else return;
 
     const reason = `"${videoTitle}" videosu ${label}`;
     data.watchedVideos.push(String(videoId));
-    _addHistoryEntry(data, points, reason);
+    _addEntry(data, points, reason);
     saveUserPoints(user.id, data);
-    _showPointsToast(points, reason);
-    console.log(`✅ +${points} xal: ${user.name} — ${reason}`);
+    _toast(points, reason);
 }
 
-// ==================== TEST ====================
-
+// ── Test ──────────────────────────────────────────────────────────────────────
 function awardTestPoints(testTitle, score, total, testId) {
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return 0;
 
     const data = getUserPoints(user.id);
-
-    if (testId && data.completedTests.includes(String(testId))) {
-        console.log('Bu sınaqdan artıq xal qazanılıb');
-        return 0;
-    }
+    if (testId && data.completedTests.includes(String(testId))) return 0;
 
     const pct = Math.round((score / total) * 100);
-    let points = POINTS_CONFIG.testFail;
-    let label = 'Zəif';
-    if (pct === 100)    { points = POINTS_CONFIG.testPerfect; label = 'Mükəmməl'; }
-    else if (pct >= 80) { points = POINTS_CONFIG.testGood;    label = 'Yaxşı'; }
-    else if (pct >= 60) { points = POINTS_CONFIG.testPass;    label = 'Keçid'; }
+    let points = POINTS_CONFIG.testFail, label = 'Zəif';
+    if      (pct === 100) { points = POINTS_CONFIG.testPerfect; label = 'Mükəmməl'; }
+    else if (pct >= 80)   { points = POINTS_CONFIG.testGood;    label = 'Yaxşı'; }
+    else if (pct >= 60)   { points = POINTS_CONFIG.testPass;    label = 'Keçid'; }
 
     const reason = `"${testTitle}" — ${pct}% (${label})`;
     if (testId) data.completedTests.push(String(testId));
-    _addHistoryEntry(data, points, reason);
+    _addEntry(data, points, reason);
     saveUserPoints(user.id, data);
-    _showPointsToast(points, reason);
-    console.log(`✅ +${points} xal: ${user.name} — ${reason}`);
+    _toast(points, reason);
     return points;
 }
 
-// ==================== INIT ====================
-
-// Flag: upstash data has been loaded at least once this page session
-let _upstashReady = false;
-let _dailyLoginAwarded = false;
+// ── Daily login ───────────────────────────────────────────────────────────────
+// Use a session-level key stored in sessionStorage so it resets per browser tab
+// but NOT per page navigation within the same tab.
+// The actual date check uses Upstash-loaded lastLoginDate.
 
 function awardDailyLoginPoints() {
-    // Only run after Upstash data is loaded — otherwise lastLoginDate may be stale
-    if (!_upstashReady) return;
-    if (_dailyLoginAwarded) return;
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return;
 
-    const data = getUserPoints(user.id);
-    const todayKey = new Date().toISOString().slice(0, 10);
-    let storedKey = data.lastLoginDate || null;
-    if (storedKey && storedKey.length > 10) {
-        storedKey = new Date(storedKey).toISOString().slice(0, 10);
-    }
+    // Session guard — only award once per browser session (tab)
+    const sessionKey = `dailyLogin_${user.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
 
-    if (storedKey === todayKey) {
-        console.log('Gündəlik giriş xalı artıq verilib');
-        _dailyLoginAwarded = true;
+    const data = getUserPoints(user.id);
+    const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Normalize stored date
+    let stored = data.lastLoginDate || null;
+    if (stored && stored.length > 10) stored = new Date(stored).toISOString().slice(0, 10);
+
+    if (stored === todayKey) {
+        // Already awarded today — mark session so we don't check again
+        sessionStorage.setItem(sessionKey, '1');
         return;
     }
 
-    _dailyLoginAwarded = true;
+    // Mark session immediately to prevent double-award on fast re-renders
+    sessionStorage.setItem(sessionKey, '1');
+
     data.lastLoginDate = todayKey;
-    _addHistoryEntry(data, POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
+    _addEntry(data, POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
     saveUserPoints(user.id, data);
-    _showPointsToast(POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
-    console.log(`✅ +${POINTS_CONFIG.dailyLogin} xal: ${user.name} — gündəlik giriş`);
+    _toast(POINTS_CONFIG.dailyLogin, 'Gündəlik giriş');
+    console.log(`✅ +${POINTS_CONFIG.dailyLogin} xal — gündəlik giriş`);
 }
 
-function _initPoints() {
-    _upstashReady = true;
-    setTimeout(awardDailyLoginPoints, 100);
-}
-
-if (typeof window !== 'undefined') {
-    window.addEventListener('upstash:loaded', _initPoints);
-    // Fallback only if Upstash is completely disabled
-    window.addEventListener('load', () => {
-        if (typeof UPSTASH_CONFIG !== 'undefined' && !UPSTASH_CONFIG.enabled) {
-            _upstashReady = true;
-            setTimeout(awardDailyLoginPoints, 500);
-        }
-    });
-}
-
-function _buildAndSaveLeaderboard(allPoints) {
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+function _buildLeaderboard(allPoints) {
     const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
     const lb = Object.values(allPoints)
         .map(p => {
-            const u = allUsers.find(u => u.id === p.userId);
+            const u = allUsers.find(u => String(u.id) === String(p.userId));
             return {
                 userId:       p.userId,
                 userName:     u ? u.name : (p.userName || 'İstifadəçi'),
-                premium:      u ? (u.premium || false) : false,
+                premium:      u ? !!u.premium : false,
                 total:        p.total || 0,
                 watchedCount: (p.watchedVideos  || []).length,
-                testCount:    (p.completedTests || []).length
+                testCount:    (p.completedTests || []).length,
             };
         })
         .filter(p => p.total > 0)
@@ -237,33 +197,28 @@ function _buildAndSaveLeaderboard(allPoints) {
     return lb;
 }
 
-// backward compat
-function updateLeaderboard() { _buildAndSaveLeaderboard(_getAll()); }
+function updateLeaderboard() { _buildLeaderboard(_getAll()); }
 
 async function getLeaderboard() {
     if (typeof upstash !== 'undefined' && upstash) {
         try {
-            const cloud = await upstash.get('leaderboard');
-            if (cloud && cloud.length) return cloud;
+            const c = await upstash.get('leaderboard');
+            if (c && c.length) return c;
         } catch (e) {}
     }
     return JSON.parse(localStorage.getItem('leaderboard') || '[]');
 }
 
-// ==================== INIT ====================
-
-function _initPoints() {
-    // _upstashReady and awardDailyLoginPoints defined above
-    _upstashReady = true;
-    setTimeout(awardDailyLoginPoints, 100);
-}
-
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Run awardDailyLoginPoints only after Upstash data is loaded (so lastLoginDate is fresh)
 if (typeof window !== 'undefined') {
-    window.addEventListener('upstash:loaded', _initPoints);
+    window.addEventListener('upstash:loaded', () => {
+        setTimeout(awardDailyLoginPoints, 100);
+    });
+    // Fallback: Upstash disabled
     window.addEventListener('load', () => {
         if (typeof UPSTASH_CONFIG !== 'undefined' && !UPSTASH_CONFIG.enabled) {
-            _upstashReady = true;
-            setTimeout(awardDailyLoginPoints, 500);
+            setTimeout(awardDailyLoginPoints, 300);
         }
     });
 }
