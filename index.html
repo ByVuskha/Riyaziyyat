@@ -64,12 +64,12 @@
             </div>
             <div class="hero-stats">
                 <div class="hero-stat">
-                    <h3>500+</h3>
-                    <p>Video Dərs</p>
+                    <h3 id="heroUsers">500+</h3>
+                    <p>Tələbə</p>
                 </div>
                 <div class="hero-stat">
-                    <h3>10K+</h3>
-                    <p>Tələbə</p>
+                    <h3 id="heroVideos">500+</h3>
+                    <p>Video Dərs</p>
                 </div>
                 <div class="hero-stat">
                     <h3>1000+</h3>
@@ -588,6 +588,18 @@ document.addEventListener('DOMContentLoaded', function() {
     loadNewsCarousel();
     loadNotifications();
     loadPopularCourses();
+});
+
+// Update hero stats from real data after Upstash loads
+window.addEventListener('upstash:loaded', function() {
+    const users  = JSON.parse(localStorage.getItem('allUsers')  || '[]');
+    const videos = JSON.parse(localStorage.getItem('videos')    || '[]');
+    const uEl = document.getElementById('heroUsers');
+    const vEl = document.getElementById('heroVideos');
+    if (uEl && users.length  > 0) uEl.textContent = users.length  + '+';
+    if (vEl && videos.length > 0) vEl.textContent = videos.length + '+';
+    loadPopularCourses();
+    loadNewsCarousel();
 });
 </script>
 </body>

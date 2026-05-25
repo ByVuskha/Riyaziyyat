@@ -331,24 +331,45 @@ function switchTab(tab, btn) {
     renderBoard();
 }
 
-// ── Build leaderboard from localStorage (populated by storage-wrapper) ────────
+// ── Build leaderboard — ALL users, not just those with points ─────────────────
 function buildLB() {
     const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
     const users = JSON.parse(localStorage.getItem('allUsers')   || '[]');
-    return Object.values(pts)
-        .map(p => {
-            const u = users.find(u => String(u.id) === String(p.userId));
+
+    // Start with all non-admin users
+    const allEntries = users
+        .filter(u => u.role !== 'admin')
+        .map(u => {
+            const p = pts[u.id] || pts[String(u.id)] || {};
             return {
-                userId:   p.userId,
-                name:     u ? u.name : (p.userName || 'İstifadəçi'),
-                premium:  u ? !!u.premium : false,
-                total:    p.total || 0,
-                videos:   (p.watchedVideos  || []).length,
-                tests:    (p.completedTests || []).length,
-                history:  Array.isArray(p.history) ? p.history : [],
+                userId:  u.id,
+                name:    u.name || 'İstifadəçi',
+                premium: u.premium || false,
+                total:   p.total || 0,
+                videos:  (p.watchedVideos  || []).length,
+                tests:   (p.completedTests || []).length,
+                history: Array.isArray(p.history) ? p.history : [],
+                userType: u.userType || 'student',
             };
-        })
-        .filter(p => p.total > 0)
+        });
+
+    // Also include any points entries not in allUsers (cross-device fallback)
+    Object.values(pts).forEach(p => {
+        if (!allEntries.find(e => String(e.userId) === String(p.userId))) {
+            allEntries.push({
+                userId:  p.userId,
+                name:    p.userName || 'İstifadəçi',
+                premium: false,
+                total:   p.total || 0,
+                videos:  (p.watchedVideos  || []).length,
+                tests:   (p.completedTests || []).length,
+                history: Array.isArray(p.history) ? p.history : [],
+                userType: 'student',
+            });
+        }
+    });
+
+    return allEntries
         .sort((a, b) => b.total - a.total);
 }
 
@@ -357,11 +378,13 @@ function renderAll() {
     _lb = buildLB();
     const me = getCurrentUser();
 
-    // Hero stats
+    // Hero stats — all users, not just those with points
+    const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
     const totalPts = _lb.reduce((s, e) => s + e.total, 0);
-    document.getElementById('heroParticipants').textContent = _lb.length;
+    const withPts  = _lb.filter(e => e.total > 0);
+    document.getElementById('heroParticipants').textContent = allUsers.filter(u => u.role !== 'admin').length || _lb.length;
     document.getElementById('heroTotalPoints').textContent  = totalPts.toLocaleString();
-    document.getElementById('heroTopScore').textContent     = _lb[0] ? _lb[0].total.toLocaleString() : '0';
+    document.getElementById('heroTopScore').textContent     = withPts[0] ? withPts[0].total.toLocaleString() : '0';
 
     // My card
     if (me) {
@@ -398,7 +421,7 @@ function renderAll() {
 // ── Podium ────────────────────────────────────────────────────────────────────
 function renderPodium(me) {
     const wrap = document.getElementById('podiumWrap');
-    const top3 = _lb.slice(0, 3);
+    const top3 = _lb.filter(e => e.total > 0).slice(0, 3);
 
     if (!top3.length) {
         wrap.innerHTML = `
@@ -446,40 +469,88 @@ function renderBoard() {
 
 function renderLeaderboard() {
     document.getElementById('boardTitle').textContent = '📊 Tam Reytinq Cədvəli';
-    document.getElementById('boardSub').textContent   = `${_lb.length} iştirakçı`;
     const me = getCurrentUser();
     const MEDAL = { 1:'🥇', 2:'🥈', 3:'🥉' };
+
+    const withPoints    = _lb.filter(e => e.total > 0);
+    const withoutPoints = _lb.filter(e => e.total === 0);
+
+    document.getElementById('boardSub').textContent = `${withPoints.length} iştirakçı · ${_lb.length} üzv`;
 
     if (!_lb.length) {
         document.getElementById('boardBody').innerHTML = `
             <div class="empty">
                 <i class="fas fa-users"></i>
-                <p>Hələ heç kim xal qazanmayıb</p>
-                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
+                <p>Hələ heç kim qeydiyyatdan keçməyib</p>
             </div>`;
         return;
     }
 
-    document.getElementById('boardBody').innerHTML = _lb.map((e, i) => {
-        const rank = i + 1;
-        const isMe = me && String(e.userId) === String(me.id);
-        return `
-        <div class="lb-row${isMe ? ' is-me' : ''}">
-            <div class="lb-rank-cell" style="${rank<=3?'background:transparent;font-size:22px;':''}">
-                ${MEDAL[rank] || rank}
-            </div>
-            <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
-            <div>
-                <div class="lb-name">
-                    ${e.name}
-                    ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
+    let html = '';
+
+    if (withPoints.length) {
+        html += withPoints.map((e, i) => {
+            const rank = i + 1;
+            const isMe = me && String(e.userId) === String(me.id);
+            const typeIcon = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+            return `
+            <div class="lb-row${isMe ? ' is-me' : ''}">
+                <div class="lb-rank-cell" style="${rank<=3?'background:transparent;font-size:22px;':''}">
+                    ${MEDAL[rank] || rank}
                 </div>
-                <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
-            </div>
-            <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
-            <div class="lb-score-cell">${e.total.toLocaleString()} xal</div>
+                <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
+                <div>
+                    <div class="lb-name">
+                        ${typeIcon} ${e.name}
+                        ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
+                    </div>
+                    <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
+                </div>
+                <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
+                <div class="lb-score-cell">${e.total.toLocaleString()} xal</div>
+            </div>`;
+        }).join('');
+    } else {
+        html += `<div class="empty"><i class="fas fa-star"></i><p>Hələ heç kim xal qazanmayıb</p></div>`;
+    }
+
+    // Users with 0 points — collapsed section
+    if (withoutPoints.length) {
+        html += `
+        <div style="padding:12px 26px;background:#f8fafc;border-top:2px solid #f1f5f9;">
+            <button onclick="toggleNoPoints(this)" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;font-weight:600;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-chevron-down" id="noPointsIcon"></i>
+                ${withoutPoints.length} üzv hələ xal qazanmayıb
+            </button>
+        </div>
+        <div id="noPointsSection" style="display:none;">
+            ${withoutPoints.map(e => {
+                const isMe = me && String(e.userId) === String(me.id);
+                const typeIcon = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+                return `
+                <div class="lb-row${isMe ? ' is-me' : ''}" style="opacity:.6;">
+                    <div class="lb-rank-cell">—</div>
+                    <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
+                    <div>
+                        <div class="lb-name">${typeIcon} ${e.name}${isMe ? ' <span style="color:#667eea;font-size:10px;">(Siz)</span>' : ''}</div>
+                        <div class="lb-sub">Hələ xal qazanmayıb</div>
+                    </div>
+                    <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
+                    <div class="lb-score-cell" style="color:#9ca3af;">0 xal</div>
+                </div>`;
+            }).join('')}
         </div>`;
-    }).join('');
+    }
+
+    document.getElementById('boardBody').innerHTML = html;
+}
+
+function toggleNoPoints(btn) {
+    const sec  = document.getElementById('noPointsSection');
+    const icon = document.getElementById('noPointsIcon');
+    const open = sec.style.display === 'none';
+    sec.style.display  = open ? 'block' : 'none';
+    icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
 }
 
 function renderHistory() {

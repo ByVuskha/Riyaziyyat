@@ -3,70 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kabinet - Bizim Riyaziyyat</title>
+    <title>Kabinet — Bizim Riyaziyyat</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .dashboard { padding: 40px 0; }
-        .welcome-banner {
-            background: linear-gradient(135deg, var(--dark), var(--primary));
-            color: white;
-            border-radius: 16px;
-            padding: 35px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        body { background: #f8fafc; }
+
+        /* ── Welcome ── */
+        .welcome {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white; border-radius: 20px; padding: 32px 36px;
+            margin-bottom: 24px; display: flex;
+            justify-content: space-between; align-items: center; gap: 20px;
+            position: relative; overflow: hidden;
         }
-        .welcome-banner h2 { font-size: 26px; margin-bottom: 6px; }
-        .welcome-banner p { opacity: 0.85; }
-        .avatar {
-            width: 70px; height: 70px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 30px;
+        .welcome::before {
+            content: '';
+            position: absolute; top: -40px; right: -40px;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: rgba(255,255,255,.05);
         }
+        .welcome h2 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+        .welcome p  { opacity: .8; font-size: 14px; margin: 0; }
+        .welcome-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(255,255,255,.15); display: flex;
+            align-items: center; justify-content: center;
+            font-size: 32px; flex-shrink: 0;
+            border: 3px solid rgba(255,255,255,.3);
+        }
+        .streak-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(251,191,36,.2); border: 1px solid rgba(251,191,36,.4);
+            border-radius: 20px; padding: 4px 12px; font-size: 13px;
+            font-weight: 600; margin-top: 10px; color: #fbbf24;
+        }
+
+        /* ── Stats grid ── */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px; margin-bottom: 24px;
         }
         .stat-card {
-            background: white;
-            border-radius: var(--radius);
-            padding: 25px;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            gap: 18px;
+            background: white; border-radius: 16px;
+            padding: 20px 18px; box-shadow: 0 2px 12px rgba(0,0,0,.06);
+            display: flex; align-items: center; gap: 14px;
+            transition: transform .2s, box-shadow .2s;
         }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
         .stat-icon {
-            width: 55px; height: 55px;
-            border-radius: 14px;
+            width: 50px; height: 50px; border-radius: 14px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 24px;
+            font-size: 22px; flex-shrink: 0;
         }
-        .stat-card h3 { font-size: 26px; font-weight: 800; }
-        .stat-card p { color: var(--gray); font-size: 13px; }
-        .quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .quick-link {
-            background: white;
-            border-radius: var(--radius);
-            padding: 20px;
-            box-shadow: var(--shadow);
-            text-align: center;
-            transition: all 0.2s;
-            cursor: pointer;
+        .stat-card h3 { font-size: 24px; font-weight: 800; margin: 0 0 2px; }
+        .stat-card p  { font-size: 12px; color: #9ca3af; margin: 0; }
+
+        /* ── Daily goal ── */
+        .daily-goal {
+            background: white; border-radius: 16px; padding: 22px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 24px;
         }
-        .quick-link:hover { transform: translateY(-3px); background: var(--primary); color: white; }
-        .quick-link:hover p { color: rgba(255,255,255,0.8); }
-        .quick-link i { font-size: 28px; color: var(--primary); margin-bottom: 10px; display: block; }
-        .quick-link:hover i { color: white; }
-        .quick-link h4 { font-size: 15px; margin-bottom: 4px; }
-        .quick-link p { font-size: 12px; color: var(--gray); }
+        .daily-goal h4 { font-size: 15px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+        .goal-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+        .goal-item { }
+        .goal-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+        .goal-label span:first-child { color: #374151; font-weight: 500; }
+        .goal-label span:last-child  { color: #9ca3af; }
+        .progress-bar { height: 8px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
+
+        /* ── Two-col layout ── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+        @media(max-width:768px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ── Panel ── */
+        .panel { background: white; border-radius: 16px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+        .panel-title { font-size: 15px; font-weight: 700; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* ── Activity feed ── */
+        .activity-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-dot {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .activity-text { flex: 1; font-size: 13px; color: #374151; }
+        .activity-pts  { font-size: 13px; font-weight: 700; color: #10b981; white-space: nowrap; }
+        .activity-time { font-size: 11px; color: #9ca3af; }
+
+        /* ── Streak calendar ── */
+        .streak-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+        .streak-day {
+            width: 28px; height: 28px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 600;
+        }
+        .streak-day.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .streak-day.today  { background: #fbbf24; color: white; }
+        .streak-day.empty  { background: #f1f5f9; color: #9ca3af; }
+
+        /* ── Quick links ── */
+        .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+        .quick-card {
+            background: white; border-radius: 14px; padding: 18px 12px;
+            text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+            text-decoration: none; color: inherit;
+            transition: transform .2s, box-shadow .2s, background .2s;
+        }
+        .quick-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.1); background: var(--primary); color: white; }
+        .quick-card:hover i, .quick-card:hover p { color: rgba(255,255,255,.85) !important; }
+        .quick-card i { font-size: 26px; color: var(--primary); display: block; margin-bottom: 8px; }
+        .quick-card h4 { font-size: 13px; font-weight: 700; margin: 0 0 3px; }
+        .quick-card p  { font-size: 11px; color: #9ca3af; margin: 0; }
+
+        /* ── Premium banner ── */
+        .premium-banner {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 16px; padding: 24px 28px; color: white;
+            display: flex; align-items: center; gap: 20px;
+            margin-bottom: 24px; flex-wrap: wrap;
+        }
+        .premium-banner h3 { margin: 0 0 4px; font-size: 18px; }
+        .premium-banner p  { margin: 0; opacity: .85; font-size: 13px; }
+        .premium-banner .btn-white {
+            background: white; color: #667eea; border-radius: 10px;
+            padding: 10px 22px; font-weight: 700; text-decoration: none;
+            font-size: 14px; white-space: nowrap; margin-left: auto;
+            border: none; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -74,9 +145,7 @@
 <nav class="navbar">
     <div class="container">
         <div class="navbar-inner">
-            <a href="index.html" class="navbar-logo">
-                <span>BR</span> Bizim Riyaziyyat
-            </a>
+            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
             <div class="navbar-menu">
                 <a href="index.html">Ana Səhifə</a>
                 <a href="videos.html">Dərslər</a>
@@ -85,9 +154,6 @@
                 <a href="dashboard.html" class="active">Kabinet</a>
             </div>
             <div class="navbar-actions">
-                <span class="balance-badge" id="balanceBadge">
-                    <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
-                </span>
                 <div id="guestButtons">
                     <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
                 </div>
@@ -104,107 +170,159 @@
     </div>
 </nav>
 
-<div class="dashboard">
-    <div class="container">
-        <div class="welcome-banner">
-            <div>
-                <h2>Salam, <span id="userName">...</span>! 👋</h2>
-                <p>Bugün nə öyrənəcəksən?</p>
-                <a href="profile-edit.html" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;margin-top:10px;display:inline-flex;align-items:center;gap:6px;">
-                    <i class="fas fa-edit"></i> Profili Redaktə Et
-                </a>
-            </div>
-            <div class="avatar" id="profileAvatar">🎓</div>
-        </div>
+<div style="padding:32px 0 50px;">
+<div class="container">
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:#eef2ff;">📹</div>
-                <div>
-                    <h3 id="watchedVideosDisplay">0</h3>
-                    <p>İzlənən Video</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:#ecfdf5;">📝</div>
-                <div>
-                    <h3 id="completedTestsDisplay">0</h3>
-                    <p>Həll Edilən Sınaq</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:#fff7ed;">🎁</div>
-                <div>
-                    <h3 id="demoTestsDisplay">0</h3>
-                    <p>Demo Sınaq</p>
-                </div>
-            </div>
-            <div class="stat-card" id="premiumCard" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white;">
-                <div class="stat-icon" style="background:rgba(255,255,255,0.2);">👑</div>
-                <div>
-                    <h3 id="premiumStatus" style="color:white;">Pulsuz</h3>
-                    <p style="color:rgba(255,255,255,0.9);">Premium Status</p>
-                </div>
-            </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <div class="stat-icon" style="background:rgba(255,255,255,0.2);">⭐</div>
-                <div>
-                    <h3 id="userPointsDisplay" style="color:white;">0</h3>
-                    <p style="color:rgba(255,255,255,0.9);">Xal</p>
-                </div>
-            </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
-                <div class="stat-icon" style="background:rgba(255,255,255,0.2);">🏆</div>
-                <div>
-                    <h3 id="userRankDisplay" style="color:white;">-</h3>
-                    <p style="color:rgba(255,255,255,0.9);">Sıralama</p>
-                </div>
+    <!-- Welcome -->
+    <div class="welcome">
+        <div>
+            <h2>Salam, <span id="userName">...</span>! 👋</h2>
+            <p id="welcomeSub">Bugün nə öyrənəcəksən?</p>
+            <div class="streak-badge" id="streakBadge" style="display:none;">
+                🔥 <span id="streakCount">0</span> günlük ardıcıl giriş
             </div>
         </div>
+        <div class="welcome-avatar" id="profileAvatar">🎓</div>
+    </div>
 
-        <!-- Premium Request Banner -->
-        <div id="premiumBanner" style="display:none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px; color: white; text-align: center;">
-            <h2 style="margin: 0 0 10px 0; font-size: 28px;">👑 Premium Üzvlük</h2>
-            <p style="margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">Bütün videolara və sınağlara limitsiz giriş əldə edin!</p>
-            <button onclick="sendPremiumRequest()" class="btn" style="background: white; color: #667eea; font-weight: 600; padding: 12px 30px; font-size: 16px;">
-                <i class="fas fa-paper-plane"></i> Premium Müraciət Göndər
-            </button>
+    <!-- Premium banner (if not premium) -->
+    <div id="premiumBanner" style="display:none;" class="premium-banner">
+        <div style="font-size:36px;">👑</div>
+        <div>
+            <h3>Premium Üzvlük</h3>
+            <p id="premiumBannerText">Bütün videolara və sınağlara limitsiz giriş əldə edin!</p>
         </div>
+        <button onclick="sendPremiumRequest()" class="btn-white">Müraciət Et →</button>
+    </div>
 
-        <h3 style="margin-bottom:20px;font-size:20px;">Sürətli Keçidlər</h3>
-        <div class="quick-links">
-            <a href="videos.html" class="quick-link">
-                <i class="fas fa-play-circle"></i>
-                <h4>Dərslər</h4>
-                <p>Video dərslərə bax</p>
-            </a>
-            <a href="tests.html" class="quick-link">
-                <i class="fas fa-clipboard-list"></i>
-                <h4>Sınaqlar</h4>
-                <p>Bilikini yoxla</p>
-            </a>
-            <a href="teachers.html" class="quick-link">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <h4>Müəllimlər</h4>
-                <p>Peşəkar komanda</p>
-            </a>
-            <a href="news.html" class="quick-link">
-                <i class="fas fa-newspaper"></i>
-                <h4>Xəbərlər</h4>
-                <p>Son yeniliklər</p>
-            </a>
-            <a href="success.html" class="quick-link">
-                <i class="fas fa-trophy"></i>
-                <h4>Uğurlar</h4>
-                <p>Xal sıralaması</p>
-            </a>
-            <a href="profile-edit.html" class="quick-link">
-                <i class="fas fa-user-edit"></i>
-                <h4>Profili Redaktə Et</h4>
-                <p>Məlumatları yenilə</p>
-            </a>
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#eef2ff;">📹</div>
+            <div><h3 id="statVideos">0</h3><p>İzlənən Video</p></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#ecfdf5;">📝</div>
+            <div><h3 id="statTests">0</h3><p>Həll Edilən Sınaq</p></div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">⭐</div>
+            <div><h3 id="statPoints" style="color:white;">0</h3><p style="color:rgba(255,255,255,.8);">Xal</p></div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">🏆</div>
+            <div><h3 id="statRank" style="color:white;">-</h3><p style="color:rgba(255,255,255,.8);">Sıralama</p></div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;">
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">👑</div>
+            <div><h3 id="statPremium" style="color:white;font-size:16px;">Pulsuz</h3><p style="color:rgba(255,255,255,.8);">Premium</p></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#fff7ed;">🎁</div>
+            <div><h3 id="statDemo">0</h3><p>Demo Sınaq</p></div>
         </div>
     </div>
+
+    <!-- Daily goal -->
+    <div class="daily-goal">
+        <h4>🎯 Gündəlik Hədəf</h4>
+        <div class="goal-items">
+            <div class="goal-item">
+                <div class="goal-label">
+                    <span>📹 Video izlə</span>
+                    <span id="goalVideoText">0 / 2</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="goalVideoBar" style="width:0%;background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+                </div>
+            </div>
+            <div class="goal-item">
+                <div class="goal-label">
+                    <span>📝 Sınaq həll et</span>
+                    <span id="goalTestText">0 / 1</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="goalTestBar" style="width:0%;background:linear-gradient(90deg,#10b981,#059669);"></div>
+                </div>
+            </div>
+            <div class="goal-item">
+                <div class="goal-label">
+                    <span>⭐ Xal qazanma</span>
+                    <span id="goalPointsText">0 / 10</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="goalPointsBar" style="width:0%;background:linear-gradient(90deg,#f59e0b,#d97706);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity + Streak -->
+    <div class="two-col">
+
+        <!-- Recent activity -->
+        <div class="panel">
+            <div class="panel-title">⚡ Son Fəaliyyət</div>
+            <div id="activityFeed">
+                <div style="text-align:center;padding:30px;color:#9ca3af;">
+                    <i class="fas fa-history" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px;"></i>
+                    Hələ fəaliyyət yoxdur
+                </div>
+            </div>
+        </div>
+
+        <!-- Streak calendar -->
+        <div class="panel">
+            <div class="panel-title">🔥 Giriş Seriyası</div>
+            <div style="margin-bottom:16px;">
+                <div style="font-size:36px;font-weight:900;color:#f59e0b;" id="streakNum">0</div>
+                <div style="font-size:13px;color:#9ca3af;">ardıcıl gün</div>
+            </div>
+            <div class="streak-grid" id="streakGrid"></div>
+            <div style="margin-top:14px;font-size:12px;color:#9ca3af;display:flex;gap:12px;align-items:center;">
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span> Giriş edildi</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:#fbbf24;display:inline-block;"></span> Bu gün</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:#f1f5f9;display:inline-block;"></span> Giriş yox</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick links -->
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;">🚀 Sürətli Keçidlər</div>
+    <div class="quick-grid">
+        <a href="videos.html" class="quick-card">
+            <i class="fas fa-play-circle"></i>
+            <h4>Dərslər</h4>
+            <p>Video dərslərə bax</p>
+        </a>
+        <a href="tests.html" class="quick-card">
+            <i class="fas fa-clipboard-list"></i>
+            <h4>Sınaqlar</h4>
+            <p>Bilikini yoxla</p>
+        </a>
+        <a href="success.html" class="quick-card">
+            <i class="fas fa-trophy"></i>
+            <h4>Uğurlar</h4>
+            <p>Xal sıralaması</p>
+        </a>
+        <a href="teachers.html" class="quick-card">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <h4>Müəllimlər</h4>
+            <p>Peşəkar komanda</p>
+        </a>
+        <a href="news.html" class="quick-card">
+            <i class="fas fa-newspaper"></i>
+            <h4>Xəbərlər</h4>
+            <p>Son yeniliklər</p>
+        </a>
+        <a href="profile-edit.html" class="quick-card">
+            <i class="fas fa-user-edit"></i>
+            <h4>Profil</h4>
+            <p>Məlumatları yenilə</p>
+        </a>
+    </div>
+
+</div>
 </div>
 
 <script src="js/config.js"></script>
@@ -214,79 +332,174 @@
 <script src="js/security.js"></script>
 <script src="js/points.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!isLoggedIn()) {
-            window.location.href = 'login.html';
-            return;
-        }
-        const user = getCurrentUser();
-        document.getElementById('userName').textContent = user.name;
-        
-        // Update premium status
-        const premiumStatus = document.getElementById('premiumStatus');
-        const premiumBanner = document.getElementById('premiumBanner');
-        
-        if (user.premium) {
-            premiumStatus.textContent = getPremiumStatusText();
-            if (premiumBanner) premiumBanner.style.display = 'none';
-        } else {
-            premiumStatus.textContent = 'Pulsuz';
-            if (user.premiumRequestedAt) {
-                if (premiumBanner) {
-                    premiumBanner.innerHTML = `
-                        <h2 style="margin: 0 0 10px 0; font-size: 24px;">⏳ Müraciətiniz Göndərilib</h2>
-                        <p style="margin: 0; font-size: 16px; opacity: 0.9;">Admin tərəfindən yoxlanılır. Təşəkkür edirik!</p>
-                    `;
-                    premiumBanner.style.display = 'block';
-                }
-            } else {
-                if (premiumBanner) premiumBanner.style.display = 'block';
-            }
-        }
-        
-        // Update stats
-        document.getElementById('demoTestsDisplay').textContent = user.demoTests || 3;
-        
-        // Render points — reads directly from localStorage (saveUserPoints writes there instantly)
-        function renderPoints() {
-            const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
-            const myData = allPoints[user.id] || { total: 0, watchedVideos: [], completedTests: [] };
+if (!isLoggedIn()) { window.location.href = 'login.html'; }
 
-            document.getElementById('userPointsDisplay').textContent =
-                (myData.total || 0).toLocaleString();
-            document.getElementById('watchedVideosDisplay').textContent =
-                (myData.watchedVideos || []).length;
-            document.getElementById('completedTestsDisplay').textContent =
-                (myData.completedTests || []).length;
+const user = getCurrentUser();
+document.getElementById('userName').textContent = user.name;
 
-            const sorted = Object.values(allPoints)
-                .filter(p => (p.total || 0) > 0)
-                .sort((a, b) => b.total - a.total);
-            const rank = sorted.findIndex(p => p.userId === user.id) + 1;
-            document.getElementById('userRankDisplay').textContent = rank > 0 ? `#${rank}` : '-';
-        }
+// Avatar
+const av = document.getElementById('profileAvatar');
+if (user.profilePicture) {
+    av.innerHTML = `<img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+}
 
-        renderPoints();
-        window.addEventListener('points:updated', renderPoints);
-        // upstash:loaded fires after DOMContentLoaded + Upstash fetch
-        window.addEventListener('upstash:loaded', renderPoints);
-        
-        // Profil şəklini göstər
-        const avatar = document.getElementById('profileAvatar');
-        if (user.profilePicture) {
-            avatar.innerHTML = `<img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        }
-    });
-    
-    function sendPremiumRequest() {
-        const result = requestPremium();
-        if (result.success) {
-            alert('✅ ' + result.message + '\n\nAdmin tərəfindən yoxlanılacaq və sizə bildiriş göndəriləcək.');
-            location.reload();
-        } else {
-            alert('❌ ' + result.message);
-        }
+// Premium banner
+function updatePremiumBanner() {
+    const banner = document.getElementById('premiumBanner');
+    const statPremium = document.getElementById('statPremium');
+    if (user.premium) {
+        statPremium.textContent = getPremiumStatusText ? getPremiumStatusText() : 'Premium';
+        banner.style.display = 'none';
+    } else if (user.premiumRequestedAt) {
+        statPremium.textContent = 'Gözlənilir';
+        banner.innerHTML = `
+            <div style="font-size:36px;">⏳</div>
+            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır. Tezliklə aktivləşəcək.</p></div>
+        `;
+        banner.style.display = 'flex';
+    } else {
+        statPremium.textContent = 'Pulsuz';
+        banner.style.display = 'flex';
     }
+}
+updatePremiumBanner();
+document.getElementById('statDemo').textContent = user.demoTests || 3;
+
+// ── Render all points-based UI ────────────────────────────────────────────────
+function renderDashboard() {
+    const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const myData = allPoints[user.id] || allPoints[String(user.id)] || {
+        total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
+    };
+
+    const videos  = (myData.watchedVideos  || []).length;
+    const tests   = (myData.completedTests || []).length;
+    const total   = myData.total || 0;
+    const history = Array.isArray(myData.history) ? myData.history : [];
+
+    // Stats
+    document.getElementById('statVideos').textContent = videos;
+    document.getElementById('statTests').textContent  = tests;
+    document.getElementById('statPoints').textContent = total.toLocaleString();
+
+    // Rank
+    const sorted = Object.values(allPoints)
+        .filter(p => (p.total || 0) > 0)
+        .sort((a, b) => b.total - a.total);
+    const rank = sorted.findIndex(p => String(p.userId) === String(user.id)) + 1;
+    document.getElementById('statRank').textContent = rank > 0 ? `#${rank}` : '-';
+
+    // Welcome subtitle
+    const greetings = [
+        'Bugün nə öyrənəcəksən? 📚',
+        'Hər gün bir addım irəli! 🚀',
+        'Bilikini artır, xal qazanmağa davam et! ⭐',
+        'Sıralamada yüksəl, çalış! 🏆',
+    ];
+    document.getElementById('welcomeSub').textContent = greetings[Math.floor(Math.random() * greetings.length)];
+
+    // ── Daily goal ────────────────────────────────────────────────────────────
+    // Count today's activity from history
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayHistory = history.filter(h => {
+        if (!h.timestamp) return false;
+        return new Date(h.timestamp).toISOString().slice(0, 10) === todayKey;
+    });
+    const todayVideos = todayHistory.filter(h => h.reason && h.reason.includes('videosu')).length;
+    const todayTests  = todayHistory.filter(h => h.reason && h.reason.includes('—')).length;
+    const todayPoints = todayHistory.reduce((s, h) => s + (h.amount || 0), 0);
+
+    const goalVideo  = Math.min(todayVideos, 2);
+    const goalTest   = Math.min(todayTests,  1);
+    const goalPoints = Math.min(todayPoints, 10);
+
+    document.getElementById('goalVideoText').textContent  = `${goalVideo} / 2`;
+    document.getElementById('goalTestText').textContent   = `${goalTest} / 1`;
+    document.getElementById('goalPointsText').textContent = `${goalPoints} / 10`;
+    document.getElementById('goalVideoBar').style.width   = `${(goalVideo  / 2)  * 100}%`;
+    document.getElementById('goalTestBar').style.width    = `${(goalTest   / 1)  * 100}%`;
+    document.getElementById('goalPointsBar').style.width  = `${Math.min((goalPoints / 10) * 100, 100)}%`;
+
+    // ── Activity feed ─────────────────────────────────────────────────────────
+    const feed = document.getElementById('activityFeed');
+    if (!history.length) {
+        feed.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af;">
+            <i class="fas fa-history" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px;"></i>
+            Hələ fəaliyyət yoxdur
+        </div>`;
+    } else {
+        const icons = { 'videosu': { bg: '#eef2ff', icon: '📹' }, '—': { bg: '#ecfdf5', icon: '📝' }, 'Gündəlik': { bg: '#fff7ed', icon: '🔥' } };
+        feed.innerHTML = history.slice(0, 6).map(h => {
+            let style = { bg: '#f1f5f9', icon: '⭐' };
+            if (h.reason) {
+                if (h.reason.includes('videosu')) style = icons['videosu'];
+                else if (h.reason.includes('—'))   style = icons['—'];
+                else if (h.reason.includes('Gündəlik')) style = icons['Gündəlik'];
+            }
+            return `
+            <div class="activity-item">
+                <div class="activity-dot" style="background:${style.bg};">${style.icon}</div>
+                <div style="flex:1;">
+                    <div class="activity-text">${h.reason || 'Xal qazanıldı'}</div>
+                    <div class="activity-time">${h.date || ''} ${h.time || ''}</div>
+                </div>
+                <div class="activity-pts">+${h.amount} xal</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Streak ────────────────────────────────────────────────────────────────
+    // Build last 21 days
+    const loginDates = new Set(
+        history
+            .filter(h => h.timestamp)
+            .map(h => new Date(h.timestamp).toISOString().slice(0, 10))
+    );
+    // Also add lastLoginDate
+    if (myData.lastLoginDate) loginDates.add(myData.lastLoginDate.slice(0, 10));
+
+    const days = [];
+    for (let i = 20; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        const isToday = i === 0;
+        const active  = loginDates.has(key);
+        days.push({ key, isToday, active, label: d.getDate() });
+    }
+
+    document.getElementById('streakGrid').innerHTML = days.map(d => `
+        <div class="streak-day ${d.isToday ? 'today' : d.active ? 'active' : 'empty'}" title="${d.key}">
+            ${d.label}
+        </div>
+    `).join('');
+
+    // Count current streak
+    let streak = 0;
+    for (let i = 0; i < 21; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        if (loginDates.has(d.toISOString().slice(0, 10))) streak++;
+        else break;
+    }
+    document.getElementById('streakNum').textContent = streak;
+    document.getElementById('streakCount').textContent = streak;
+    if (streak > 0) document.getElementById('streakBadge').style.display = 'inline-flex';
+}
+
+renderDashboard();
+window.addEventListener('points:updated', renderDashboard);
+window.addEventListener('upstash:loaded', renderDashboard);
+
+function sendPremiumRequest() {
+    const result = requestPremium();
+    if (result.success) {
+        alert('✅ ' + result.message + '\n\nAdmin tərəfindən yoxlanılacaq.');
+        location.reload();
+    } else {
+        alert('❌ ' + result.message);
+    }
+}
 </script>
 <script src="js/notifications.js"></script>
 <script src="js/popup-replacer.js"></script>

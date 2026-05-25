@@ -162,27 +162,29 @@ function awardTestPoints(testTitle, score, total, testId) {
     return points;
 }
 
-// ==================== DAILY LOGIN ====================
+// ==================== INIT ====================
 
+// Flag: upstash data has been loaded at least once this page session
+let _upstashReady = false;
 let _dailyLoginAwarded = false;
 
 function awardDailyLoginPoints() {
+    // Only run after Upstash data is loaded — otherwise lastLoginDate may be stale
+    if (!_upstashReady) return;
     if (_dailyLoginAwarded) return;
     const user = getCurrentUser();
     if (!user || user.role === 'admin') return;
 
     const data = getUserPoints(user.id);
-
-    // Use YYYY-MM-DD key — stable across locales
     const todayKey = new Date().toISOString().slice(0, 10);
     let storedKey = data.lastLoginDate || null;
-    // Normalize old formats
     if (storedKey && storedKey.length > 10) {
         storedKey = new Date(storedKey).toISOString().slice(0, 10);
     }
 
     if (storedKey === todayKey) {
         console.log('Gündəlik giriş xalı artıq verilib');
+        _dailyLoginAwarded = true;
         return;
     }
 
@@ -194,7 +196,21 @@ function awardDailyLoginPoints() {
     console.log(`✅ +${POINTS_CONFIG.dailyLogin} xal: ${user.name} — gündəlik giriş`);
 }
 
-// ==================== LEADERBOARD ====================
+function _initPoints() {
+    _upstashReady = true;
+    setTimeout(awardDailyLoginPoints, 100);
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('upstash:loaded', _initPoints);
+    // Fallback only if Upstash is completely disabled
+    window.addEventListener('load', () => {
+        if (typeof UPSTASH_CONFIG !== 'undefined' && !UPSTASH_CONFIG.enabled) {
+            _upstashReady = true;
+            setTimeout(awardDailyLoginPoints, 500);
+        }
+    });
+}
 
 function _buildAndSaveLeaderboard(allPoints) {
     const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
@@ -237,15 +253,18 @@ async function getLeaderboard() {
 // ==================== INIT ====================
 
 function _initPoints() {
+    // _upstashReady and awardDailyLoginPoints defined above
+    _upstashReady = true;
     setTimeout(awardDailyLoginPoints, 100);
 }
 
 if (typeof window !== 'undefined') {
-    // upstash:loaded fires after DOMContentLoaded + Upstash fetch
     window.addEventListener('upstash:loaded', _initPoints);
-    // Fallback: if Upstash disabled, run after page fully loads
     window.addEventListener('load', () => {
-        if (!_dailyLoginAwarded) setTimeout(awardDailyLoginPoints, 500);
+        if (typeof UPSTASH_CONFIG !== 'undefined' && !UPSTASH_CONFIG.enabled) {
+            _upstashReady = true;
+            setTimeout(awardDailyLoginPoints, 500);
+        }
     });
 }
 
