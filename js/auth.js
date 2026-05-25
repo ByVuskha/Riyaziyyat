@@ -266,7 +266,15 @@ async function freezeAccount(userId) {
 }
 
 // Unfreeze account (admin only)
-function unfreezeAccount(userId) {
+async function unfreezeAccount(userId) {
+    // Always fetch fresh from Upstash first
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const cloud = await upstash.get('allUsers');
+            if (cloud) Storage.set('allUsers', cloud);
+        } catch (e) {}
+    }
+
     const allUsers = Storage.get('allUsers') || [];
     const user = allUsers.find(u => u.id === userId);
     
@@ -274,9 +282,8 @@ function unfreezeAccount(userId) {
         user.frozen = false;
         user.unfrozenAt = new Date().toISOString();
         user.unfrozenBy = getCurrentUser()?.name || 'Admin';
-        // Balance is NOT restored automatically
         
-        // Reset login attempts
+        // Reset login attempts in sessions
         const sessions = Storage.get('userSessions') || {};
         if (sessions[userId]) {
             sessions[userId].loginAttempts = 0;
@@ -285,9 +292,19 @@ function unfreezeAccount(userId) {
         
         Storage.set('allUsers', allUsers);
         
-        console.log(`✅ Hesab açıldı: User ${userId}`);
-        logActivity(user.name, 'Hesab açıldı (admin tərəfindən)', 'success');
+        // Sync to Upstash immediately
+        if (typeof upstash !== 'undefined' && upstash) {
+            try {
+                await upstash.set('allUsers', allUsers, 86400 * 30);
+                // Also clear the user_session key so device check resets
+                await upstash.delete(`user_session:${userId}`);
+                console.log(`✅ Hesab açıldı və Upstash-a yazıldı: User ${userId}`);
+            } catch (e) {
+                console.error('Upstash unfreeze sync error:', e);
+            }
+        }
         
+        logActivity(user.name, 'Hesab açıldı (admin tərəfindən)', 'success');
         return true;
     }
     
@@ -374,35 +391,23 @@ async function loginAsync(email, password, onDeviceConflict) {
     const deviceCheck = await checkDeviceSession(user.id);
     
     if (deviceCheck.isActive) {
-        // Record unauthorized attempt
-        const attempts = recordUnauthorizedAttempt(user.id, user.name, user.email);
+        // Must await — recordUnauthorizedAttempt is async
+        const attempts = await recordUnauthorizedAttempt(user.id, user.name, user.email);
         
-        // If this is 2nd or more attempt, account is now frozen
         if (attempts >= 2) {
             return {
                 success: false,
                 frozen: true,
-                message: '🚫 HESAB DONDURULDU!\n\n' +
-                         'Təkrar yetkisiz giriş cəhdi aşkar edildi.\n\n' +
-                         '⚠️ Hesabınız təhlükəsizlik məqsədilə donduruldu.\n' +
-                         '💰 Balansınız təmizləndi.\n\n' +
-                         'Hesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
+                message: '🚫 HESAB DONDURULDU!\n\nTəkrar yetkisiz giriş cəhdi aşkar edildi.\n\n⚠️ Hesabınız təhlükəsizlik məqsədilə donduruldu.\n💰 Balansınız təmizləndi.\n\nHesabınızı açmaq üçün admin ilə əlaqə saxlayın.'
             };
         }
         
-        // First attempt - show warning
         return { 
             success: false, 
             deviceConflict: true,
             attempts: attempts,
             user: user,
-            message: '⚠️ XƏBƏRDARLIQ!\n\n' +
-                     'Bu hesab başqa bir cihazda aktivdir.\n\n' +
-                     '🚫 Yenidən cəhd etsəniz:\n' +
-                     '• Hesabınız DONDURULACAQ\n' +
-                     '• Balansınız SİLİNƏCƏK\n' +
-                     '• Admin icazəsi tələb olunacaq\n\n' +
-                     'Davam etmək istəyirsiniz?'
+            message: `⚠️ XƏBƏRDARLIQ!\n\nBu hesab başqa bir cihazda aktivdir.\n\n🚫 Yenidən cəhd etsəniz (${attempts}/1):\n• Hesabınız DONDURULACAQ\n• Balansınız SİLİNƏCƏK\n• Admin icazəsi tələb olunacaq`
         };
     }
     

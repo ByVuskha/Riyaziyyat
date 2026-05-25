@@ -2134,8 +2134,8 @@ function loadSuspiciousActivities() {
 }
 
 function unfreezeUserAccount(userId) {
-    showConfirm('Bu istifadəçinin hesabını açmaq istədiyinizə əminsiniz?', () => {
-        const result = unfreezeAccount(userId);
+    showConfirm('Bu istifadəçinin hesabını açmaq istədiyinizə əminsiniz?', async () => {
+        const result = await unfreezeAccount(userId);
         if (result) {
             showNotification('Hesab uğurla açıldı', 'success');
             loadSuspiciousActivities();
