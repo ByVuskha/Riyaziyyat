@@ -327,11 +327,45 @@ function authorizeNewDevice(userId, newDeviceId) {
 }
 
 // Set device session for user
+// Detect device type from user agent
+function getDeviceInfo() {
+    const ua = navigator.userAgent;
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    let type = 'PC';
+    let icon = '💻';
+    if (isTablet) { type = 'Tablet'; icon = '📱'; }
+    else if (isMobile) { type = 'Telefon'; icon = '📱'; }
+
+    // Browser
+    let browser = 'Digər';
+    if (/Chrome/i.test(ua) && !/Edge|OPR/i.test(ua)) browser = 'Chrome';
+    else if (/Firefox/i.test(ua)) browser = 'Firefox';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+    else if (/Edge/i.test(ua)) browser = 'Edge';
+    else if (/OPR|Opera/i.test(ua)) browser = 'Opera';
+
+    // OS
+    let os = 'Digər';
+    if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
+    else if (/Mac/i.test(ua)) os = 'macOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    return { type, icon, browser, os, ua: ua.substring(0, 100) };
+}
+
 async function setDeviceSession(userId) {
     const currentDeviceId = getDeviceId();
-    
+    const deviceInfo = getDeviceInfo();
+
     const sessionData = {
         deviceId: currentDeviceId,
+        deviceType: deviceInfo.type,
+        deviceIcon: deviceInfo.icon,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os,
         loginTime: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
         loginAttempts: 0

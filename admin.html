@@ -295,6 +295,10 @@
                 <i class="fas fa-shield-alt" style="color:#f59e0b;"></i>
                 <span>Şübhəli Fəaliyyətlər</span>
             </div>
+            <div class="admin-menu-item" onclick="showSection('devices')">
+                <i class="fas fa-mobile-alt" style="color:#8b5cf6;"></i>
+                <span>Cihaz İdarəetməsi</span>
+            </div>
             <div class="admin-menu-item" onclick="showSection('premium')">
                 <i class="fas fa-crown" style="color:#fbbf24;"></i>
                 <span>Premium İdarəetməsi <span id="premiumPendingBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
@@ -992,6 +996,19 @@
                 <button class="btn" style="background:#fef2f2;color:#dc2626;" onclick="resetSiteSettings()">
                     <i class="fas fa-undo"></i> Sıfırla
                 </button>
+            </div>
+        </div>
+
+        <!-- Devices Management Section -->
+        <div id="devices" class="admin-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="margin:0;border:none;padding:0;">📱 Cihaz İdarəetməsi</h2>
+                <button class="btn btn-primary btn-sm" onclick="loadDevicesSection()">
+                    <i class="fas fa-sync"></i> Yenilə
+                </button>
+            </div>
+            <div id="devicesContainer">
+                <div style="text-align:center;padding:40px;color:#9ca3af;">Yüklənir...</div>
             </div>
         </div>
 

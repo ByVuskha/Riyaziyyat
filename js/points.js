@@ -47,6 +47,8 @@ function saveUserPoints(userId, data) {
     }
     // Update leaderboard in background
     _updateLeaderboardAsync(all);
+    // Notify any listeners that points changed (e.g. dashboard UI)
+    window.dispatchEvent(new CustomEvent('points:updated', { detail: { userId, data } }));
 }
 
 // Add points + history entry in ONE write

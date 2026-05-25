@@ -47,6 +47,7 @@ function showSection(section) {
         suspicious: 'Şübhəli Fəaliyyətlər',
         premium: 'Premium İdarəetməsi',
         leaderboard: 'Xal Liderliyi',
+        devices: 'Cihaz İdarəetməsi',
         settings: 'Tənzimləmələr'
     };
     const pageTitle = document.getElementById('pageTitle');
@@ -68,6 +69,7 @@ function showSection(section) {
         loadFrozenAccounts();
     }
     if (section === 'leaderboard') loadPointsLeaderboard();
+    if (section === 'devices') loadDevicesSection();
     if (section === 'premium') {
         loadPremiumRequestsEnhanced();
         loadPremiumUsers();
@@ -650,15 +652,13 @@ function loadPayments() {
 }
 
 // User Actions - Inline Editing (No Popups)
-function viewUser(id) {
+async function viewUser(id) {
     const users = Storage.get('allUsers') || MOCK_USERS;
     const user = users.find(u => u.id === id);
     if (!user) return;
     
-    // Expand row to show details inline
     const row = event.target.closest('tr');
     const existingDetails = row.nextElementSibling;
-    
     if (existingDetails && existingDetails.classList.contains('user-details-row')) {
         existingDetails.remove();
         return;
@@ -666,11 +666,44 @@ function viewUser(id) {
     
     const watchedVideos = Storage.get('userVideos_' + user.id) || [];
     const userTypeText = user.userType === 'teacher' ? '👨‍🏫 Müəllim' : '👨‍🎓 Şagird';
+
+    // Load device session from Upstash
+    let sessionData = null;
+    if (typeof upstash !== 'undefined' && upstash) {
+        try { sessionData = await upstash.get(`user_session:${user.id}`); } catch (e) {}
+    }
+    if (!sessionData) {
+        const sessions = Storage.get('userSessions') || {};
+        sessionData = sessions[user.id] || null;
+    }
+
+    const deviceHTML = sessionData ? `
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-top:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <strong style="font-size:13px;">📱 Aktiv Cihaz</strong>
+                <button onclick="revokeDeviceAccess(${user.id})" 
+                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600;">
+                    <i class="fas fa-ban"></i> İcazəni Ləğv Et
+                </button>
+            </div>
+            <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                <span>🖥️ Tip: <strong>${sessionData.deviceType || 'Naməlum'}</strong></span>
+                <span>🌐 Brauzer: <strong>${sessionData.browser || 'Naməlum'}</strong></span>
+                <span>💿 OS: <strong>${sessionData.os || 'Naməlum'}</strong></span>
+                <span>📅 Giriş: <strong>${sessionData.loginTime ? new Date(sessionData.loginTime).toLocaleString('az-AZ') : 'Naməlum'}</strong></span>
+                <span style="grid-column:1/-1;word-break:break-all;color:#6b7280;font-size:11px;">
+                    ID: ${sessionData.deviceId ? sessionData.deviceId.substring(0, 30) + '...' : '-'}
+                </span>
+            </div>
+        </div>
+    ` : `<div style="background:#f1f5f9;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;color:#6b7280;">
+            <i class="fas fa-mobile-alt"></i> Aktiv cihaz yoxdur
+        </div>`;
     
     const detailsRow = document.createElement('tr');
     detailsRow.className = 'user-details-row';
     detailsRow.innerHTML = `
-        <td colspan="8" style="background:#f8fafc;padding:25px;">
+        <td colspan="9" style="background:#f8fafc;padding:25px;">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
                 <div>
                     <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əsas Məlumat</h4>
@@ -686,6 +719,7 @@ function viewUser(id) {
                             <i class="fas fa-eye" id="pwIcon_${user.id}"></i>
                         </button>
                     </p>
+                    ${deviceHTML}
                 </div>
                 <div>
                     <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Statistika</h4>
@@ -708,6 +742,28 @@ function viewUser(id) {
     `;
     
     row.after(detailsRow);
+}
+
+async function revokeDeviceAccess(userId) {
+    showConfirm('Bu istifadəçinin cihaz icazəsini ləğv etmək istədiyinizə əminsiniz?\n\nİstifadəçi növbəti girişdə yenidən cihaz qeydiyyatından keçməli olacaq.', async () => {
+        // Remove from localStorage
+        const sessions = Storage.get('userSessions') || {};
+        delete sessions[userId];
+        Storage.set('userSessions', sessions);
+
+        // Remove from Upstash
+        if (typeof upstash !== 'undefined' && upstash) {
+            try {
+                await upstash.delete(`user_session:${userId}`);
+                await upstash.set('userSessions', sessions, 86400 * 30);
+            } catch (e) {}
+        }
+
+        showNotification('✅ Cihaz icazəsi ləğv edildi', 'success');
+        // Refresh the row
+        document.querySelector('.user-details-row')?.remove();
+        loadUsers();
+    });
 }
 
 function editUserInline(id) {
@@ -2085,6 +2141,104 @@ saveNewTeacher = function() {
     return result;
 };
 
+
+// ==================== DEVICE MANAGEMENT ====================
+
+async function loadDevicesSection() {
+    const container = document.getElementById('devicesContainer');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin"></i> Yüklənir...</div>';
+
+    // Load allUsers and userSessions from Upstash
+    let allUsers = Storage.get('allUsers') || [];
+    let sessions = Storage.get('userSessions') || {};
+
+    if (typeof upstash !== 'undefined' && upstash) {
+        try {
+            const [cloudUsers, cloudSessions] = await Promise.all([
+                upstash.get('allUsers'),
+                upstash.get('userSessions')
+            ]);
+            if (cloudUsers)   { allUsers  = cloudUsers;   Storage.set('allUsers', cloudUsers); }
+            if (cloudSessions){ sessions  = cloudSessions; Storage.set('userSessions', cloudSessions); }
+        } catch (e) {}
+    }
+
+    const regularUsers = allUsers.filter(u => u.role !== 'admin');
+
+    if (regularUsers.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">İstifadəçi yoxdur</div>';
+        return;
+    }
+
+    const rows = regularUsers.map(user => {
+        const session = sessions[user.id];
+        const hasDevice = session && session.deviceId;
+        const loginTime = hasDevice && session.loginTime
+            ? new Date(session.loginTime).toLocaleString('az-AZ')
+            : '—';
+        const deviceType = hasDevice ? (session.deviceType || 'Naməlum') : '—';
+        const deviceIcon = hasDevice ? (session.deviceIcon || '💻') : '❌';
+        const browser = hasDevice ? (session.browser || '—') : '—';
+        const os = hasDevice ? (session.os || '—') : '—';
+
+        return `
+            <tr>
+                <td>
+                    <strong>${user.name}</strong><br>
+                    <small style="color:#6b7280;">${user.email}</small>
+                </td>
+                <td style="text-align:center;font-size:20px;">${deviceIcon}</td>
+                <td><strong>${deviceType}</strong></td>
+                <td>${browser}</td>
+                <td>${os}</td>
+                <td style="font-size:13px;">${loginTime}</td>
+                <td>
+                    ${hasDevice ? `
+                        <button class="btn btn-danger btn-sm" onclick="revokeDeviceAccess(${user.id})" title="Cihaz icazəsini ləğv et">
+                            <i class="fas fa-ban"></i> Ləğv Et
+                        </button>
+                    ` : `<span style="color:#9ca3af;font-size:12px;">Aktiv cihaz yoxdur</span>`}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    const activeCount = regularUsers.filter(u => sessions[u.id]?.deviceId).length;
+
+    container.innerHTML = `
+        <div style="display:flex;gap:15px;margin-bottom:20px;">
+            <div style="background:#f0fdf4;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
+                <div style="font-size:24px;font-weight:800;color:#10b981;">${activeCount}</div>
+                <div style="font-size:12px;color:#6b7280;">Aktiv Cihaz</div>
+            </div>
+            <div style="background:#f1f5f9;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
+                <div style="font-size:24px;font-weight:800;color:#64748b;">${regularUsers.length - activeCount}</div>
+                <div style="font-size:12px;color:#6b7280;">Cihazsız</div>
+            </div>
+            <div style="background:#eef2ff;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
+                <div style="font-size:24px;font-weight:800;color:#667eea;">${regularUsers.length}</div>
+                <div style="font-size:12px;color:#6b7280;">Ümumi İstifadəçi</div>
+            </div>
+        </div>
+        <div style="background:white;border-radius:12px;box-shadow:var(--shadow);overflow:hidden;">
+            <table class="admin-table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>İstifadəçi</th>
+                        <th style="text-align:center;">Tip</th>
+                        <th>Cihaz</th>
+                        <th>Brauzer</th>
+                        <th>OS</th>
+                        <th>Son Giriş</th>
+                        <th>Əməliyyat</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
 
 // ==================== SUSPICIOUS ACTIVITIES ====================
 
