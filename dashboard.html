@@ -121,14 +121,14 @@
             <div class="stat-card">
                 <div class="stat-icon" style="background:#eef2ff;">📹</div>
                 <div>
-                    <h3>0</h3>
+                    <h3 id="watchedVideosDisplay">0</h3>
                     <p>İzlənən Video</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background:#ecfdf5;">📝</div>
                 <div>
-                    <h3>0</h3>
+                    <h3 id="completedTestsDisplay">0</h3>
                     <p>Həll Edilən Sınaq</p>
                 </div>
             </div>
@@ -250,19 +250,20 @@
         // Render points — reads directly from localStorage (saveUserPoints writes there instantly)
         function renderPoints() {
             const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
-            const pointsData = allPoints[user.id] || { total: 0 };
+            const myData = allPoints[user.id] || { total: 0, watchedVideos: [], completedTests: [] };
 
-            const pointsEl = document.getElementById('userPointsDisplay');
-            if (pointsEl) pointsEl.textContent = (pointsData.total || 0).toLocaleString();
+            document.getElementById('userPointsDisplay').textContent =
+                (myData.total || 0).toLocaleString();
+            document.getElementById('watchedVideosDisplay').textContent =
+                (myData.watchedVideos || []).length;
+            document.getElementById('completedTestsDisplay').textContent =
+                (myData.completedTests || []).length;
 
-            const rankEl = document.getElementById('userRankDisplay');
-            if (rankEl) {
-                const sorted = Object.values(allPoints)
-                    .filter(p => (p.total || 0) > 0)
-                    .sort((a, b) => b.total - a.total);
-                const rank = sorted.findIndex(p => p.userId === user.id) + 1;
-                rankEl.textContent = rank > 0 ? `#${rank}` : '-';
-            }
+            const sorted = Object.values(allPoints)
+                .filter(p => (p.total || 0) > 0)
+                .sort((a, b) => b.total - a.total);
+            const rank = sorted.findIndex(p => p.userId === user.id) + 1;
+            document.getElementById('userRankDisplay').textContent = rank > 0 ? `#${rank}` : '-';
         }
 
         renderPoints();
