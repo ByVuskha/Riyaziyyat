@@ -449,23 +449,32 @@ function renderDashboard() {
     }
 
     // ── Streak ────────────────────────────────────────────────────────────────
-    // Build last 21 days
-    const loginDates = new Set(
-        history
-            .filter(h => h.timestamp)
-            .map(h => new Date(h.timestamp).toISOString().slice(0, 10))
-    );
-    // Also add lastLoginDate
-    if (myData.lastLoginDate) loginDates.add(myData.lastLoginDate.slice(0, 10));
+    // Collect all dates the user logged in:
+    // 1. From history entries (any activity = user was here)
+    // 2. From lastLoginDate (most recent daily login date)
+    // 3. From sessionStorage (current session, even if no points yet)
+    const loginDates = new Set();
+
+    // From history timestamps
+    history
+        .filter(h => h.timestamp)
+        .forEach(h => loginDates.add(new Date(h.timestamp).toISOString().slice(0, 10)));
+
+    // From lastLoginDate
+    if (myData.lastLoginDate) {
+        loginDates.add(myData.lastLoginDate.slice(0, 10));
+    }
+
+    // Current session = user is here today
+    const todayKey = new Date().toISOString().slice(0, 10);
+    loginDates.add(todayKey);
 
     const days = [];
     for (let i = 20; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const key = d.toISOString().slice(0, 10);
-        const isToday = i === 0;
-        const active  = loginDates.has(key);
-        days.push({ key, isToday, active, label: d.getDate() });
+        days.push({ key, isToday: i === 0, active: loginDates.has(key), label: d.getDate() });
     }
 
     document.getElementById('streakGrid').innerHTML = days.map(d => `
@@ -474,9 +483,9 @@ function renderDashboard() {
         </div>
     `).join('');
 
-    // Count current streak
+    // Count current streak (consecutive days ending today)
     let streak = 0;
-    for (let i = 0; i < 21; i++) {
+    for (let i = 0; i < 60; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         if (loginDates.has(d.toISOString().slice(0, 10))) streak++;

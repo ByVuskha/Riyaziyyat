@@ -104,15 +104,28 @@ window.Storage = {
     };
 
     // ── Load from Upstash → localStorage ─────────────────────────────────────
-    // Called on every page load. Fetches all cloud keys in parallel.
-    window.loadFromUpstash = async function() {
+    // Uses a 30-second session cache: if data was loaded recently in this tab,
+    // skip Upstash and use localStorage directly (much faster page transitions).
+    const SESSION_CACHE_KEY = '_upstash_loaded_at';
+    const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+    window.loadFromUpstash = async function(force = false) {
+        const lastLoaded = parseInt(sessionStorage.getItem(SESSION_CACHE_KEY) || '0');
+        const age = Date.now() - lastLoaded;
+
+        if (!force && age < CACHE_TTL_MS) {
+            // Data is fresh — skip Upstash, use localStorage cache
+            console.log(`⚡ Upstash skip (${Math.round(age/1000)}s ago)`);
+            return { ok: 0, fail: 0, cached: true };
+        }
+
         let ok = 0, fail = 0;
         await Promise.all(CLOUD_KEYS.map(async key => {
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
                     const val = await upstash.get(key);
                     if (val !== null && val !== undefined) {
-                        _origSet(key, val);   // write to localStorage cache
+                        _origSet(key, val);
                         ok++;
                     }
                     return;
@@ -122,6 +135,8 @@ window.Storage = {
                 }
             }
         }));
+
+        sessionStorage.setItem(SESSION_CACHE_KEY, String(Date.now()));
         console.log(`📥 Upstash → localStorage: ${ok} key, ${fail} xəta`);
         return { ok, fail };
     };
@@ -140,10 +155,27 @@ window.Storage = {
         return { ok, fail };
     };
 
+    // ── Prefetch next pages for faster navigation ─────────────────────────────
+    // Adds <link rel="prefetch"> for common pages so the browser downloads them
+    // in the background — makes page transitions feel instant.
+    function _prefetchPages() {
+        const pages = [
+            'videos.html', 'tests.html', 'dashboard.html',
+            'success.html', 'teachers.html', 'news.html'
+        ];
+        pages.forEach(page => {
+            if (!document.querySelector(`link[href="${page}"]`)) {
+                const link = document.createElement('link');
+                link.rel  = 'prefetch';
+                link.href = page;
+                document.head.appendChild(link);
+            }
+        });
+    }
+
     // ── Auto-load on every page ───────────────────────────────────────────────
-    // Start immediately on DOMContentLoaded (not load) so data is ready sooner.
-    // Fire 'upstash:loaded' when done so all pages can react.
     document.addEventListener('DOMContentLoaded', async function() {
+        _prefetchPages();
         await loadFromUpstash();
         window.dispatchEvent(new Event('upstash:loaded'));
         console.log('🚀 upstash:loaded fired');
