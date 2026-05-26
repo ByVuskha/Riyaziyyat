@@ -113,7 +113,11 @@ window.Storage = {
         const lastLoaded = parseInt(sessionStorage.getItem(SESSION_CACHE_KEY) || '0');
         const age = Date.now() - lastLoaded;
 
-        if (!force && age < CACHE_TTL_MS) {
+        // Admin panel always gets fresh data
+        const isAdmin = document.body.id === 'adminPage' ||
+                        window.location.pathname.includes('admin.html');
+
+        if (!force && !isAdmin && age < CACHE_TTL_MS) {
             // Data is fresh — skip Upstash, use localStorage cache
             console.log(`⚡ Upstash skip (${Math.round(age/1000)}s ago)`);
             return { ok: 0, fail: 0, cached: true };

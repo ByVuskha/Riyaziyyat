@@ -2941,7 +2941,7 @@ async function loadPointsLeaderboard() {
 
     container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Yüklənir...</td></tr>';
 
-    // Load fresh from Upstash
+    // Always load fresh from Upstash — bypass session cache
     let allPoints = {};
     let allUsers  = [];
     if (typeof upstash !== 'undefined' && upstash) {
@@ -2950,27 +2950,33 @@ async function loadPointsLeaderboard() {
                 upstash.get('userPoints'),
                 upstash.get('allUsers')
             ]);
-            if (cloudPts)   { allPoints = cloudPts;   Storage.set('userPoints', cloudPts); }
-            if (cloudUsers) { allUsers  = cloudUsers;  Storage.set('allUsers',   cloudUsers); }
+            if (cloudPts)   { allPoints = cloudPts;  localStorage.setItem('userPoints', JSON.stringify(cloudPts)); }
+            if (cloudUsers) { allUsers  = cloudUsers; localStorage.setItem('allUsers',   JSON.stringify(cloudUsers)); }
         } catch (e) { console.warn('Upstash leaderboard load:', e); }
     }
-    if (!Object.keys(allPoints).length) allPoints = Storage.get('userPoints') || {};
-    if (!allUsers.length)               allUsers  = Storage.get('allUsers')   || [];
+    // Fallback to localStorage
+    if (!Object.keys(allPoints).length) {
+        try { allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch {}
+    }
+    if (!allUsers.length) {
+        try { allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]'); } catch {}
+    }
 
-    // Build: all users + their points
+    // Build: all non-admin users + their points data
     const entries = allUsers
         .filter(u => u.role !== 'admin')
         .map(u => {
+            // Try both number and string key
             const p = allPoints[u.id] || allPoints[String(u.id)] || {};
             return {
                 userId:       u.id,
-                userName:     u.name,
-                userEmail:    u.email,
+                userName:     u.name || '—',
+                userEmail:    u.email || '—',
                 userType:     u.userType || 'student',
                 premium:      u.premium || false,
                 total:        p.total || 0,
-                watchedCount: (p.watchedVideos  || []).length,
-                testCount:    (p.completedTests || []).length,
+                watchedCount: Array.isArray(p.watchedVideos)  ? p.watchedVideos.length  : 0,
+                testCount:    Array.isArray(p.completedTests) ? p.completedTests.length : 0,
             };
         })
         .sort((a, b) => b.total - a.total);
@@ -2984,28 +2990,35 @@ async function loadPointsLeaderboard() {
     const withPts    = entries.filter(e => e.total > 0);
     const withoutPts = entries.filter(e => e.total === 0);
 
-    const rows = [...withPts, ...withoutPts].map((e, i) => {
+    const rows = [...withPts, ...withoutPts].map((e) => {
         const rankInPts = withPts.indexOf(e);
         const rankCell  = rankInPts >= 0
-            ? (MEDAL[rankInPts] || `<strong>#${rankInPts + 1}</strong>`)
+            ? (MEDAL[rankInPts] || `<strong style="color:#374151;">#${rankInPts + 1}</strong>`)
             : '<span style="color:#d1d5db;">—</span>';
         const typeIcon  = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+        const rowBg     = rankInPts === 0 ? '#fffbeb' : rankInPts === 1 ? '#f8fafc' : rankInPts === 2 ? '#fdf4ff' : 'white';
         return `
-        <tr style="background:${rankInPts >= 0 && rankInPts < 3 ? '#fffbeb' : 'white'};">
-            <td style="font-size:18px;text-align:center;">${rankCell}</td>
-            <td>
+        <tr style="background:${rowBg};">
+            <td style="font-size:18px;text-align:center;padding:12px 8px;">${rankCell}</td>
+            <td style="padding:12px 8px;">
                 <strong>${typeIcon} ${e.userName}</strong><br>
                 <small style="color:#6b7280;">${e.userEmail}</small>
             </td>
-            <td style="text-align:center;">
+            <td style="text-align:center;padding:12px 8px;">
                 ${e.premium
                     ? '<span style="background:#fbbf24;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">👑 Premium</span>'
                     : '<span style="color:#9ca3af;font-size:12px;">Pulsuz</span>'}
             </td>
-            <td style="text-align:center;font-size:12px;color:#6b7280;">${e.watchedCount} video</td>
-            <td style="text-align:center;font-size:12px;color:#6b7280;">${e.testCount} sınaq</td>
-            <td>
-                <span style="font-size:18px;font-weight:800;color:${e.total > 0 ? '#667eea' : '#d1d5db'};">${e.total}</span>
+            <td style="text-align:center;padding:12px 8px;">
+                <span style="font-size:14px;font-weight:600;color:#374151;">${e.watchedCount}</span>
+                <span style="font-size:11px;color:#9ca3af;"> video</span>
+            </td>
+            <td style="text-align:center;padding:12px 8px;">
+                <span style="font-size:14px;font-weight:600;color:#374151;">${e.testCount}</span>
+                <span style="font-size:11px;color:#9ca3af;"> sınaq</span>
+            </td>
+            <td style="padding:12px 8px;">
+                <span style="font-size:20px;font-weight:900;color:${e.total > 0 ? '#667eea' : '#d1d5db'};">${e.total}</span>
                 <span style="color:#9ca3af;font-size:12px;"> xal</span>
             </td>
         </tr>`;
