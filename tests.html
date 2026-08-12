@@ -72,52 +72,19 @@
 <script src="js/notifications.js"></script>
 <script src="js/points.js"></script>
 <script>
-const MOCK_TESTS = [
-    {
-        id: 1, title: 'Cəbr - Əsas', emoji: '🔢', difficulty: 'Asan',
-        questions: 5, time: 10, free: true, desc: 'Xətti tənliklər',
-        data: [
-            { q: '2x + 4 = 10, x = ?', opts: ['2', '3', '4', '5'], ans: 1 },
-            { q: '3(x-2) = 9, x = ?', opts: ['3', '4', '5', '6'], ans: 2 },
-            { q: 'x² = 16, x = ?', opts: ['2', '4', '8', '16'], ans: 1 },
-            { q: '5x-3 = 2x+9, x = ?', opts: ['2', '3', '4', '5'], ans: 2 },
-            { q: '(x+3)(x-2) = 0, x = ?', opts: ['-3 və 2', '3 və -2', '-3 və -2', '3 və 2'], ans: 0 }
-        ]
-    },
-    {
-        id: 2, title: 'Həndəsə - Üçbucaq', emoji: '📐', difficulty: 'Orta',
-        questions: 4, time: 8, free: true, desc: 'Üçbucaqlar',
-        data: [
-            { q: 'Üçbucağın bucaqları cəmi?', opts: ['90°', '180°', '270°', '360°'], ans: 1 },
-            { q: 'Düzbucaqlı üçbucaqda hipotenuz?', opts: ['Kiçik', 'Böyük', 'Orta', 'İstənilən'], ans: 1 },
-            { q: 'Bərabərtərəfli üçbucaqda bucaq?', opts: ['45°', '60°', '90°', '120°'], ans: 1 },
-            { q: 'Pifaqor teoremi hansı üçbucaqda?', opts: ['Hamısında', 'Düzbucaqlı', 'Bərabərtərəfli', 'Bərabəryanlı'], ans: 1 }
-        ]
-    },
-    {
-        id: 3, title: 'Analiz - Limit', emoji: '∫', difficulty: 'Çətin',
-        questions: 3, time: 6, free: false, desc: 'Limitlər',
-        data: [
-            { q: 'lim(x→0) sin(x)/x = ?', opts: ['0', '1', '∞', 'Yoxdur'], ans: 1 },
-            { q: 'lim(x→∞) 1/x = ?', opts: ['-∞', '0', '1', '∞'], ans: 1 },
-            { q: 'lim(x→2) (x²-4)/(x-2) = ?', opts: ['0', '2', '4', 'Yoxdur'], ans: 2 }
-        ]
-    }
-];
+const MOCK_TESTS = [];
 
 // Yüklənmiş sınaqları əlavə et
 function getAllTests() {
     const uploadedTests = Storage.get('tests') || [];
     const stats = Storage.get('testStats') || {};
-    
-    // Yüklənmiş sınaqları formatlayaq
-    const formattedTests = uploadedTests.map(t => {
+
+    return uploadedTests.map(t => {
         const testStats = stats[t.id] || stats['uploaded_' + t.id] || { totalAttempts: 0, uniqueUsers: [] };
-        
         return {
             id: 'uploaded_' + t.id,
             title: t.title,
-            emoji: '📝',
+            emoji: t.emoji || '📝',
             difficulty: t.difficulty || 'Orta',
             questions: t.questions?.length || 0,
             time: t.duration || 10,
@@ -132,26 +99,19 @@ function getAllTests() {
             }))
         };
     });
-    
-    // MOCK_TESTS-ə də statistika əlavə et
-    const mockWithStats = MOCK_TESTS.map(t => {
-        const testStats = stats[t.id] || { totalAttempts: 0, uniqueUsers: [] };
-        return {
-            ...t,
-            attempts: testStats.totalAttempts || 0,
-            users: (testStats.uniqueUsers || []).length
-        };
-    });
-    
-    return [...formattedTests, ...mockWithStats];
 }
 
 function renderTests() {
     const allTests = getAllTests();
     const grid = document.getElementById('testsGrid');
-    
+
     if (allTests.length === 0) {
-        grid.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Sınaq tapılmadı</p>';
+        grid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:64px;margin-bottom:16px;">📝</div>
+                <h3 style="font-size:20px;margin-bottom:8px;color:#374151;">Hələ sınaq yoxdur</h3>
+                <p style="font-size:14px;">Admin tərəfindən sınaqlar əlavə ediləcək</p>
+            </div>`;
         return;
     }
     

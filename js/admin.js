@@ -880,14 +880,19 @@ function togglePassword(userId, password) {
 }
 
 function deleteUser(id) {
-    if (confirm('Bu istifadəçini silmək istədiyinizdən əminsiniz?')) {
-        const users = Storage.get('allUsers') || MOCK_USERS;
+    const users = Storage.get('allUsers') || [];
+    const target = users.find(u => u.id === id);
+    if (!target) return;
+    showConfirm(`"${target.name}" adlı istifadəçini silmək istədiyinizdən əminsiniz?`, () => {
         const filtered = users.filter(u => u.id !== id);
         Storage.set('allUsers', filtered);
+        // Remove details row if open
+        const detailsRow = document.querySelector('.user-details-row');
+        if (detailsRow) detailsRow.remove();
         loadUsers();
         loadDashboardStats();
-        alert('İstifadəçi silindi!');
-    }
+        showNotification('İstifadəçi uğurla silindi!', 'success');
+    });
 }
 
 function toggleUserForm() {
@@ -907,41 +912,37 @@ function toggleUserForm() {
 }
 
 function saveNewUser() {
-    const name = document.getElementById('newUserName').value;
-    const email = document.getElementById('newUserEmail').value;
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
     const password = document.getElementById('newUserPassword').value;
-    const phone = document.getElementById('newUserPhone').value;
+    const phone = document.getElementById('newUserPhone').value.trim();
     const role = document.getElementById('newUserRole').value;
     const balance = parseFloat(document.getElementById('newUserBalance').value) || 0;
     
     if (!name || !email || !password) {
-        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
+        showNotification('Zəhmət olmasa bütün məcburi sahələri doldurun!', 'error');
         return;
     }
     
     if (password.length < 6) {
-        alert('Şifrə minimum 6 simvol olmalıdır!');
+        showNotification('Şifrə minimum 6 simvol olmalıdır!', 'error');
         return;
     }
     
-    const users = Storage.get('allUsers') || MOCK_USERS;
+    const users = Storage.get('allUsers') || [];
     
-    // Check if email exists
     if (users.find(u => u.email === email)) {
-        alert('Bu email artıq qeydiyyatdadır!');
+        showNotification('Bu email artıq qeydiyyatdadır!', 'error');
         return;
     }
     
     const newUser = {
-        id: users.length + 1,
-        name: name,
-        email: email,
-        password: password,
-        phone: phone,
-        role: role,
-        balance: balance,
+        id: Date.now(),
+        name, email, password, phone, role, balance,
         demoTests: 3,
+        premium: false,
         active: true,
+        registeredAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
     };
     
@@ -951,7 +952,7 @@ function saveNewUser() {
     toggleUserForm();
     loadUsers();
     loadDashboardStats();
-    alert('İstifadəçi uğurla əlavə edildi!');
+    showNotification('İstifadəçi uğurla əlavə edildi!', 'success');
 }
 
 function showAddUserModal() {
@@ -1229,51 +1230,12 @@ function showAddTestModal() {
     window.location.href = 'test-editor.html';
 }
 
-// News Actions
-function viewNews(id) {
-    alert('Xəbər məlumatları: ID ' + id);
-}
-
-function editNews(id) {
-    alert('Xəbər redaktəsi: ID ' + id);
-}
-
-function deleteNews(id) {
-    if (confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
-        alert('Xəbər silindi!');
-        loadNews();
-    }
-}
-
-function showAddNewsModal() {
-    const title = prompt('Xəbər başlığı:');
-    const category = prompt('Kateqoriya:');
-    const content = prompt('Məzmun:');
-    
-    if (title && category && content) {
-        const news = Storage.get('news') || [];
-        const now = new Date();
-        const dd = String(now.getDate()).padStart(2,'0');
-        const mm = String(now.getMonth()+1).padStart(2,'0');
-        const yyyy = now.getFullYear();
-        const newNews = {
-            id: Date.now(),
-            title: title,
-            category: category,
-            content: content,
-            date: `${dd}.${mm}.${yyyy}`,
-            status: 'published'
-        };
-        news.push(newNews);
-        Storage.set('news', news);
-        loadNews();
-        alert('Xəbər əlavə edildi!');
-    }
-}
-
 // Payment Actions
 function viewPayment(id) {
-    alert('Ödəniş məlumatları: ID ' + id);
+    const payments = Storage.get('payments') || [];
+    const p = payments.find(x => x.id === id);
+    if (!p) { showNotification('Ödəniş tapılmadı', 'error'); return; }
+    showNotification(`Ödəniş #${p.id} — ${p.user || p.userName || 'Naməlum'} — ${p.amount} ₼ — ${p.date}`, 'info', 6000);
 }
 
 // Settings
