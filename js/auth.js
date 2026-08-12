@@ -682,8 +682,8 @@ function requestPremium(packageType = 'monthly') {
         return { success: false, message: 'Artıq premium üzvlüyünüz var' };
     }
     
-    const package = PREMIUM_PACKAGES[packageType];
-    if (!package) {
+    const selectedPackage = PREMIUM_PACKAGES[packageType];
+    if (!selectedPackage) {
         return { success: false, message: 'Yanlış paket seçimi' };
     }
     
