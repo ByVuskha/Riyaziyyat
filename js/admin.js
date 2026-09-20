@@ -47,6 +47,7 @@ function showSection(section) {
         dashboard: 'Dashboard',
         users: 'İstifadəçilər',
         teachers: 'Müəllimlər',
+        teacherTests: 'Müəllim Sınaq Müraciətləri',
         videos: 'Video Dərslər',
         tests: 'Sınaqlar',
         testResults: 'Sınaq Nəticələri',
@@ -78,6 +79,7 @@ function showSection(section) {
         loadFrozenAccounts();
     }
     if (section === 'leaderboard') loadPointsLeaderboard();
+    if (section === 'teacherTests') loadTeacherTestsSection();
     if (section === 'devices') loadDevicesSection();
     if (section === 'premium') {
         loadPremiumRequestsEnhanced();
@@ -163,6 +165,8 @@ async function loadDashboardStats() {
     loadRecentRegistrations();
     loadActiveUsers();
     loadActivityLog();
+    // Teacher test requests badge
+    _updateTeacherTestsBadge();
 }
 
 // Load Recent Registrations Chart
@@ -3121,4 +3125,250 @@ async function loadRevenueStats() {
             </td>
         </tr>
     `).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÜƏLLIM SINAQ MÜRACİƏTLƏRİ
+// ══════════════════════════════════════════════════════════════════════════════
+
+function loadTeacherTestsSection() {
+    _loadAccessRequests();
+    _loadSubmittedTests();
+    _updateTeacherTestsBadge();
+}
+
+// Badge — neçə pending müraciət var
+function _updateTeacherTestsBadge() {
+    const reqs     = Storage.get('teacherTestRequests') || [];
+    const tests    = Storage.get('teacherTests')        || [];
+    const pending  = reqs.filter(r => r.status === 'pending').length
+                   + tests.filter(t => t.status === 'pending').length;
+    const badge = document.getElementById('teacherTestsBadge');
+    if (!badge) return;
+    if (pending > 0) {
+        badge.textContent    = pending;
+        badge.style.display  = 'inline-flex';
+    } else {
+        badge.style.display  = 'none';
+    }
+}
+
+// ── İcazə müraciətləri ────────────────────────────────────────────────────────
+function _loadAccessRequests() {
+    const container = document.getElementById('teacherAccessRequestsList');
+    if (!container) return;
+    const reqs = Storage.get('teacherTestRequests') || [];
+    if (!reqs.length) {
+        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:30px;">Heç bir müraciət yoxdur</p>';
+        return;
+    }
+    container.innerHTML = reqs.map(r => {
+        const d   = new Date(r.requestedAt);
+        const dt  = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+        const cls = r.status === 'approved' ? 'background:#ecfdf5;color:#065f46'
+                  : r.status === 'rejected' ? 'background:#fef2f2;color:#991b1b'
+                  : 'background:#fef3c7;color:#92400e';
+        const lbl = r.status === 'approved' ? '✅ Təsdiqləndi'
+                  : r.status === 'rejected' ? '❌ Rədd Edildi'
+                  : '⏳ Gözləyir';
+        return `
+        <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;">
+            <div style="width:42px;height:42px;border-radius:50%;background:#667eea;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:18px;flex-shrink:0;">
+                ${(r.userName||'?')[0].toUpperCase()}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:700;font-size:14px;">👨‍🏫 ${r.userName}</div>
+                <div style="font-size:12px;color:#6b7280;">${r.userEmail} · ${dt}</div>
+            </div>
+            <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;${cls};">${lbl}</span>
+            ${r.status === 'pending' ? `
+            <div style="display:flex;gap:8px;">
+                <button onclick="grantTestAccess(${r.id},'${r.userId}')" class="btn btn-sm btn-success">
+                    <i class="fas fa-check"></i> İcazə Ver
+                </button>
+                <button onclick="rejectTestAccess(${r.id},'${r.userId}')" class="btn btn-sm btn-danger">
+                    <i class="fas fa-times"></i> Rədd Et
+                </button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function grantTestAccess(reqId, userId) {
+    // Update request status
+    const reqs = Storage.get('teacherTestRequests') || [];
+    const ri = reqs.findIndex(r => r.id === reqId);
+    if (ri !== -1) { reqs[ri].status = 'approved'; reqs[ri].approvedAt = new Date().toISOString(); }
+    Storage.set('teacherTestRequests', reqs);
+
+    // Update user canAddTests flag
+    const allUsers = Storage.get('allUsers') || [];
+    const ui = allUsers.findIndex(u => String(u.id) === String(userId));
+    if (ui !== -1) {
+        allUsers[ui].canAddTests = true;
+        allUsers[ui].canAddTestsAt = new Date().toISOString();
+    }
+    Storage.set('allUsers', allUsers);
+
+    if (typeof showNotification === 'function') showNotification('✅ İcazə verildi!', 'success');
+    loadTeacherTestsSection();
+}
+
+function rejectTestAccess(reqId, userId) {
+    const reqs = Storage.get('teacherTestRequests') || [];
+    const ri = reqs.findIndex(r => r.id === reqId);
+    if (ri !== -1) { reqs[ri].status = 'rejected'; reqs[ri].rejectedAt = new Date().toISOString(); }
+    Storage.set('teacherTestRequests', reqs);
+
+    const allUsers = Storage.get('allUsers') || [];
+    const ui = allUsers.findIndex(u => String(u.id) === String(userId));
+    if (ui !== -1) { allUsers[ui].canAddTests = false; allUsers[ui].testAccessRequested = false; }
+    Storage.set('allUsers', allUsers);
+
+    if (typeof showNotification === 'function') showNotification('Müraciət rədd edildi', 'warning');
+    loadTeacherTestsSection();
+}
+
+// ── Göndərilmiş sınaqlar ──────────────────────────────────────────────────────
+function _loadSubmittedTests() {
+    const container = document.getElementById('teacherSubmittedTestsList');
+    if (!container) return;
+    const tests = Storage.get('teacherTests') || [];
+    if (!tests.length) {
+        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:30px;">Heç bir sınaq göndərilməyib</p>';
+        return;
+    }
+    container.innerHTML = tests.map(t => {
+        const d   = new Date(t.submittedAt);
+        const dt  = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+        const cls = t.status === 'approved' ? 'background:#ecfdf5;color:#065f46'
+                  : t.status === 'rejected' ? 'background:#fef2f2;color:#991b1b'
+                  : 'background:#fef3c7;color:#92400e';
+        const lbl = t.status === 'approved' ? '✅ Təsdiqləndi'
+                  : t.status === 'rejected' ? '❌ Rədd Edildi'
+                  : '⏳ Gözləyir';
+        return `
+        <div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:12px;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+                <div style="font-size:36px;width:50px;text-align:center;">${t.emoji || '📝'}</div>
+                <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div style="font-weight:700;font-size:15px;">${t.title}</div>
+                        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;${cls};">${lbl}</span>
+                    </div>
+                    <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
+                        👨‍🏫 ${t.teacherName} · ${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dt}
+                        ${t.isPremium ? ' · <span style="color:#f59e0b;">👑 Premium</span>' : ' · <span style="color:#10b981;">✅ Pulsuz</span>'}
+                    </div>
+                    ${t.description ? `<div style="font-size:13px;color:#374151;margin-bottom:10px;">${t.description}</div>` : ''}
+                    ${t.adminNote ? `<div style="font-size:12px;color:#ef4444;margin-bottom:8px;"><i class="fas fa-comment"></i> ${t.adminNote}</div>` : ''}
+                    ${t.status === 'pending' ? `
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <button onclick="previewTeacherTest(${t.id})" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-eye"></i> Bax
+                        </button>
+                        <button onclick="approveTeacherTest(${t.id})" class="btn btn-sm btn-success">
+                            <i class="fas fa-check"></i> Təsdiqlə
+                        </button>
+                        <button onclick="rejectTeacherTest(${t.id})" class="btn btn-sm btn-danger">
+                            <i class="fas fa-times"></i> Rədd Et
+                        </button>
+                    </div>` : t.status === 'approved' ? `
+                    <div style="font-size:12px;color:#10b981;"><i class="fas fa-check-circle"></i> Sayta əlavə edilib</div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function previewTeacherTest(testId) {
+    const tests = Storage.get('teacherTests') || [];
+    const t = tests.find(x => x.id === testId);
+    if (!t) return;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:28px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                <h3 style="margin:0;font-size:18px;">${t.emoji} ${t.title}</h3>
+                <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;">✕</button>
+            </div>
+            <div style="font-size:13px;color:#6b7280;margin-bottom:18px;">
+                👨‍🏫 ${t.teacherName} · ${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty}
+            </div>
+            ${t.questions.map((q, i) => `
+                <div style="margin-bottom:16px;padding:14px;background:#f8fafc;border-radius:10px;">
+                    <div style="font-weight:700;margin-bottom:10px;">${i+1}. ${q.question}</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                        ${q.options.map((opt, oi) => `
+                            <div style="padding:6px 10px;border-radius:6px;font-size:13px;
+                                background:${oi === q.correctAnswer ? '#ecfdf5' : '#fff'};
+                                border:1px solid ${oi === q.correctAnswer ? '#10b981' : '#e5e7eb'};
+                                color:${oi === q.correctAnswer ? '#065f46' : '#374151'};">
+                                ${String.fromCharCode(65+oi)}. ${opt}
+                                ${oi === q.correctAnswer ? ' ✓' : ''}
+                            </div>`).join('')}
+                    </div>
+                </div>`).join('')}
+            <div style="display:flex;gap:10px;margin-top:18px;">
+                <button onclick="approveTeacherTest(${t.id});this.closest('[style*=fixed]').remove();" class="btn btn-success" style="flex:1;">
+                    <i class="fas fa-check"></i> Təsdiqlə
+                </button>
+                <button onclick="rejectTeacherTest(${t.id});this.closest('[style*=fixed]').remove();" class="btn btn-danger" style="flex:1;">
+                    <i class="fas fa-times"></i> Rədd Et
+                </button>
+            </div>
+        </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+
+function approveTeacherTest(testId) {
+    const teacherTests = Storage.get('teacherTests') || [];
+    const idx = teacherTests.findIndex(t => t.id === testId);
+    if (idx === -1) return;
+
+    teacherTests[idx].status     = 'approved';
+    teacherTests[idx].approvedAt = new Date().toISOString();
+    teacherTests[idx].approvedBy = getCurrentUser()?.name || 'Admin';
+    Storage.set('teacherTests', teacherTests);
+
+    // Publish to main tests list
+    const t = teacherTests[idx];
+    const tests = Storage.get('tests') || [];
+    tests.unshift({
+        id:          Date.now(),
+        title:       t.title,
+        emoji:       t.emoji || '📝',
+        difficulty:  t.difficulty,
+        duration:    t.duration,
+        isPremium:   t.isPremium,
+        description: t.description,
+        questions:   t.questions,
+        teacherId:   t.teacherId,
+        teacherName: t.teacherName,
+        addedAt:     new Date().toISOString(),
+        source:      'teacher'
+    });
+    Storage.set('tests', tests);
+
+    if (typeof showNotification === 'function') showNotification('✅ Sınaq təsdiqləndi və sayta əlavə edildi!', 'success');
+    loadTeacherTestsSection();
+}
+
+function rejectTeacherTest(testId) {
+    const note = prompt('Rədd səbəbini yazın (istəyə bağlı):') || '';
+    const teacherTests = Storage.get('teacherTests') || [];
+    const idx = teacherTests.findIndex(t => t.id === testId);
+    if (idx === -1) return;
+    teacherTests[idx].status     = 'rejected';
+    teacherTests[idx].rejectedAt = new Date().toISOString();
+    teacherTests[idx].rejectedBy = getCurrentUser()?.name || 'Admin';
+    if (note) teacherTests[idx].adminNote = note;
+    Storage.set('teacherTests', teacherTests);
+
+    if (typeof showNotification === 'function') showNotification('Sınaq rədd edildi', 'warning');
+    loadTeacherTestsSection();
 }

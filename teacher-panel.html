@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müəllim Paneli - Bizim Riyaziyyat</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .panel-hero {
+            background: linear-gradient(135deg, #1e3a5f, #2563eb);
+            color: white; padding: 50px 0 35px;
+        }
+        .panel-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+        .panel-hero p  { opacity: .85; font-size: 15px; }
+
+        .panel-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 30px;
+            padding: 30px 0 60px;
+            align-items: start;
+        }
+        @media(max-width:768px){ .panel-layout { grid-template-columns: 1fr; } .side-nav { display: flex; gap: 8px; flex-wrap: wrap; } .side-nav a { flex: 1; text-align: center; } }
+
+        .side-nav { background: white; border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+        .side-nav a {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 20px; font-size: 14px; font-weight: 600;
+            color: #374151; text-decoration: none; transition: all .2s;
+            border-left: 3px solid transparent;
+        }
+        .side-nav a:hover { background: #f5f7ff; color: var(--primary); border-left-color: var(--primary); }
+        .side-nav a.active { background: #eef2ff; color: var(--primary); border-left-color: var(--primary); }
+        .side-nav a i { width: 20px; text-align: center; }
+
+        .panel-section { display: none; }
+        .panel-section.active { display: block; }
+
+        .card-panel {
+            background: white; border-radius: 14px;
+            box-shadow: var(--shadow); padding: 28px; margin-bottom: 20px;
+        }
+        .card-panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+        /* Locked overlay */
+        .locked-overlay {
+            text-align: center; padding: 60px 30px;
+            background: #fafafa; border-radius: 12px;
+            border: 2px dashed #e5e7eb;
+        }
+        .locked-overlay .lock-icon { font-size: 56px; margin-bottom: 16px; }
+        .locked-overlay h4 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #374151; }
+        .locked-overlay p  { color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
+
+        /* Questions builder */
+        .question-row {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 10px; padding: 18px; margin-bottom: 14px; position: relative;
+        }
+        .question-row .q-num {
+            position: absolute; top: -10px; left: 14px;
+            background: var(--primary); color: white;
+            border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700;
+        }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .option-row { display: flex; align-items: center; gap: 8px; }
+        .option-row input[type="radio"] { accent-color: var(--primary); }
+        .option-row input[type="text"] { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+        /* My tests list */
+        .test-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px; border: 1px solid var(--border);
+            border-radius: 10px; margin-bottom: 10px; transition: all .2s;
+        }
+        .test-item:hover { border-color: var(--primary); background: #f5f7ff; }
+        .test-item .ti-emoji { font-size: 32px; width: 48px; text-align: center; }
+        .test-item .ti-info { flex: 1; }
+        .test-item .ti-info h5 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+        .test-item .ti-info span { font-size: 12px; color: #6b7280; }
+        .test-item .ti-badge {
+            padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+        }
+        .badge-pending  { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #ecfdf5; color: #065f46; }
+        .badge-rejected { background: #fef2f2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="teachers.html">Müəllimlər</a>
+            </div>
+            <div class="navbar-actions">
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero -->
+<div class="panel-hero">
+    <div class="container">
+        <h1>👨‍🏫 Müəllim Paneli</h1>
+        <p>Sınaq əlavə edin, nəticələrinizi izləyin</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="panel-layout">
+
+        <!-- Side nav -->
+        <nav class="side-nav">
+            <a href="#" class="active" onclick="showTab('addTest',this);return false;">
+                <i class="fas fa-plus-circle"></i> Sınaq Əlavə Et
+            </a>
+            <a href="#" onclick="showTab('myTests',this);return false;">
+                <i class="fas fa-list"></i> Sınaqlarım
+            </a>
+            <a href="#" onclick="showTab('profile',this);return false;">
+                <i class="fas fa-user-cog"></i> Profilim
+            </a>
+        </nav>
+
+        <!-- Content -->
+        <div>
+
+            <!-- Add test -->
+            <div id="tab-addTest" class="panel-section active">
+                <div class="card-panel">
+                    <h3><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Sınaq Əlavə Et</h3>
+
+                    <!-- Locked state (shown if not approved) -->
+                    <div id="lockedState" class="locked-overlay" style="display:none;">
+                        <div class="lock-icon">🔒</div>
+                        <h4>Sınaq Əlavəetmə Gözləyir</h4>
+                        <p>Sınaq əlavə etmək hüququ almaq üçün admin tərəfindən icazə gözləyirsiniz.<br>
+                        Müraciət etdikdən sonra admin yoxlayıb aktiv edəcək.</p>
+                        <button class="btn btn-primary" id="requestAccessBtn" onclick="requestTestAccess()">
+                            <i class="fas fa-paper-plane"></i> İcazə İstə
+                        </button>
+                    </div>
+
+                    <!-- Active state -->
+                    <div id="addTestForm" style="display:none;">
+                        <div id="addTestAlert"></div>
+                        <form id="testForm" onsubmit="submitTest(event)">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
+                                <div class="form-group" style="margin:0;">
+                                    <label>Sınaq Adı *</label>
+                                    <input type="text" class="form-control" id="testTitle" placeholder="Məs: Cəbr - Tənliklər" required>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Emoji</label>
+                                    <select class="form-control" id="testEmoji">
+                                        <option>📝</option><option>🔢</option><option>📐</option>
+                                        <option>∫</option><option>🎲</option><option>📊</option>
+                                        <option>🏆</option><option>⚡</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;">
+                                <div class="form-group" style="margin:0;">
+                                    <label>Çətinlik</label>
+                                    <select class="form-control" id="testDifficulty">
+                                        <option>Asan</option><option selected>Orta</option><option>Çətin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Müddət (dəq)</label>
+                                    <input type="number" class="form-control" id="testDuration" value="15" min="1" max="180" required>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Növ</label>
+                                    <select class="form-control" id="testType">
+                                        <option value="free">Pulsuz</option>
+                                        <option value="premium">Premium</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Açıqlama</label>
+                                <textarea class="form-control" id="testDesc" rows="2" placeholder="Bu sınaq nə haqqındadır?"></textarea>
+                            </div>
+
+                            <!-- Questions builder -->
+                            <div style="margin-bottom:15px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                    <label style="margin:0;font-weight:700;">Suallar *</label>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="addQuestion()">
+                                        <i class="fas fa-plus"></i> Sual Əlavə Et
+                                    </button>
+                                </div>
+                                <div id="questionsContainer"></div>
+                            </div>
+
+                            <div style="display:flex;gap:10px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Göndər (Admin Yoxlamasına)
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetTestForm()">
+                                    <i class="fas fa-undo"></i> Sıfırla
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My tests -->
+            <div id="tab-myTests" class="panel-section">
+                <div class="card-panel">
+                    <h3><i class="fas fa-list" style="color:var(--primary);"></i> Mənim Sınaqlarım</h3>
+                    <div id="myTestsList"></div>
+                </div>
+            </div>
+
+            <!-- Profile -->
+            <div id="tab-profile" class="panel-section">
+                <div class="card-panel">
+                    <h3><i class="fas fa-user-cog" style="color:var(--primary);"></i> Müəllim Profili</h3>
+                    <div id="profileInfo"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom"><p>&copy; 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p></div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/navbar.js"></script>
+<script src="js/mobile-menu.js"></script>
+<script src="js/notifications.js"></script>
+<script>
+// ── Access check ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const user = getCurrentUser();
+    if (!user) { window.location.href = 'login.html'; return; }
+    if (user.userType !== 'teacher' && user.role !== 'admin') {
+        alert('Bu panel yalnız müəllimlər üçündür!');
+        window.location.href = 'dashboard.html';
+        return;
+    }
+    initPanel();
+});
+
+window.addEventListener('upstash:loaded', () => {
+    const user = getCurrentUser();
+    if (user) initPanel();
+});
+
+function initPanel() {
+    const user = getCurrentUser();
+    checkAccessState(user);
+    loadMyTests();
+    loadProfile();
+    // Add first question by default
+    if (document.getElementById('questionsContainer').children.length === 0) {
+        addQuestion();
+    }
+}
+
+// ── Check if teacher has test-add permission ─────────────────────────────────
+function checkAccessState(user) {
+    // Re-read fresh allUsers
+    const allUsers = Storage.get('allUsers') || [];
+    const freshUser = allUsers.find(u => String(u.id) === String(user.id)) || user;
+
+    const locked   = document.getElementById('lockedState');
+    const formEl   = document.getElementById('addTestForm');
+    const reqBtn   = document.getElementById('requestAccessBtn');
+
+    if (freshUser.canAddTests === true) {
+        // Approved
+        locked.style.display  = 'none';
+        formEl.style.display  = 'block';
+    } else if (freshUser.testAccessRequested) {
+        // Pending
+        locked.style.display  = 'block';
+        formEl.style.display  = 'none';
+        if (reqBtn) {
+            reqBtn.disabled = true;
+            reqBtn.innerHTML = '<i class="fas fa-clock"></i> Müraciət göndərildi — gözlənilir';
+        }
+    } else {
+        // Not requested yet
+        locked.style.display  = 'block';
+        formEl.style.display  = 'none';
+        if (reqBtn) {
+            reqBtn.disabled = false;
+            reqBtn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə';
+        }
+    }
+}
+
+// ── Request access ───────────────────────────────────────────────────────────
+function requestTestAccess() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const allUsers = Storage.get('allUsers') || [];
+    const idx = allUsers.findIndex(u => String(u.id) === String(user.id));
+    if (idx !== -1) {
+        allUsers[idx].testAccessRequested = true;
+        allUsers[idx].testAccessRequestedAt = new Date().toISOString();
+        Storage.set('allUsers', allUsers);
+    }
+    // Update currentUser
+    user.testAccessRequested = true;
+    Storage.set('currentUser', user);
+
+    // Save request to teacherTestRequests list (admin reads this)
+    const reqs = Storage.get('teacherTestRequests') || [];
+    reqs.unshift({
+        id: Date.now(),
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        requestedAt: new Date().toISOString(),
+        status: 'pending'
+    });
+    Storage.set('teacherTestRequests', reqs);
+
+    checkAccessState(user);
+    if (typeof showNotification === 'function') {
+        showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
+    } else {
+        alert('✅ Müraciətiniz göndərildi. Admin yoxlayıb aktiv edəcək.');
+    }
+}
+
+// ── Tab switch ───────────────────────────────────────────────────────────────
+function showTab(name, el) {
+    document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.side-nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+}
+
+// ── Questions builder ────────────────────────────────────────────────────────
+let qCount = 0;
+
+function addQuestion() {
+    qCount++;
+    const n = qCount;
+    const div = document.createElement('div');
+    div.className = 'question-row';
+    div.id = 'q_' + n;
+    div.innerHTML = `
+        <span class="q-num">Sual ${n}</span>
+        <button type="button" onclick="removeQuestion(${n})"
+            style="position:absolute;top:10px;right:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="form-group" style="margin-bottom:10px;margin-top:8px;">
+            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual mətnini daxil edin *" required>
+        </div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Variantları daxil edin, düzgün cavabı seçin:</p>
+        <div class="options-grid">
+            ${[0,1,2,3].map(i => `
+            <div class="option-row">
+                <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
+                <input type="text" class="form-control" id="q${n}_opt${i}" placeholder="Variant ${String.fromCharCode(65+i)}" required>
+            </div>`).join('')}
+        </div>
+    `;
+    document.getElementById('questionsContainer').appendChild(div);
+}
+
+function removeQuestion(n) {
+    const el = document.getElementById('q_' + n);
+    if (el) el.remove();
+}
+
+// ── Submit test ──────────────────────────────────────────────────────────────
+function submitTest(e) {
+    e.preventDefault();
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const title      = document.getElementById('testTitle').value.trim();
+    const emoji      = document.getElementById('testEmoji').value;
+    const difficulty = document.getElementById('testDifficulty').value;
+    const duration   = parseInt(document.getElementById('testDuration').value);
+    const isPremium  = document.getElementById('testType').value === 'premium';
+    const desc       = document.getElementById('testDesc').value.trim();
+
+    // Collect questions
+    const qRows = document.querySelectorAll('.question-row');
+    if (qRows.length === 0) {
+        document.getElementById('addTestAlert').innerHTML =
+            '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Ən az 1 sual əlavə edin.</div>';
+        return;
+    }
+
+    const questions = [];
+    let valid = true;
+    qRows.forEach(row => {
+        const id = row.id.replace('q_', '');
+        const qText = document.getElementById(`q${id}_text`)?.value.trim();
+        const opts   = [0,1,2,3].map(i => document.getElementById(`q${id}_opt${i}`)?.value.trim() || '');
+        const corrEl = document.querySelector(`input[name="correct_${id}"]:checked`);
+        const correct = corrEl ? parseInt(corrEl.value) : 0;
+        if (!qText || opts.some(o => !o)) { valid = false; return; }
+        questions.push({ question: qText, options: opts, correctAnswer: correct });
+    });
+
+    if (!valid) {
+        document.getElementById('addTestAlert').innerHTML =
+            '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Bütün sual və variantları doldurun.</div>';
+        return;
+    }
+
+    // Save to teacherTests (admin reviews these)
+    const teacherTests = Storage.get('teacherTests') || [];
+    const newTest = {
+        id: Date.now(),
+        teacherId: user.id,
+        teacherName: user.name,
+        teacherEmail: user.email,
+        title, emoji, difficulty, duration, isPremium, description: desc,
+        questions,
+        submittedAt: new Date().toISOString(),
+        status: 'pending'  // pending | approved | rejected
+    };
+    teacherTests.unshift(newTest);
+    Storage.set('teacherTests', teacherTests);
+
+    document.getElementById('addTestAlert').innerHTML =
+        '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ✅ Sınaq admin yoxlamasına göndərildi!</div>';
+
+    resetTestForm();
+    loadMyTests();
+    showTab('myTests', document.querySelector('.side-nav a:nth-child(2)'));
+}
+
+function resetTestForm() {
+    document.getElementById('testForm').reset();
+    document.getElementById('questionsContainer').innerHTML = '';
+    qCount = 0;
+    addQuestion();
+}
+
+// ── My tests list ────────────────────────────────────────────────────────────
+function loadMyTests() {
+    const user = getCurrentUser();
+    if (!user) return;
+    const allTeacherTests = Storage.get('teacherTests') || [];
+    const mine = allTeacherTests.filter(t => String(t.teacherId) === String(user.id));
+
+    const container = document.getElementById('myTestsList');
+    if (mine.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:50px 20px;color:#9ca3af;">
+                <i class="fas fa-clipboard-list" style="font-size:48px;opacity:.25;display:block;margin-bottom:14px;"></i>
+                <p>Hələ sınaq göndərməmisiniz.</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = mine.map(t => {
+        const d = new Date(t.submittedAt);
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const yy = String(d.getFullYear()).slice(-2);
+        const dateStr = `${dd}/${mm}/${yy}`;
+        const statusMap = {
+            pending:  ['badge-pending',  '⏳ Gözləyir'],
+            approved: ['badge-approved', '✅ Təsdiqləndi'],
+            rejected: ['badge-rejected', '❌ Rədd Edildi'],
+        };
+        const [cls, label] = statusMap[t.status] || statusMap.pending;
+        return `
+        <div class="test-item">
+            <div class="ti-emoji">${t.emoji || '📝'}</div>
+            <div class="ti-info">
+                <h5>${t.title}</h5>
+                <span>${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
+                ${t.adminNote ? `<br><span style="color:#ef4444;font-size:12px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>` : ''}
+            </div>
+            <span class="ti-badge ${cls}">${label}</span>
+        </div>`;
+    }).join('');
+}
+
+// ── Profile ──────────────────────────────────────────────────────────────────
+function loadProfile() {
+    const user = getCurrentUser();
+    if (!user) return;
+    const allUsers = Storage.get('allUsers') || [];
+    const fresh = allUsers.find(u => String(u.id) === String(user.id)) || user;
+
+    const canAdd = fresh.canAddTests === true;
+    const requested = fresh.testAccessRequested;
+
+    document.getElementById('profileInfo').innerHTML = `
+        <div style="display:grid;gap:16px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="width:64px;height:64px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;font-weight:800;">
+                    ${(fresh.name||'?')[0].toUpperCase()}
+                </div>
+                <div>
+                    <div style="font-size:20px;font-weight:700;">${fresh.name}</div>
+                    <div style="color:#6b7280;font-size:13px;">${fresh.email}</div>
+                    <div style="font-size:12px;margin-top:4px;">
+                        ${fresh.userType === 'teacher' ? '<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:12px;font-weight:600;">👨‍🏫 Müəllim</span>' : ''}
+                        ${canAdd ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:6px;">✅ Test Əlavəetmə Aktiv</span>' : ''}
+                    </div>
+                </div>
+            </div>
+            <div style="background:#f8fafc;border-radius:10px;padding:16px;">
+                <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#374151;">Sınaq Əlavəetmə Statusu</div>
+                ${canAdd
+                    ? '<div style="color:#065f46;font-size:14px;"><i class="fas fa-check-circle"></i> Admin tərəfindən icazə verilmişdir. Sınaq əlavə edə bilərsiniz.</div>'
+                    : requested
+                        ? '<div style="color:#92400e;font-size:14px;"><i class="fas fa-clock"></i> Müraciətiniz admin tərəfindən nəzərdən keçirilir.</div>'
+                        : '<div style="color:#6b7280;font-size:14px;"><i class="fas fa-lock"></i> Hələ icazə alınmayıb. "Sınaq Əlavə Et" bölməsindən müraciət edin.</div>'
+                }
+            </div>
+        </div>
+    `;
+}
+</script>
+</body>
+</html>

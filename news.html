@@ -109,22 +109,34 @@
 <script>
 // Default news
 const DEFAULT_NEWS = [
-    { id:1, emoji:'🎉', color:'#eef2ff', date:'1 May 2024', author:'RiyazMath Komandası', views:342,
+    { id:1, emoji:'🎉', color:'#eef2ff', uploadedAt:'2024-05-01', author:'BR Komandası', views:342,
       title:'Yeni 50 Analiz Videosu Əlavə Edildi!',
       text:'Limit, törəmə və inteqral mövzularını əhatə edən 50 yeni video platformamıza əlavə edildi. Hər video detallı izah və nümunə məsələlərlə zəngindir. Premium abunəçilər dərhal izləyə bilər.' },
-    { id:2, emoji:'🏆', color:'#fffbeb', date:'25 Aprel 2024', author:'RiyazMath Komandası', views:218,
+    { id:2, emoji:'🏆', color:'#fffbeb', uploadedAt:'2024-04-25', author:'BR Komandası', views:218,
       title:'Aprel Ayının Ən Yaxşı Tələbələri Açıqlandı',
       text:'Bu ay ən çox sınaq həll edən və ən yüksək bal toplayan tələbələrimiz müəyyənləşdi. Uğurlar səhifəsindən tam siyahıya baxa bilərsiniz. Qalib tələbələrə 1 aylıq pulsuz premium hədiyyə edildi.' },
-    { id:3, emoji:'💳', color:'#ecfdf5', date:'20 Aprel 2024', author:'RiyazMath Komandası', views:189,
+    { id:3, emoji:'💳', color:'#ecfdf5', uploadedAt:'2024-04-20', author:'BR Komandası', views:189,
       title:'Yeni Ödəniş Sistemi İstifadəyə Verildi',
       text:'Artıq kart ilə balans yükləmək daha asan! Visa, Mastercard və yerli kartlarla ödəniş edə bilərsiniz. Minimum yükləmə məbləği 5 ₼-dən başlayır. Balansınızı istənilən vaxt yoxlaya bilərsiniz.' },
-    { id:4, emoji:'📱', color:'#fdf4ff', date:'15 Aprel 2024', author:'RiyazMath Komandası', views:156,
+    { id:4, emoji:'📱', color:'#fdf4ff', uploadedAt:'2024-04-15', author:'BR Komandası', views:156,
       title:'Mobil Versiya Yaxında!',
-      text:'RiyazMath mobil tətbiqi hazırlanır. iOS və Android üçün tətbiq tezliklə App Store və Google Play-də yayımlanacaq. Bildiriş almaq üçün email-inizi qeydiyyatdan keçirin.' },
-    { id:5, emoji:'🎓', color:'#fef2f2', date:'10 Aprel 2024', author:'RiyazMath Komandası', views:134,
+      text:'Bizim Riyaziyyat mobil tətbiqi hazırlanır. iOS və Android üçün tətbiq tezliklə App Store və Google Play-də yayımlanacaq. Bildiriş almaq üçün email-inizi qeydiyyatdan keçirin.' },
+    { id:5, emoji:'🎓', color:'#fef2f2', uploadedAt:'2024-04-10', author:'BR Komandası', views:134,
       title:'Sertifikat Sistemi Tezliklə',
       text:'İllik abunəçilər üçün kurs tamamlama sertifikatı sistemi hazırlanır. Hər mövzu üzrə sınaqları uğurla keçən tələbələr rəsmi sertifikat ala biləcək.' },
 ];
+
+// dd/mm/yy formatında tarix
+function formatNewsDate(dateStr) {
+    if (!dateStr) return '';
+    // Accept ISO string or YYYY-MM-DD
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+}
 
 // Load news from localStorage and merge with defaults
 function getAllNews() {
@@ -160,30 +172,35 @@ window.addEventListener('load', () => {
 
 const NEWS = getAllNews();
 
-document.getElementById('newsList').innerHTML = NEWS.map(n => `
+document.getElementById('newsList').innerHTML = NEWS.map(n => {
+    // Use uploadedAt (ISO) if available, fall back to legacy date string
+    const displayDate = n.uploadedAt ? formatNewsDate(n.uploadedAt) : (n.date || '');
+    return `
     <div class="news-card">
         <div class="news-img" style="background:${n.color}">${n.emoji}</div>
         <div class="news-body">
             <h3>${n.title}</h3>
             <p>${n.text}</p>
             <div class="news-meta">
-                <span><i class="fas fa-calendar"></i> ${n.date}</span>
+                <span><i class="fas fa-calendar"></i> ${displayDate}</span>
                 <span><i class="fas fa-user"></i> ${n.author}</span>
                 <span><i class="fas fa-eye"></i> ${n.views} baxış</span>
             </div>
         </div>
     </div>
-`).join('');
+`}).join('');
 
-document.getElementById('sidebarNews').innerHTML = NEWS.slice(0,4).map(n => `
+document.getElementById('sidebarNews').innerHTML = NEWS.slice(0,4).map(n => {
+    const displayDate = n.uploadedAt ? formatNewsDate(n.uploadedAt) : (n.date || '');
+    return `
     <div class="sidebar-news">
         <div class="sidebar-news-emoji">${n.emoji}</div>
         <div>
             <h5>${n.title}</h5>
-            <span>${n.date}</span>
+            <span>${displayDate}</span>
         </div>
     </div>
-`).join('');
+`}).join('');
 </script>
 <script src="js/navbar.js"></script>
 <script src="js/mobile-menu.js"></script>

@@ -320,6 +320,11 @@
             <h4>Profil</h4>
             <p>Məlumatları yenilə</p>
         </a>
+        <a href="teacher-panel.html" class="quick-card" id="teacherPanelCard" style="display:none;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;">
+            <i class="fas fa-chalkboard-teacher" style="color:#10b981;"></i>
+            <h4 style="color:#065f46;">Müəllim Paneli</h4>
+            <p style="color:#059669;">Sınaq əlavə et</p>
+        </a>
     </div>
 
 </div>
@@ -336,6 +341,14 @@ if (!isLoggedIn()) { window.location.href = 'login.html'; }
 
 const user = getCurrentUser();
 document.getElementById('userName').textContent = user.name;
+
+// Müəllim paneli kartını göstər
+(function() {
+    const card = document.getElementById('teacherPanelCard');
+    if (card && (user.userType === 'teacher' || user.role === 'admin')) {
+        card.style.display = '';
+    }
+})();
 
 // Avatar
 const av = document.getElementById('profileAvatar');

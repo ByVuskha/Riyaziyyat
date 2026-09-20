@@ -110,7 +110,7 @@ document.getElementById('newsForm').addEventListener('submit', function(e) {
         emoji: document.getElementById('newsEmoji').value,
         color: document.getElementById('newsColor').value,
         author: document.getElementById('newsAuthor').value,
-        date: new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' }),
+        uploadedAt: new Date().toISOString(),   // ISO tarix — news.html bunu dd/mm/yy olaraq göstərəcək
         views: 0,
         createdAt: new Date().toISOString()
     };
@@ -146,7 +146,18 @@ function loadNews() {
         return;
     }
     
-    container.innerHTML = news.slice(0, 5).map(n => `
+    container.innerHTML = news.slice(0, 5).map(n => {
+        const d = n.uploadedAt ? new Date(n.uploadedAt) : (n.createdAt ? new Date(n.createdAt) : null);
+        let displayDate = '';
+        if (d && !isNaN(d)) {
+            const dd = String(d.getDate()).padStart(2,'0');
+            const mm = String(d.getMonth()+1).padStart(2,'0');
+            const yy = String(d.getFullYear()).slice(-2);
+            displayDate = `${dd}/${mm}/${yy}`;
+        } else {
+            displayDate = n.date || '';
+        }
+        return `
         <div style="display:flex;gap:15px;padding:15px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;">
             <div style="width:60px;height:60px;background:${n.color};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
                 ${n.emoji}
@@ -155,7 +166,7 @@ function loadNews() {
                 <h4 style="font-size:15px;margin-bottom:5px;">${n.title}</h4>
                 <p style="font-size:13px;color:var(--gray);margin-bottom:8px;">${(n.text || n.content || '').substring(0, 100)}...</p>
                 <div style="display:flex;gap:15px;font-size:12px;color:var(--gray);">
-                    <span><i class="fas fa-calendar"></i> ${n.date}</span>
+                    <span><i class="fas fa-calendar"></i> ${displayDate}</span>
                     <span><i class="fas fa-eye"></i> ${n.views || 0} baxış</span>
                 </div>
             </div>
@@ -163,7 +174,7 @@ function loadNews() {
                 <i class="fas fa-trash"></i>
             </button>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function deleteNews(id) {

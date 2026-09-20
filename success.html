@@ -333,6 +333,7 @@ function switchTab(tab, btn) {
 
 // ── Build leaderboard — ALL users, not just those with points ─────────────────
 function buildLB() {
+    // Always read directly from localStorage for freshest data
     const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
     const users = JSON.parse(localStorage.getItem('allUsers')   || '[]');
 
@@ -388,8 +389,15 @@ function renderAll() {
 
     // My card
     if (me) {
+        // Re-read fresh points for current user directly from localStorage
+        const freshPts = JSON.parse(localStorage.getItem('userPoints') || '{}');
+        const myFresh  = freshPts[me.id] || freshPts[String(me.id)] || null;
         const idx  = _lb.findIndex(e => String(e.userId) === String(me.id));
-        const myE  = _lb[idx];
+        const myE  = myFresh ? {
+            total:   myFresh.total || 0,
+            videos:  (myFresh.watchedVideos  || []).length,
+            tests:   (myFresh.completedTests || []).length,
+        } : (_lb[idx] || null);
         const card = document.getElementById('myCard');
 
         if (myE) {
@@ -595,8 +603,23 @@ function renderHistory() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Real-time update: whenever points change, re-render immediately
+window.addEventListener('points:updated', () => {
+    // Small delay so saveUserPoints finishes writing before we read
+    setTimeout(renderAll, 80);
+});
+
+// Also update when storage changes in another tab
+window.addEventListener('storage', (e) => {
+    if (e.key === 'userPoints' || e.key === 'allUsers') {
+        setTimeout(renderAll, 80);
+    }
+});
+
 window.addEventListener('upstash:loaded', renderAll);
-window.addEventListener('points:updated', () => setTimeout(renderAll, 40));
+
+// Initial render (localStorage already available)
+document.addEventListener('DOMContentLoaded', renderAll);
 </script>
 </body>
 </html>

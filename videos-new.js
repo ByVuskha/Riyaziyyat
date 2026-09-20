@@ -204,14 +204,15 @@ function openVideo(id) {
                 : durationParts[0]*60 + (durationParts[1] || 0);
 
             playerContainer.innerHTML = `
-                <iframe 
-                    id="ytPlayer"
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1" 
-                    style="width:100%;aspect-ratio:16/9;border-radius:10px;"
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-                </iframe>
+                <div style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:10px;overflow:hidden;">
+                    <iframe
+                        id="ytPlayer"
+                        src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
+                        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:10px;"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                    </iframe>
+                </div>
             `;
             // For YouTube, use time-based estimation since postMessage API is limited
             if (user && totalSecs > 0) {

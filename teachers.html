@@ -28,9 +28,10 @@
         
         .teachers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 320px));
             gap: 30px;
             margin-bottom: 50px;
+            justify-content: center;
         }
         
         .teacher-card {
@@ -39,6 +40,7 @@
             overflow: hidden;
             box-shadow: var(--shadow);
             transition: all 0.3s;
+            width: 100%;
         }
         .teacher-card:hover {
             transform: translateY(-8px);
@@ -47,12 +49,12 @@
         
         .teacher-image {
             width: 100%;
-            height: 280px;
+            height: 220px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 80px;
+            font-size: 72px;
             color: white;
             position: relative;
             overflow: hidden;

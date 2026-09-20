@@ -263,6 +263,10 @@
                 <i class="fas fa-users"></i>
                 <span>İstifadəçilər</span>
             </div>
+            <div class="admin-menu-item" onclick="showSection('teacherTests')">
+                <i class="fas fa-chalkboard-teacher" style="color:#10b981;"></i>
+                <span>Müəllim Sınaqları <span id="teacherTestsBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
+            </div>
             <div class="admin-menu-item" onclick="showSection('teachers')">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Müəllimlər</span>
@@ -1236,6 +1240,36 @@
                 </button>
             </div>
         </div>
+        <!-- Teacher Test Requests Section -->
+        <div id="teacherTests" class="admin-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="margin:0;border:none;padding:0;">👨‍🏫 Müəllim Sınaq Müraciətləri</h2>
+                <button class="btn btn-sm btn-secondary" onclick="loadTeacherTestsSection()">
+                    <i class="fas fa-sync"></i> Yenilə
+                </button>
+            </div>
+
+            <!-- Access requests subsection -->
+            <div style="background:white;border-radius:12px;box-shadow:var(--shadow);padding:24px;margin-bottom:24px;">
+                <h3 style="font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-key" style="color:#f59e0b;"></i> Test Əlavəetmə İcazə Müraciətləri
+                </h3>
+                <div id="teacherAccessRequestsList">
+                    <p style="text-align:center;color:var(--gray);padding:30px;">Müraciət yoxdur</p>
+                </div>
+            </div>
+
+            <!-- Submitted tests subsection -->
+            <div style="background:white;border-radius:12px;box-shadow:var(--shadow);padding:24px;">
+                <h3 style="font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-clipboard-check" style="color:#667eea;"></i> Göndərilmiş Sınaqlar
+                </h3>
+                <div id="teacherSubmittedTestsList">
+                    <p style="text-align:center;color:var(--gray);padding:30px;">Sınaq yoxdur</p>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
