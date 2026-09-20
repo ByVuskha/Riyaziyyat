@@ -72,14 +72,58 @@
 <script src="js/notifications.js"></script>
 <script src="js/points.js"></script>
 <script>
-const MOCK_TESTS = [];
+const MOCK_TESTS = [
+    {
+        id: 'mock_free_1',
+        title: 'Ədədi İfadələr - Nümunə',
+        emoji: '🔢',
+        difficulty: 'Asan',
+        questions: 5,
+        time: 5,
+        free: true,
+        desc: 'Tam ədədlər, toplama və çıxma əməlləri üzrə pulsuz nümunə sınaq.',
+        attempts: 128,
+        users: 74,
+        data: [
+            { q: '15 + 27 = ?', opts: ['40', '42', '43', '41'], ans: 1 },
+            { q: '100 - 63 = ?', opts: ['47', '37', '27', '57'], ans: 1 },
+            { q: '8 × 7 = ?', opts: ['54', '56', '58', '52'], ans: 1 },
+            { q: '144 ÷ 12 = ?', opts: ['10', '11', '12', '13'], ans: 2 },
+            { q: 'Ən kiçik üç rəqəmli ədəd hansıdır?', opts: ['100', '99', '101', '109'], ans: 0 }
+        ]
+    },
+    {
+        id: 'mock_premium_1',
+        title: 'Cəbr - Tənliklər (Premium)',
+        emoji: '👑',
+        difficulty: 'Orta',
+        questions: 10,
+        time: 15,
+        free: false,
+        desc: 'Birməchullu və ikimechullu tənliklər üzrə dərin bilik yoxlaması.',
+        attempts: 56,
+        users: 31,
+        data: [
+            { q: '2x + 5 = 13 → x = ?', opts: ['3', '4', '5', '6'], ans: 1 },
+            { q: '3x - 7 = 11 → x = ?', opts: ['4', '5', '6', '7'], ans: 2 },
+            { q: 'x² = 81 → x = ?', opts: ['7', '8', '9', '10'], ans: 2 },
+            { q: '5x = 45 → x = ?', opts: ['7', '8', '9', '10'], ans: 2 },
+            { q: 'x/4 = 6 → x = ?', opts: ['18', '20', '22', '24'], ans: 3 },
+            { q: '2x + 3y = 12, x=3 olduqda y = ?', opts: ['1', '2', '3', '4'], ans: 1 },
+            { q: '(x+3)(x-3) = ?', opts: ['x²-6', 'x²-9', 'x²+9', 'x²-6x'], ans: 1 },
+            { q: 'x² - 5x + 6 = 0 tənliyinin kökləri?', opts: ['2 və 3', '1 və 6', '2 və 4', '3 və 4'], ans: 0 },
+            { q: '|x - 2| = 5 → x = ?', opts: ['3 və -7', '7 və -3', '7 və 3', '-7 və 3'], ans: 1 },
+            { q: 'log₂(8) = ?', opts: ['2', '3', '4', '8'], ans: 1 }
+        ]
+    }
+];
 
 // Yüklənmiş sınaqları əlavə et
 function getAllTests() {
     const uploadedTests = Storage.get('tests') || [];
     const stats = Storage.get('testStats') || {};
 
-    return uploadedTests.map(t => {
+    const uploaded = uploadedTests.map(t => {
         const testStats = stats[t.id] || stats['uploaded_' + t.id] || { totalAttempts: 0, uniqueUsers: [] };
         return {
             id: 'uploaded_' + t.id,
@@ -99,6 +143,18 @@ function getAllTests() {
             }))
         };
     });
+
+    // MOCK_TESTS-i əvvəldə göstər (nümunə olaraq)
+    const mockWithStats = MOCK_TESTS.map(t => {
+        const s = stats[t.id] || { totalAttempts: 0, uniqueUsers: [] };
+        return {
+            ...t,
+            attempts: s.totalAttempts || t.attempts || 0,
+            users: (s.uniqueUsers || []).length || t.users || 0
+        };
+    });
+
+    return [...mockWithStats, ...uploaded];
 }
 
 function renderTests() {
@@ -115,24 +171,59 @@ function renderTests() {
         return;
     }
     
-    grid.innerHTML = allTests.map(t => `
-        <div class="card">
-            <div style="font-size:48px;text-align:center;margin-bottom:15px;">${t.emoji}</div>
-            <h3 style="font-size:18px;margin-bottom:8px;">${t.title}</h3>
-            <p style="color:var(--gray);font-size:14px;margin-bottom:15px;">${t.desc}</p>
-            <div style="display:flex;gap:12px;margin-bottom:15px;font-size:13px;color:var(--gray);">
-                <span><i class="fas fa-question-circle"></i> ${t.questions}</span>
-                <span><i class="fas fa-clock"></i> ${t.time} dəq</span>
-                <span class="badge badge-${t.difficulty === 'Asan' ? 'success' : t.difficulty === 'Orta' ? 'warning' : 'danger'}">${t.difficulty}</span>
+    grid.innerHTML = allTests.map(t => {
+        const diffColor = t.difficulty === 'Asan' ? '#10b981' : t.difficulty === 'Orta' ? '#f59e0b' : '#ef4444';
+        const diffBg   = t.difficulty === 'Asan' ? '#ecfdf5' : t.difficulty === 'Orta' ? '#fffbeb' : '#fef2f2';
+        return `
+        <div class="card" style="position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;" 
+             onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,0.12)'"
+             onmouseout="this.style.transform='';this.style.boxShadow=''">
+            
+            <!-- Üst şerit: pulsuz / premium -->
+            <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${t.free ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#f59e0b,#d97706)'};"></div>
+            
+            <!-- Emoji + badge -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-top:8px;">
+                <div style="font-size:46px;line-height:1;">${t.emoji}</div>
+                <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;
+                    background:${t.free ? '#ecfdf5' : '#fef3c7'};
+                    color:${t.free ? '#065f46' : '#92400e'};">
+                    ${t.free ? '✅ Pulsuz' : '👑 Premium'}
+                </span>
             </div>
-            ${t.attempts > 0 ? `<div style="background:#f0f9ff;color:#0369a1;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;justify-content:space-between;"><span><i class="fas fa-users"></i> ${t.users} nəfər</span><span><i class="fas fa-chart-line"></i> ${t.attempts} cəhd</span></div>` : ''}
-            ${!t.free ? '<div style="background:#fef3c7;color:#92400e;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;"><i class="fas fa-crown"></i> Premium</div>' : ''}
-            ${typeof t.id === 'string' && t.id.includes('uploaded') ? '<div style="background:#e0f2fe;color:#0369a1;padding:6px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;"><i class="fas fa-upload"></i> Yüklənmiş</div>' : ''}
-            <button class="btn btn-primary btn-block" onclick="startTest('${t.id}')">
-                <i class="fas fa-play"></i> Başla
+
+            <h3 style="font-size:17px;font-weight:700;margin-bottom:6px;color:#1f2937;">${t.title}</h3>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:14px;line-height:1.5;">${t.desc}</p>
+
+            <!-- Meta bilgilər -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+                <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:20px;">
+                    <i class="fas fa-question-circle" style="color:#667eea;"></i> ${t.questions} sual
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:20px;">
+                    <i class="fas fa-clock" style="color:#10b981;"></i> ${t.time} dəq
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;
+                    background:${diffBg};color:${diffColor};">
+                    ${t.difficulty}
+                </span>
+            </div>
+
+            <!-- İstifadəçi statistikası -->
+            ${t.attempts > 0 ? `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;font-size:12px;color:#64748b;">
+                <span><i class="fas fa-users" style="color:#667eea;"></i> ${t.users} nəfər həll etdi</span>
+                <span><i class="fas fa-chart-line" style="color:#10b981;"></i> ${t.attempts} cəhd</span>
+            </div>` : ''}
+
+            <button class="btn btn-primary btn-block" onclick="startTest('${t.id}')"
+                style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;">
+                ${t.free
+                    ? '<i class="fas fa-play"></i> Başla'
+                    : '<i class="fas fa-crown"></i> Premium ilə Başla'}
             </button>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 let currentTest, currentQ = 0, score = 0;
