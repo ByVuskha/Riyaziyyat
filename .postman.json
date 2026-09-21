@@ -5,7 +5,7 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 (admin.js) to load teacher tests badge and section on DOMContentLoaded and upstash:loaded. Added GET /teacher-tests/requests and GET /teacher-tests/requests?status=pending endpoints required by _updateTeacherTestsBadge() and _loadAccessRequests().",
+      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 (success.html diff): added 'Sınaq Balları' leaderboard tab (renderTestScores). No new REST endpoints were introduced — the change reads testScores from the userPoints Upstash/localStorage structure. awardTestPoints() in points.js must persist a testScores map (keyed by testId) containing {testId, testTitle, ballScore, date} for the new UI to display data. Points — Update User Points now includes the testScores payload shape.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -22,6 +22,16 @@
       {
         "key": "userId",
         "value": "1",
+        "type": "string"
+      },
+      {
+        "key": "upstash_url",
+        "value": "https://YOUR_UPSTASH_ENDPOINT.upstash.io",
+        "type": "string"
+      },
+      {
+        "key": "upstash_token",
+        "value": "",
         "type": "string"
       },
       {
@@ -824,6 +834,128 @@
                     "pm.test('canAddTests is true', function () {",
                     "  pm.expect(json.canAddTests).to.equal(true);",
                     "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Points & Test Scores (Upstash)",
+        "item": [
+          {
+            "name": "Get userPoints (all users)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
+                { "key": "Content-Type",  "value": "application/json" }
+              ],
+              "url": "{{upstash_url}}",
+              "body": {
+                "mode": "raw",
+                "raw": "[\"GET\", \"userPoints\"]"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                    "const json = pm.response.json();",
+                    "pm.test('Has result', function () { pm.expect(json).to.have.property('result'); });",
+                    "// result is JSON string; parse to inspect testScores",
+                    "if (json.result) {",
+                    "  const pts = JSON.parse(json.result);",
+                    "  const sample = Object.values(pts)[0];",
+                    "  pm.test('Sample entry has expected keys', function () {",
+                    "    pm.expect(sample).to.have.property('total');",
+                    "  });",
+                    "}"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Save userPoints with testScores (SET)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
+                { "key": "Content-Type",  "value": "application/json" }
+              ],
+              "url": "{{upstash_url}}",
+              "body": {
+                "mode": "raw",
+                "raw": "[\"SET\", \"userPoints\", \"{\\\"user_1\\\":{\\\"userId\\\":\\\"user_1\\\",\\\"userName\\\":\\\"Test User\\\",\\\"total\\\":45,\\\"history\\\":[],\\\"watchedVideos\\\":[\\\"1\\\"],\\\"completedTests\\\":[\\\"test_1\\\"],\\\"lastLoginDate\\\":\\\"2026-09-22\\\",\\\"testScores\\\":{\\\"test_1\\\":{\\\"testId\\\":\\\"test_1\\\",\\\"testTitle\\\":\\\"Cəbr — Tənliklər\\\",\\\"ballScore\\\":80,\\\"date\\\":\\\"22.09.2026\\\"}}}}\", \"EX\", 2592000]"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                    "const json = pm.response.json();",
+                    "pm.test('SET acknowledged', function () { pm.expect(json.result).to.equal('OK'); });"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Get leaderboard cache",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
+                { "key": "Content-Type",  "value": "application/json" }
+              ],
+              "url": "{{upstash_url}}",
+              "body": {
+                "mode": "raw",
+                "raw": "[\"GET\", \"leaderboard\"]"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                    "const json = pm.response.json();",
+                    "pm.test('Has result key', function () { pm.expect(json).to.have.property('result'); });"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Get testResults key",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
+                { "key": "Content-Type",  "value": "application/json" }
+              ],
+              "url": "{{upstash_url}}",
+              "body": {
+                "mode": "raw",
+                "raw": "[\"GET\", \"testResults\"]"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "// success.html now listens to storage key 'testResults' for cross-tab updates",
+                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                    "const json = pm.response.json();",
+                    "pm.test('Has result key', function () { pm.expect(json).to.have.property('result'); });"
                   ]
                 }
               }

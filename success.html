@@ -383,6 +383,25 @@ function aColor(name) {
 }
 function aInit(name) { return (name || '?')[0].toUpperCase(); }
 
+function ballClass(b) {
+    if (b === 100) return 'ball-100';
+    if (b >= 80)  return 'ball-80';
+    if (b >= 60)  return 'ball-60';
+    return 'ball-low';
+}
+function ballBarColor(b) {
+    if (b >= 80) return '#10b981';
+    if (b >= 60) return '#f59e0b';
+    return '#ef4444';
+}
+function ballGrade(b) {
+    if (b === 100) return '🏆 Mükəmməl';
+    if (b >= 80)  return '🌟 Əla';
+    if (b >= 60)  return '👍 Yaxşı';
+    if (b >= 40)  return '📖 Qənaətbəxş';
+    return '📚 Zəif';
+}
+
 let _tab = 'all';
 let _lb  = [];   // full leaderboard array
 
@@ -393,47 +412,55 @@ function switchTab(tab, btn) {
     renderBoard();
 }
 
-// ── Build leaderboard — ALL users, not just those with points ─────────────────
+// ── Build leaderboard ─────────────────────────────────────────────────────────
 function buildLB() {
-    // Always read directly from localStorage for freshest data
     const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
     const users = JSON.parse(localStorage.getItem('allUsers')   || '[]');
 
-    // Start with all non-admin users
     const allEntries = users
         .filter(u => u.role !== 'admin')
         .map(u => {
             const p = pts[u.id] || pts[String(u.id)] || {};
+            // Best ball score across all tests for this user
+            const testScores = p.testScores ? Object.values(p.testScores) : [];
+            const bestBall = testScores.length
+                ? Math.max(...testScores.map(s => s.ballScore || 0))
+                : (u.lastTestScore || 0);
             return {
-                userId:  u.id,
-                name:    u.name || 'İstifadəçi',
-                premium: u.premium || false,
-                total:   p.total || 0,
-                videos:  (p.watchedVideos  || []).length,
-                tests:   (p.completedTests || []).length,
-                history: Array.isArray(p.history) ? p.history : [],
-                userType: u.userType || 'student',
+                userId:     u.id,
+                name:       u.name || 'İstifadəçi',
+                premium:    u.premium || false,
+                total:      p.total || 0,
+                videos:     (p.watchedVideos  || []).length,
+                tests:      (p.completedTests || []).length,
+                history:    Array.isArray(p.history) ? p.history : [],
+                userType:   u.userType || 'student',
+                testScores: testScores,  // array of {testId,testTitle,ballScore,...}
+                bestBall:   bestBall,
+                lastTestScore: u.lastTestScore || null,
+                lastTestTitle: u.lastTestTitle || null,
+                lastTestDate:  u.lastTestDate  || null,
             };
         });
 
-    // Also include any points entries not in allUsers (cross-device fallback)
+    // Cross-device fallback: points entries not in allUsers
     Object.values(pts).forEach(p => {
         if (!allEntries.find(e => String(e.userId) === String(p.userId))) {
+            const testScores = p.testScores ? Object.values(p.testScores) : [];
+            const bestBall = testScores.length ? Math.max(...testScores.map(s => s.ballScore || 0)) : 0;
             allEntries.push({
-                userId:  p.userId,
-                name:    p.userName || 'İstifadəçi',
-                premium: false,
-                total:   p.total || 0,
-                videos:  (p.watchedVideos  || []).length,
-                tests:   (p.completedTests || []).length,
+                userId: p.userId, name: p.userName || 'İstifadəçi',
+                premium: false, total: p.total || 0,
+                videos: (p.watchedVideos || []).length,
+                tests: (p.completedTests || []).length,
                 history: Array.isArray(p.history) ? p.history : [],
-                userType: 'student',
+                userType: 'student', testScores, bestBall,
+                lastTestScore: null, lastTestTitle: null, lastTestDate: null,
             });
         }
     });
 
-    return allEntries
-        .sort((a, b) => b.total - a.total);
+    return allEntries.sort((a, b) => b.total - a.total);
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
@@ -441,34 +468,47 @@ function renderAll() {
     _lb = buildLB();
     const me = getCurrentUser();
 
-    // Hero stats — all users, not just those with points
+    // Hero stats
     const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
-    const totalPts = _lb.reduce((s, e) => s + e.total, 0);
-    const withPts  = _lb.filter(e => e.total > 0);
+    const totalPts  = _lb.reduce((s, e) => s + e.total, 0);
+    const withPts   = _lb.filter(e => e.total > 0);
+    const allScores = _lb.flatMap(e => e.testScores);
+    const topBall   = allScores.length ? Math.max(...allScores.map(s => s.ballScore || 0)) : 0;
+    const totalTests = _lb.reduce((s, e) => s + e.tests, 0);
+
     document.getElementById('heroParticipants').textContent = allUsers.filter(u => u.role !== 'admin').length || _lb.length;
     document.getElementById('heroTotalPoints').textContent  = totalPts.toLocaleString();
     document.getElementById('heroTopScore').textContent     = withPts[0] ? withPts[0].total.toLocaleString() : '0';
+    document.getElementById('heroTopBall').textContent      = topBall > 0 ? topBall : '—';
+    document.getElementById('heroTestCount').textContent    = totalTests.toLocaleString();
 
     // My card
     if (me) {
-        // Re-read fresh points for current user directly from localStorage
         const freshPts = JSON.parse(localStorage.getItem('userPoints') || '{}');
-        const myFresh  = freshPts[me.id] || freshPts[String(me.id)] || null;
-        const idx  = _lb.findIndex(e => String(e.userId) === String(me.id));
-        const myE  = myFresh ? {
-            total:   myFresh.total || 0,
-            videos:  (myFresh.watchedVideos  || []).length,
-            tests:   (myFresh.completedTests || []).length,
-        } : (_lb[idx] || null);
-        const card = document.getElementById('myCard');
+        const myRaw    = freshPts[me.id] || freshPts[String(me.id)] || null;
+        const idx      = _lb.findIndex(e => String(e.userId) === String(me.id));
+        const myEntry  = _lb[idx] || null;
+        const card     = document.getElementById('myCard');
 
-        if (myE) {
-            document.getElementById('mcRank').textContent   = `#${idx + 1}`;
+        if (myRaw || myEntry) {
+            const myE = myRaw ? {
+                total:  myRaw.total || 0,
+                videos: (myRaw.watchedVideos  || []).length,
+                tests:  (myRaw.completedTests || []).length,
+                testScores: myRaw.testScores ? Object.values(myRaw.testScores) : [],
+            } : myEntry;
+
+            const bestBall = myE.testScores && myE.testScores.length
+                ? Math.max(...myE.testScores.map(s => s.ballScore || 0))
+                : (me.lastTestScore || '—');
+
+            document.getElementById('mcRank').textContent   = idx >= 0 ? `#${idx + 1}` : '#—';
             document.getElementById('mcName').textContent   = me.name;
             document.getElementById('mcDesc').textContent   = `${_lb.length} iştirakçı arasında`;
             document.getElementById('mcPoints').textContent = myE.total.toLocaleString();
             document.getElementById('mcVideos').textContent = myE.videos;
             document.getElementById('mcTests').textContent  = myE.tests;
+            document.getElementById('mcBestBall').textContent = bestBall;
             card.style.display = 'flex';
         } else {
             card.innerHTML = `
@@ -503,15 +543,15 @@ function renderPodium(me) {
         return;
     }
 
-    // Visual order: silver | gold | bronze
-    const order   = [top3[1], top3[0], top3[2]].filter(Boolean);
-    const cls     = top3[1] ? ['silver','gold','bronze'] : ['gold','bronze'];
-    const medals  = top3[1] ? ['🥈','🥇','🥉'] : ['🥇','🥉'];
+    const order  = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const cls    = top3[1] ? ['silver','gold','bronze'] : ['gold','bronze'];
+    const medals = top3[1] ? ['🥈','🥇','🥉'] : ['🥇','🥉'];
 
     wrap.innerHTML = order.map((e, i) => {
-        const rank  = _lb.indexOf(e) + 1;
         const isMe  = me && String(e.userId) === String(me.id);
         const color = aColor(e.name);
+        // Show best ball if available
+        const bbStr = e.bestBall > 0 ? `<span class="chip" style="background:#ecfdf5;color:#065f46;">📝 ${e.bestBall} bal</span>` : '';
         return `
         <div class="podium-card ${cls[i]}${isMe ? ' is-me' : ''}">
             <div class="podium-medal">${medals[i]}</div>
@@ -525,18 +565,21 @@ function renderPodium(me) {
             <div class="podium-chips">
                 <span class="chip"><i class="fas fa-play" style="font-size:9px;"></i> ${e.videos}</span>
                 <span class="chip purple-chip"><i class="fas fa-pen" style="font-size:9px;"></i> ${e.tests}</span>
+                ${bbStr}
                 ${e.premium ? '<span class="chip gold-chip">👑 Premium</span>' : ''}
             </div>
         </div>`;
     }).join('');
 }
 
-// ── Board (leaderboard or history) ───────────────────────────────────────────
+// ── Board dispatcher ──────────────────────────────────────────────────────────
 function renderBoard() {
-    if (_tab === 'all') renderLeaderboard();
-    else renderHistory();
+    if      (_tab === 'all')     renderLeaderboard();
+    else if (_tab === 'scores')  renderTestScores();
+    else                         renderHistory();
 }
 
+// ── Full Leaderboard ──────────────────────────────────────────────────────────
 function renderLeaderboard() {
     document.getElementById('boardTitle').textContent = '📊 Tam Reytinq Cədvəli';
     const me = getCurrentUser();
@@ -549,10 +592,7 @@ function renderLeaderboard() {
 
     if (!_lb.length) {
         document.getElementById('boardBody').innerHTML = `
-            <div class="empty">
-                <i class="fas fa-users"></i>
-                <p>Hələ heç kim qeydiyyatdan keçməyib</p>
-            </div>`;
+            <div class="empty"><i class="fas fa-users"></i><p>Hələ heç kim qeydiyyatdan keçməyib</p></div>`;
         return;
     }
 
@@ -560,9 +600,12 @@ function renderLeaderboard() {
 
     if (withPoints.length) {
         html += withPoints.map((e, i) => {
-            const rank = i + 1;
-            const isMe = me && String(e.userId) === String(me.id);
+            const rank     = i + 1;
+            const isMe     = me && String(e.userId) === String(me.id);
             const typeIcon = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+            const ballInfo = e.bestBall > 0
+                ? `<span class="lb-last-test" style="background:${ballBarColor(e.bestBall)};">${e.bestBall} bal</span>`
+                : '';
             return `
             <div class="lb-row${isMe ? ' is-me' : ''}">
                 <div class="lb-rank-cell" style="${rank<=3?'background:transparent;font-size:22px;':''}">
@@ -574,7 +617,7 @@ function renderLeaderboard() {
                         ${typeIcon} ${e.name}
                         ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
                     </div>
-                    <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
+                    <div class="lb-sub">${e.videos} video · ${e.tests} sınaq ${ballInfo}</div>
                 </div>
                 <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
                 <div class="lb-score-cell">${e.total.toLocaleString()} xal</div>
@@ -584,7 +627,6 @@ function renderLeaderboard() {
         html += `<div class="empty"><i class="fas fa-star"></i><p>Hələ heç kim xal qazanmayıb</p></div>`;
     }
 
-    // Users with 0 points — collapsed section
     if (withoutPoints.length) {
         html += `
         <div style="padding:12px 26px;background:#f8fafc;border-top:2px solid #f1f5f9;">
@@ -623,6 +665,131 @@ function toggleNoPoints(btn) {
     icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
 }
 
+// ── Sınaq Balları Cədvəli (100-ballıq) ───────────────────────────────────────
+function renderTestScores() {
+    document.getElementById('boardTitle').textContent = '📝 Sınaq Balları Cədvəli (100 ballıq)';
+    const me = getCurrentUser();
+
+    // Build per-user best-score map: only users who have at least one test score
+    const entries = _lb
+        .filter(e => e.testScores && e.testScores.length > 0)
+        .map(e => ({
+            ...e,
+            bestBall: Math.max(...e.testScores.map(s => s.ballScore || 0)),
+            avgBall:  Math.round(e.testScores.reduce((s, t) => s + (t.ballScore || 0), 0) / e.testScores.length),
+        }))
+        .sort((a, b) => b.bestBall - a.bestBall || b.avgBall - a.avgBall);
+
+    // Also check allUsers for testScores stored directly on user objects (fallback)
+    const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+    allUsers.filter(u => u.role !== 'admin' && Array.isArray(u.testScores) && u.testScores.length).forEach(u => {
+        if (!entries.find(e => String(e.userId) === String(u.id))) {
+            const best = Math.max(...u.testScores.map(s => s.ballScore || 0));
+            const avg  = Math.round(u.testScores.reduce((s,t) => s+(t.ballScore||0), 0) / u.testScores.length);
+            entries.push({
+                userId: u.id, name: u.name || 'İstifadəçi',
+                premium: u.premium || false, userType: u.userType || 'student',
+                testScores: u.testScores, bestBall: best, avgBall: avg,
+            });
+        }
+    });
+
+    const totalSolvers = entries.length;
+    document.getElementById('boardSub').textContent = `${totalSolvers} iştirakçı · ${entries.reduce((s,e)=>s+e.testScores.length,0)} nəticə`;
+
+    if (!entries.length) {
+        document.getElementById('boardBody').innerHTML = `
+            <div class="empty">
+                <i class="fas fa-graduation-cap"></i>
+                <p>Hələ heç kim sınaq həll etməyib</p>
+                <a href="tests.html" class="btn btn-primary" style="display:inline-block;margin-top:8px;">Sınağa Başla</a>
+            </div>`;
+        return;
+    }
+
+    const RANK_ICON = { 1:'🥇', 2:'🥈', 3:'🥉' };
+
+    let html = entries.map((e, i) => {
+        const rank  = i + 1;
+        const isMe  = me && String(e.userId) === String(me.id);
+        const color = aColor(e.name);
+        const typeIcon = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+
+        // Show top 3 test results for this user, sorted by ball desc
+        const topScores = [...e.testScores]
+            .sort((a, b) => (b.ballScore || 0) - (a.ballScore || 0))
+            .slice(0, 3);
+
+        const scoresHtml = topScores.map(s => `
+            <div class="test-score-row">
+                <span class="test-score-title">${s.testTitle || 'Sınaq'}</span>
+                <div class="ball-bar-wrap">
+                    <div class="ball-bar-fill" style="width:${s.ballScore||0}%;background:${ballBarColor(s.ballScore||0)};"></div>
+                </div>
+                <span class="ball-pill ${ballClass(s.ballScore||0)}">${s.ballScore || 0}</span>
+            </div>`).join('');
+
+        return `
+        <div class="score-card${isMe ? '" style="border:2px solid #667eea;' : ''}">
+            <div class="score-card-header">
+                <div class="score-rank-badge">${RANK_ICON[rank] || rank}</div>
+                <div class="score-avatar" style="background:${color};">${aInit(e.name)}</div>
+                <div class="score-meta">
+                    <h4>${typeIcon} ${e.name}${isMe ? ' <span style="color:#667eea;font-size:11px;">(Siz)</span>' : ''}</h4>
+                    <p>${e.testScores.length} sınaq · Ən yüksək: ${e.bestBall} bal · Ortalama: ${e.avgBall} bal</p>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:28px;font-weight:900;color:${ballBarColor(e.bestBall)};">${e.bestBall}</div>
+                    <div style="font-size:10px;color:#9ca3af;">${ballGrade(e.bestBall)}</div>
+                    ${e.premium ? '<div style="font-size:11px;color:#f59e0b;font-weight:700;">👑 Premium</div>' : ''}
+                </div>
+            </div>
+            ${scoresHtml}
+            ${e.testScores.length > 3 ? `<div style="text-align:center;padding:6px 0 0;font-size:11px;color:#9ca3af;">+${e.testScores.length - 3} digər sınaq</div>` : ''}
+        </div>`;
+    }).join('');
+
+    // Users who haven't taken any test yet
+    const noTestUsers = _lb.filter(e => !e.testScores || !e.testScores.length);
+    if (noTestUsers.length) {
+        html += `
+        <div style="padding:12px 26px;background:#f8fafc;border-top:2px solid #f1f5f9;margin-top:8px;">
+            <button onclick="toggleNoTests(this)" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;font-weight:600;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-chevron-down" id="noTestsIcon"></i>
+                ${noTestUsers.length} üzv hələ sınaq həll etməyib
+            </button>
+        </div>
+        <div id="noTestsSection" style="display:none;">
+            ${noTestUsers.map(e => {
+                const isMe = me && String(e.userId) === String(me.id);
+                const typeIcon = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
+                return `
+                <div class="lb-row${isMe ? ' is-me' : ''}" style="opacity:.55;">
+                    <div class="lb-rank-cell">—</div>
+                    <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
+                    <div>
+                        <div class="lb-name">${typeIcon} ${e.name}${isMe ? ' <span style="color:#667eea;font-size:10px;">(Siz)</span>' : ''}</div>
+                        <div class="lb-sub">Hələ sınaq həll etməyib</div>
+                    </div>
+                    <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
+                    <div class="lb-score-cell" style="color:#9ca3af;">— bal</div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    document.getElementById('boardBody').innerHTML = html;
+}
+
+function toggleNoTests(btn) {
+    const sec  = document.getElementById('noTestsSection');
+    const icon = document.getElementById('noTestsIcon');
+    const open = sec.style.display === 'none';
+    sec.style.display  = open ? 'block' : 'none';
+    icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+}
+
+// ── Xal Tarixçəm ─────────────────────────────────────────────────────────────
 function renderHistory() {
     document.getElementById('boardTitle').textContent = '📋 Xal Tarixçəm';
     document.getElementById('boardSub').textContent   = '';
@@ -638,7 +805,6 @@ function renderHistory() {
         return;
     }
 
-    // Read directly from localStorage (most up-to-date)
     const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
     const myRaw = pts[me.id] || pts[String(me.id)] || null;
     const hist  = myRaw && Array.isArray(myRaw.history) ? myRaw.history : [];
@@ -653,7 +819,27 @@ function renderHistory() {
         return;
     }
 
-    document.getElementById('boardBody').innerHTML = hist.map(h => `
+    // Also show my test scores summary at the top if available
+    const myScores = myRaw && myRaw.testScores ? Object.values(myRaw.testScores) : [];
+    let scoresBlock = '';
+    if (myScores.length) {
+        const sorted = [...myScores].sort((a,b) => (b.ballScore||0) - (a.ballScore||0));
+        scoresBlock = `
+        <div style="padding:16px 26px;background:#f8fafc;border-bottom:2px solid #f1f5f9;">
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">📝 Sınaq Ballarım</div>
+            ${sorted.map(s => `
+            <div class="test-score-row" style="padding:6px 0;">
+                <span class="test-score-title">${s.testTitle || 'Sınaq'}</span>
+                <div class="ball-bar-wrap">
+                    <div class="ball-bar-fill" style="width:${s.ballScore||0}%;background:${ballBarColor(s.ballScore||0)};"></div>
+                </div>
+                <span class="ball-pill ${ballClass(s.ballScore||0)}">${s.ballScore||0}</span>
+                <span style="font-size:10px;color:#9ca3af;white-space:nowrap;margin-left:4px;">${s.date||''}</span>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    document.getElementById('boardBody').innerHTML = scoresBlock + hist.map(h => `
         <div class="hist-row">
             <div class="hist-amount">+${h.amount} xal</div>
             <div>
@@ -665,22 +851,16 @@ function renderHistory() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-// Real-time update: whenever points change, re-render immediately
-window.addEventListener('points:updated', () => {
-    // Small delay so saveUserPoints finishes writing before we read
-    setTimeout(renderAll, 80);
-});
+window.addEventListener('points:updated', () => setTimeout(renderAll, 80));
 
-// Also update when storage changes in another tab
+// Cross-tab live update — any tab that saves a test score triggers re-render
 window.addEventListener('storage', (e) => {
-    if (e.key === 'userPoints' || e.key === 'allUsers') {
+    if (e.key === 'userPoints' || e.key === 'allUsers' || e.key === 'testResults') {
         setTimeout(renderAll, 80);
     }
 });
 
 window.addEventListener('upstash:loaded', renderAll);
-
-// Initial render (localStorage already available)
 document.addEventListener('DOMContentLoaded', renderAll);
 </script>
 </body>
