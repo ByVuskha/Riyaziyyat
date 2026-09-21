@@ -8,136 +8,208 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #f8fafc; }
+        body { background: #f1f5f9; }
 
-        /* ── Welcome ── */
+        /* ── Welcome card ── */
         .welcome {
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: white; border-radius: 20px; padding: 32px 36px;
-            margin-bottom: 24px; display: flex;
+            color: white; border-radius: 20px; padding: 28px 32px;
+            margin-bottom: 22px; display: flex;
             justify-content: space-between; align-items: center; gap: 20px;
             position: relative; overflow: hidden;
         }
         .welcome::before {
             content: '';
-            position: absolute; top: -40px; right: -40px;
-            width: 200px; height: 200px; border-radius: 50%;
-            background: rgba(255,255,255,.05);
+            position: absolute; top: -50px; right: -50px;
+            width: 220px; height: 220px; border-radius: 50%;
+            background: rgba(255,255,255,.04); pointer-events: none;
         }
-        .welcome h2 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
-        .welcome p  { opacity: .8; font-size: 14px; margin: 0; }
+        .welcome-name { font-size: 24px; font-weight: 800; margin-bottom: 3px; }
+        .welcome-sub  { opacity: .75; font-size: 13px; margin: 0; }
         .welcome-avatar {
-            width: 72px; height: 72px; border-radius: 50%;
+            width: 64px; height: 64px; border-radius: 50%;
             background: rgba(255,255,255,.15); display: flex;
             align-items: center; justify-content: center;
-            font-size: 32px; flex-shrink: 0;
-            border: 3px solid rgba(255,255,255,.3);
+            font-size: 28px; flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,.3); overflow: hidden;
         }
+        .welcome-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .streak-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: rgba(251,191,36,.2); border: 1px solid rgba(251,191,36,.4);
-            border-radius: 20px; padding: 4px 12px; font-size: 13px;
-            font-weight: 600; margin-top: 10px; color: #fbbf24;
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(251,191,36,.2); border: 1px solid rgba(251,191,36,.35);
+            border-radius: 20px; padding: 3px 10px; font-size: 12px;
+            font-weight: 600; margin-top: 8px; color: #fbbf24;
         }
 
-        /* ── Stats grid ── */
+        /* ── Stats ── */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 16px; margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px; margin-bottom: 22px;
         }
         .stat-card {
-            background: white; border-radius: 16px;
-            padding: 20px 18px; box-shadow: 0 2px 12px rgba(0,0,0,.06);
-            display: flex; align-items: center; gap: 14px;
+            background: white; border-radius: 14px;
+            padding: 18px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+            display: flex; align-items: center; gap: 12px;
             transition: transform .2s, box-shadow .2s;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,.09); }
         .stat-icon {
-            width: 50px; height: 50px; border-radius: 14px;
+            width: 46px; height: 46px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; flex-shrink: 0;
+            font-size: 20px; flex-shrink: 0;
         }
-        .stat-card h3 { font-size: 24px; font-weight: 800; margin: 0 0 2px; }
-        .stat-card p  { font-size: 12px; color: #9ca3af; margin: 0; }
-
-        /* ── Daily goal ── */
-        .daily-goal {
-            background: white; border-radius: 16px; padding: 22px 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 24px;
-        }
-        .daily-goal h4 { font-size: 15px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
-        .goal-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-        .goal-item { }
-        .goal-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-        .goal-label span:first-child { color: #374151; font-weight: 500; }
-        .goal-label span:last-child  { color: #9ca3af; }
-        .progress-bar { height: 8px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
-
-        /* ── Two-col layout ── */
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-        @media(max-width:768px) { .two-col { grid-template-columns: 1fr; } }
-
-        /* ── Panel ── */
-        .panel { background: white; border-radius: 16px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-        .panel-title { font-size: 15px; font-weight: 700; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
-
-        /* ── Activity feed ── */
-        .activity-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 0; border-bottom: 1px solid #f1f5f9;
-        }
-        .activity-item:last-child { border-bottom: none; }
-        .activity-dot {
-            width: 36px; height: 36px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px; flex-shrink: 0;
-        }
-        .activity-text { flex: 1; font-size: 13px; color: #374151; }
-        .activity-pts  { font-size: 13px; font-weight: 700; color: #10b981; white-space: nowrap; }
-        .activity-time { font-size: 11px; color: #9ca3af; }
-
-        /* ── Streak calendar ── */
-        .streak-grid { display: flex; gap: 4px; flex-wrap: wrap; }
-        .streak-day {
-            width: 28px; height: 28px; border-radius: 6px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 10px; font-weight: 600;
-        }
-        .streak-day.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-        .streak-day.today  { background: #fbbf24; color: white; }
-        .streak-day.empty  { background: #f1f5f9; color: #9ca3af; }
-
-        /* ── Quick links ── */
-        .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
-        .quick-card {
-            background: white; border-radius: 14px; padding: 18px 12px;
-            text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,.05);
-            text-decoration: none; color: inherit;
-            transition: transform .2s, box-shadow .2s, background .2s;
-        }
-        .quick-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.1); background: var(--primary); color: white; }
-        .quick-card:hover i, .quick-card:hover p { color: rgba(255,255,255,.85) !important; }
-        .quick-card i { font-size: 26px; color: var(--primary); display: block; margin-bottom: 8px; }
-        .quick-card h4 { font-size: 13px; font-weight: 700; margin: 0 0 3px; }
-        .quick-card p  { font-size: 11px; color: #9ca3af; margin: 0; }
+        .stat-card h3 { font-size: 22px; font-weight: 800; margin: 0 0 2px; line-height: 1; }
+        .stat-card p  { font-size: 11px; color: #9ca3af; margin: 0; }
 
         /* ── Premium banner ── */
         .premium-banner {
             background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 16px; padding: 24px 28px; color: white;
-            display: flex; align-items: center; gap: 20px;
-            margin-bottom: 24px; flex-wrap: wrap;
+            border-radius: 16px; padding: 20px 26px; color: white;
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 22px; flex-wrap: wrap;
         }
-        .premium-banner h3 { margin: 0 0 4px; font-size: 18px; }
+        .premium-banner h3 { margin: 0 0 3px; font-size: 17px; }
         .premium-banner p  { margin: 0; opacity: .85; font-size: 13px; }
-        .premium-banner .btn-white {
-            background: white; color: #667eea; border-radius: 10px;
-            padding: 10px 22px; font-weight: 700; text-decoration: none;
-            font-size: 14px; white-space: nowrap; margin-left: auto;
-            border: none; cursor: pointer;
+        .btn-white {
+            background: white; color: #667eea;
+            border-radius: 10px; padding: 9px 20px;
+            font-weight: 700; font-size: 13px;
+            white-space: nowrap; margin-left: auto;
+            border: none; cursor: pointer; text-decoration: none;
+            display: inline-block;
         }
+
+        /* ── Daily goal ── */
+        .daily-goal {
+            background: white; border-radius: 16px; padding: 20px 22px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.05); margin-bottom: 22px;
+        }
+        .daily-goal h4 { font-size: 14px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 7px; }
+        .goal-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .goal-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+        .goal-label span:first-child { color: #374151; font-weight: 500; }
+        .goal-label span:last-child  { color: #9ca3af; }
+        .progress-bar  { height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
+
+        /* ── Two-col ── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+        @media(max-width:768px){ .two-col { grid-template-columns: 1fr; } }
+
+        /* ── Panel ── */
+        .panel { background: white; border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+        .panel-title { font-size: 14px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 7px; }
+
+        /* ── Activity feed ── */
+        .activity-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-dot {
+            width: 34px; height: 34px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; flex-shrink: 0;
+        }
+        .activity-text { flex: 1; font-size: 12px; color: #374151; line-height: 1.4; }
+        .activity-pts  { font-size: 12px; font-weight: 700; color: #10b981; white-space: nowrap; }
+        .activity-time { font-size: 10px; color: #9ca3af; }
+
+        /* ── Streak ── */
+        .streak-grid { display: flex; gap: 3px; flex-wrap: wrap; }
+        .streak-day {
+            width: 26px; height: 26px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 600;
+        }
+        .streak-day.active { background: linear-gradient(135deg,#667eea,#764ba2); color: white; }
+        .streak-day.today  { background: #fbbf24; color: white; }
+        .streak-day.empty  { background: #f1f5f9; color: #9ca3af; }
+
+        /* ── Quick links ── */
+        .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 22px; }
+        .quick-card {
+            background: white; border-radius: 14px; padding: 16px 10px;
+            text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.05);
+            text-decoration: none; color: inherit;
+            transition: transform .2s, box-shadow .2s, background .2s;
+        }
+        .quick-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,.1); background: var(--primary); color: white; }
+        .quick-card:hover i, .quick-card:hover p { color: rgba(255,255,255,.8) !important; }
+        .quick-card i { font-size: 24px; color: var(--primary); display: block; margin-bottom: 7px; }
+        .quick-card h4 { font-size: 12px; font-weight: 700; margin: 0 0 3px; }
+        .quick-card p  { font-size: 10px; color: #9ca3af; margin: 0; }
+
+        /* ── Teacher section ── */
+        #teacherSection { margin-bottom: 22px; }
+
+        .teacher-section-title {
+            font-size: 15px; font-weight: 700;
+            margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+            color: #1e3a5f;
+        }
+
+        /* Access request card */
+        .access-card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.05);
+            overflow: hidden;
+        }
+        .access-card-inner {
+            display: grid; grid-template-columns: 1fr auto;
+            gap: 20px; align-items: center; padding: 22px 24px;
+        }
+        @media(max-width:600px){ .access-card-inner { grid-template-columns: 1fr; } }
+        .access-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; margin-bottom: 6px;
+        }
+        .badge-pending  { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #ecfdf5; color: #065f46; }
+        .badge-none     { background: #f1f5f9; color: #6b7280; }
+        .access-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+        .access-desc  { font-size: 13px; color: #6b7280; margin: 0; line-height: 1.5; }
+
+        /* Sınaq əlavəetmə form (unlocked) */
+        .add-test-card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.05); padding: 24px;
+        }
+        .add-test-card h4 { font-size: 15px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+
+        /* My submitted tests */
+        .my-tests-card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.05); padding: 22px 24px;
+            margin-top: 14px;
+        }
+        .ti-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .ti-item:last-child { border-bottom: none; }
+        .ti-emoji { font-size: 28px; width: 40px; text-align: center; flex-shrink: 0; }
+        .ti-info h5 { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
+        .ti-info span { font-size: 11px; color: #6b7280; }
+        .ti-badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+
+        /* Question builder */
+        .question-row {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative;
+        }
+        .q-num {
+            position: absolute; top: -10px; left: 12px;
+            background: var(--primary); color: white;
+            border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
+        }
+        .options-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+        .opt-row { display: flex; align-items: center; gap: 7px; }
+        .opt-row input[type="radio"]  { accent-color: var(--primary); }
+        .opt-row input[type="text"]   { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+        .opt-row input[type="text"]:focus { outline: none; border-color: var(--primary); }
     </style>
 </head>
 <body>
@@ -170,14 +242,14 @@
     </div>
 </nav>
 
-<div style="padding:32px 0 50px;">
+<div style="padding:28px 0 50px;">
 <div class="container">
 
-    <!-- Welcome -->
+    <!-- ── Welcome ── -->
     <div class="welcome">
         <div>
-            <h2>Salam, <span id="userName">...</span>! 👋</h2>
-            <p id="welcomeSub">Bugün nə öyrənəcəksən?</p>
+            <div class="welcome-name" id="welcomeName">...</div>
+            <p class="welcome-sub" id="welcomeSub">Yüklənir...</p>
             <div class="streak-badge" id="streakBadge" style="display:none;">
                 🔥 <span id="streakCount">0</span> günlük ardıcıl giriş
             </div>
@@ -185,9 +257,9 @@
         <div class="welcome-avatar" id="profileAvatar">🎓</div>
     </div>
 
-    <!-- Premium banner (if not premium) -->
+    <!-- ── Premium banner ── -->
     <div id="premiumBanner" style="display:none;" class="premium-banner">
-        <div style="font-size:36px;">👑</div>
+        <div style="font-size:32px;">👑</div>
         <div>
             <h3>Premium Üzvlük</h3>
             <p id="premiumBannerText">Bütün videolara və sınağlara limitsiz giriş əldə edin!</p>
@@ -195,7 +267,7 @@
         <button onclick="sendPremiumRequest()" class="btn-white">Müraciət Et →</button>
     </div>
 
-    <!-- Stats -->
+    <!-- ── Stats ── -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon" style="background:#eef2ff;">📹</div>
@@ -207,15 +279,15 @@
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
             <div class="stat-icon" style="background:rgba(255,255,255,.2);">⭐</div>
-            <div><h3 id="statPoints" style="color:white;">0</h3><p style="color:rgba(255,255,255,.8);">Xal</p></div>
+            <div><h3 id="statPoints" style="color:white;">0</h3><p style="color:rgba(255,255,255,.75);">Xal</p></div>
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">
             <div class="stat-icon" style="background:rgba(255,255,255,.2);">🏆</div>
-            <div><h3 id="statRank" style="color:white;">-</h3><p style="color:rgba(255,255,255,.8);">Sıralama</p></div>
+            <div><h3 id="statRank" style="color:white;">-</h3><p style="color:rgba(255,255,255,.75);">Sıralama</p></div>
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;">
             <div class="stat-icon" style="background:rgba(255,255,255,.2);">👑</div>
-            <div><h3 id="statPremium" style="color:white;font-size:16px;">Pulsuz</h3><p style="color:rgba(255,255,255,.8);">Premium</p></div>
+            <div><h3 id="statPremium" style="color:white;font-size:15px;">Pulsuz</h3><p style="color:rgba(255,255,255,.75);">Premium</p></div>
         </div>
         <div class="stat-card">
             <div class="stat-icon" style="background:#fff7ed;">🎁</div>
@@ -223,11 +295,11 @@
         </div>
     </div>
 
-    <!-- Daily goal -->
+    <!-- ── Daily goal ── -->
     <div class="daily-goal">
         <h4>🎯 Gündəlik Hədəf</h4>
         <div class="goal-items">
-            <div class="goal-item">
+            <div>
                 <div class="goal-label">
                     <span>📹 Video izlə</span>
                     <span id="goalVideoText">0 / 2</span>
@@ -236,7 +308,7 @@
                     <div class="progress-fill" id="goalVideoBar" style="width:0%;background:linear-gradient(90deg,#667eea,#764ba2);"></div>
                 </div>
             </div>
-            <div class="goal-item">
+            <div>
                 <div class="goal-label">
                     <span>📝 Sınaq həll et</span>
                     <span id="goalTestText">0 / 1</span>
@@ -245,7 +317,7 @@
                     <div class="progress-fill" id="goalTestBar" style="width:0%;background:linear-gradient(90deg,#10b981,#059669);"></div>
                 </div>
             </div>
-            <div class="goal-item">
+            <div>
                 <div class="goal-label">
                     <span>⭐ Xal qazanma</span>
                     <span id="goalPointsText">0 / 10</span>
@@ -257,75 +329,147 @@
         </div>
     </div>
 
-    <!-- Activity + Streak -->
+    <!-- ── Activity + Streak ── -->
     <div class="two-col">
-
-        <!-- Recent activity -->
         <div class="panel">
             <div class="panel-title">⚡ Son Fəaliyyət</div>
             <div id="activityFeed">
-                <div style="text-align:center;padding:30px;color:#9ca3af;">
-                    <i class="fas fa-history" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px;"></i>
+                <div style="text-align:center;padding:28px;color:#9ca3af;">
+                    <i class="fas fa-history" style="font-size:28px;opacity:.2;display:block;margin-bottom:9px;"></i>
                     Hələ fəaliyyət yoxdur
                 </div>
             </div>
         </div>
-
-        <!-- Streak calendar -->
         <div class="panel">
             <div class="panel-title">🔥 Giriş Seriyası</div>
-            <div style="margin-bottom:16px;">
-                <div style="font-size:36px;font-weight:900;color:#f59e0b;" id="streakNum">0</div>
-                <div style="font-size:13px;color:#9ca3af;">ardıcıl gün</div>
+            <div style="margin-bottom:14px;">
+                <div style="font-size:32px;font-weight:900;color:#f59e0b;" id="streakNum">0</div>
+                <div style="font-size:12px;color:#9ca3af;">ardıcıl gün</div>
             </div>
             <div class="streak-grid" id="streakGrid"></div>
-            <div style="margin-top:14px;font-size:12px;color:#9ca3af;display:flex;gap:12px;align-items:center;">
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span> Giriş edildi</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:#fbbf24;display:inline-block;"></span> Bu gün</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;background:#f1f5f9;display:inline-block;"></span> Giriş yox</span>
+            <div style="margin-top:12px;font-size:11px;color:#9ca3af;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span> Giriş edildi</span>
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#fbbf24;display:inline-block;"></span> Bu gün</span>
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#f1f5f9;display:inline-block;"></span> Giriş yox</span>
             </div>
         </div>
     </div>
 
-    <!-- Quick links -->
-    <div style="font-size:16px;font-weight:700;margin-bottom:14px;">🚀 Sürətli Keçidlər</div>
+    <!-- ── Quick links ── -->
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;">🚀 Sürətli Keçidlər</div>
     <div class="quick-grid">
-        <a href="videos.html" class="quick-card">
-            <i class="fas fa-play-circle"></i>
-            <h4>Dərslər</h4>
-            <p>Video dərslərə bax</p>
-        </a>
-        <a href="tests.html" class="quick-card">
-            <i class="fas fa-clipboard-list"></i>
-            <h4>Sınaqlar</h4>
-            <p>Bilikini yoxla</p>
-        </a>
-        <a href="success.html" class="quick-card">
-            <i class="fas fa-trophy"></i>
-            <h4>Uğurlar</h4>
-            <p>Xal sıralaması</p>
-        </a>
-        <a href="teachers.html" class="quick-card">
-            <i class="fas fa-chalkboard-teacher"></i>
-            <h4>Müəllimlər</h4>
-            <p>Peşəkar komanda</p>
-        </a>
-        <a href="news.html" class="quick-card">
-            <i class="fas fa-newspaper"></i>
-            <h4>Xəbərlər</h4>
-            <p>Son yeniliklər</p>
-        </a>
-        <a href="profile-edit.html" class="quick-card">
-            <i class="fas fa-user-edit"></i>
-            <h4>Profil</h4>
-            <p>Məlumatları yenilə</p>
-        </a>
-        <a href="teacher-panel.html" class="quick-card" id="teacherPanelCard" style="display:none;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;">
-            <i class="fas fa-chalkboard-teacher" style="color:#10b981;"></i>
-            <h4 style="color:#065f46;">Müəllim Paneli</h4>
-            <p style="color:#059669;">Sınaq əlavə et</p>
-        </a>
+        <a href="videos.html"       class="quick-card"><i class="fas fa-play-circle"></i><h4>Dərslər</h4><p>Video dərsləri izlə</p></a>
+        <a href="tests.html"        class="quick-card"><i class="fas fa-clipboard-list"></i><h4>Sınaqlar</h4><p>Bilikini yoxla</p></a>
+        <a href="success.html"      class="quick-card"><i class="fas fa-trophy"></i><h4>Uğurlar</h4><p>Xal sıralaması</p></a>
+        <a href="teachers.html"     class="quick-card"><i class="fas fa-chalkboard-teacher"></i><h4>Müəllimlər</h4><p>Peşəkar komanda</p></a>
+        <a href="news.html"         class="quick-card"><i class="fas fa-newspaper"></i><h4>Xəbərlər</h4><p>Son yeniliklər</p></a>
+        <a href="profile-edit.html" class="quick-card"><i class="fas fa-user-edit"></i><h4>Profil</h4><p>Məlumatları yenilə</p></a>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         MÜƏLLİM BÖLMƏSİ — yalnız teacher / admin üçün görünür
+    ══════════════════════════════════════════════════════ -->
+    <div id="teacherSection" style="display:none;">
+
+        <div class="teacher-section-title">
+            <i class="fas fa-chalkboard-teacher" style="color:#2563eb;"></i>
+            Müəllim Paneli
+        </div>
+
+        <!-- İCazə kartı (pending / rejected / not-requested) -->
+        <div id="accessCard" class="access-card" style="display:none;">
+            <div class="access-card-inner">
+                <div>
+                    <div class="access-badge badge-none" id="accessBadge">
+                        <i class="fas fa-lock"></i> İcazəsiz
+                    </div>
+                    <div class="access-title" id="accessTitle">Sınaq Əlavəetmə İcazəsi</div>
+                    <p class="access-desc" id="accessDesc">Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.</p>
+                </div>
+                <div>
+                    <button id="requestAccessBtn" class="btn btn-primary" onclick="requestTestAccess()" style="white-space:nowrap;">
+                        <i class="fas fa-paper-plane"></i> İcazə İstə
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sınaq əlavə etmə formu (canAddTests === true) -->
+        <div id="addTestCard" class="add-test-card" style="display:none;">
+            <h4><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Sınaq Göndər</h4>
+            <div id="addTestAlert"></div>
+            <form id="testForm" onsubmit="submitTest(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:12px;">Sınaq Adı *</label>
+                        <input type="text" class="form-control" id="tTitle" placeholder="Məs: Cəbr — Tənliklər" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:12px;">Emoji</label>
+                        <select class="form-control" id="tEmoji">
+                            <option>📝</option><option>🔢</option><option>📐</option>
+                            <option>∫</option><option>🎲</option><option>📊</option>
+                            <option>🏆</option><option>⚡</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:12px;">Çətinlik</label>
+                        <select class="form-control" id="tDifficulty">
+                            <option>Asan</option><option selected>Orta</option><option>Çətin</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:12px;">Müddət (dəq)</label>
+                        <input type="number" class="form-control" id="tDuration" value="15" min="1" max="180" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:12px;">Növ</label>
+                        <select class="form-control" id="tType">
+                            <option value="free">Pulsuz</option>
+                            <option value="premium">Premium</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:12px;">Açıqlama</label>
+                    <textarea class="form-control" id="tDesc" rows="2" placeholder="Bu sınaq nə haqqındadır?"></textarea>
+                </div>
+
+                <!-- Sual qurucusu -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <label style="font-size:12px;font-weight:700;margin:0;">Suallar *</label>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addQuestion()" style="font-size:12px;">
+                        <i class="fas fa-plus"></i> Sual Əlavə Et
+                    </button>
+                </div>
+                <div id="questionsContainer"></div>
+
+                <div style="display:flex;gap:10px;margin-top:6px;">
+                    <button type="submit" class="btn btn-primary" style="font-size:13px;">
+                        <i class="fas fa-paper-plane"></i> Admin Yoxlamasına Göndər
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetTestForm()" style="font-size:13px;">
+                        <i class="fas fa-undo"></i> Sıfırla
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Göndərilmiş sınaqlar siyahısı -->
+        <div class="my-tests-card" id="myTestsCard" style="display:none;">
+            <div class="panel-title" style="font-size:14px;">
+                <i class="fas fa-list" style="color:var(--primary);"></i> Göndərilmiş Sınaqlarım
+            </div>
+            <div id="myTestsList">
+                <div style="text-align:center;padding:30px;color:#9ca3af;font-size:13px;">
+                    Hələ sınaq göndərməmisiniz.
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /teacherSection -->
 
 </div>
 </div>
@@ -338,120 +482,110 @@
 <script src="js/points.js"></script>
 <script>
 if (!isLoggedIn()) { window.location.href = 'login.html'; }
-
 const user = getCurrentUser();
-document.getElementById('userName').textContent = user.name;
 
-// Müəllim paneli kartını göstər
-(function() {
-    const card = document.getElementById('teacherPanelCard');
-    if (card && (user.userType === 'teacher' || user.role === 'admin')) {
-        card.style.display = '';
-    }
-})();
+/* ── Avatar & name ───────────────────────────────────────────────────── */
+document.getElementById('welcomeName').textContent = user.name;
 
-// Avatar
 const av = document.getElementById('profileAvatar');
 if (user.profilePicture) {
-    av.innerHTML = `<img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    av.innerHTML = `<img src="${user.profilePicture}" alt="profil">`;
+} else {
+    av.textContent = user.name ? user.name[0].toUpperCase() : '?';
+    av.style.fontSize = '26px';
+    av.style.fontWeight = '800';
+    av.style.color = 'white';
 }
 
-// Premium banner
+/* ── Premium banner ──────────────────────────────────────────────────── */
 function updatePremiumBanner() {
     const banner = document.getElementById('premiumBanner');
-    const statPremium = document.getElementById('statPremium');
+    const statP  = document.getElementById('statPremium');
     if (user.premium) {
-        statPremium.textContent = getPremiumStatusText ? getPremiumStatusText() : 'Premium';
+        statP.textContent = typeof getPremiumStatusText === 'function' ? getPremiumStatusText() : 'Premium';
         banner.style.display = 'none';
     } else if (user.premiumRequestedAt) {
-        statPremium.textContent = 'Gözlənilir';
+        statP.textContent = 'Gözlənilir';
         banner.innerHTML = `
-            <div style="font-size:36px;">⏳</div>
-            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır. Tezliklə aktivləşəcək.</p></div>
-        `;
+            <div style="font-size:28px;">⏳</div>
+            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır. Tezliklə aktivləşəcək.</p></div>`;
         banner.style.display = 'flex';
     } else {
-        statPremium.textContent = 'Pulsuz';
+        statP.textContent = 'Pulsuz';
         banner.style.display = 'flex';
     }
 }
 updatePremiumBanner();
-document.getElementById('statDemo').textContent = user.demoTests || 3;
+document.getElementById('statDemo').textContent = user.demoTests ?? 3;
 
-// ── Render all points-based UI ────────────────────────────────────────────────
+/* ── Main dashboard render (points-based) ────────────────────────────── */
 function renderDashboard() {
-    const allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const myData = allPoints[user.id] || allPoints[String(user.id)] || {
+    // Re-read fresh user to catch updates
+    const freshUser = getCurrentUser() || user;
+    document.getElementById('welcomeName').textContent = freshUser.name;
+    document.getElementById('navUserName').textContent  = freshUser.name;
+
+    const allPoints  = JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const myData     = allPoints[freshUser.id] || allPoints[String(freshUser.id)] || {
         total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
     };
 
-    const videos  = (myData.watchedVideos  || []).length;
-    const tests   = (myData.completedTests || []).length;
-    const total   = myData.total || 0;
-    const history = Array.isArray(myData.history) ? myData.history : [];
+    const videosArr  = myData.watchedVideos  || [];
+    const testsArr   = myData.completedTests || [];
+    const total      = myData.total || 0;
+    const history    = Array.isArray(myData.history) ? myData.history : [];
 
-    // Stats
-    document.getElementById('statVideos').textContent = videos;
-    document.getElementById('statTests').textContent  = tests;
+    /* Stats */
+    document.getElementById('statVideos').textContent = videosArr.length;
+    document.getElementById('statTests').textContent  = testsArr.length;
     document.getElementById('statPoints').textContent = total.toLocaleString();
 
-    // Rank
+    /* Rank */
     const sorted = Object.values(allPoints)
         .filter(p => (p.total || 0) > 0)
         .sort((a, b) => b.total - a.total);
-    const rank = sorted.findIndex(p => String(p.userId) === String(user.id)) + 1;
+    const rank = sorted.findIndex(p => String(p.userId) === String(freshUser.id)) + 1;
     document.getElementById('statRank').textContent = rank > 0 ? `#${rank}` : '-';
 
-    // Welcome subtitle
-    const greetings = [
+    /* Welcome subtitle */
+    const subs = [
         'Bugün nə öyrənəcəksən? 📚',
         'Hər gün bir addım irəli! 🚀',
         'Bilikini artır, xal qazanmağa davam et! ⭐',
         'Sıralamada yüksəl, çalış! 🏆',
     ];
-    document.getElementById('welcomeSub').textContent = greetings[Math.floor(Math.random() * greetings.length)];
+    document.getElementById('welcomeSub').textContent = subs[Math.floor(Math.random() * subs.length)];
 
-    // ── Daily goal ────────────────────────────────────────────────────────────
-    // Count today's activity from history
+    /* Daily goal */
     const todayKey = new Date().toISOString().slice(0, 10);
-    const todayHistory = history.filter(h => {
-        if (!h.timestamp) return false;
-        return new Date(h.timestamp).toISOString().slice(0, 10) === todayKey;
-    });
-    const todayVideos = todayHistory.filter(h => h.reason && h.reason.includes('videosu')).length;
-    const todayTests  = todayHistory.filter(h => h.reason && h.reason.includes('—')).length;
-    const todayPoints = todayHistory.reduce((s, h) => s + (h.amount || 0), 0);
+    const todayH   = history.filter(h => h.timestamp && new Date(h.timestamp).toISOString().slice(0,10) === todayKey);
+    const tVid     = todayH.filter(h => h.reason && h.reason.includes('videosu')).length;
+    const tTst     = todayH.filter(h => h.reason && h.reason.includes('—')).length;
+    const tPts     = todayH.reduce((s, h) => s + (h.amount || 0), 0);
 
-    const goalVideo  = Math.min(todayVideos, 2);
-    const goalTest   = Math.min(todayTests,  1);
-    const goalPoints = Math.min(todayPoints, 10);
+    document.getElementById('goalVideoText').textContent  = `${Math.min(tVid,2)} / 2`;
+    document.getElementById('goalTestText').textContent   = `${Math.min(tTst,1)} / 1`;
+    document.getElementById('goalPointsText').textContent = `${Math.min(tPts,10)} / 10`;
+    document.getElementById('goalVideoBar').style.width   = `${Math.min(tVid/2,1)*100}%`;
+    document.getElementById('goalTestBar').style.width    = `${Math.min(tTst/1,1)*100}%`;
+    document.getElementById('goalPointsBar').style.width  = `${Math.min(tPts/10,1)*100}%`;
 
-    document.getElementById('goalVideoText').textContent  = `${goalVideo} / 2`;
-    document.getElementById('goalTestText').textContent   = `${goalTest} / 1`;
-    document.getElementById('goalPointsText').textContent = `${goalPoints} / 10`;
-    document.getElementById('goalVideoBar').style.width   = `${(goalVideo  / 2)  * 100}%`;
-    document.getElementById('goalTestBar').style.width    = `${(goalTest   / 1)  * 100}%`;
-    document.getElementById('goalPointsBar').style.width  = `${Math.min((goalPoints / 10) * 100, 100)}%`;
-
-    // ── Activity feed ─────────────────────────────────────────────────────────
+    /* Activity feed */
     const feed = document.getElementById('activityFeed');
     if (!history.length) {
-        feed.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af;">
-            <i class="fas fa-history" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px;"></i>
-            Hələ fəaliyyət yoxdur
-        </div>`;
+        feed.innerHTML = `<div style="text-align:center;padding:28px;color:#9ca3af;">
+            <i class="fas fa-history" style="font-size:28px;opacity:.2;display:block;margin-bottom:9px;"></i>
+            Hələ fəaliyyət yoxdur</div>`;
     } else {
-        const icons = { 'videosu': { bg: '#eef2ff', icon: '📹' }, '—': { bg: '#ecfdf5', icon: '📝' }, 'Gündəlik': { bg: '#fff7ed', icon: '🔥' } };
         feed.innerHTML = history.slice(0, 6).map(h => {
-            let style = { bg: '#f1f5f9', icon: '⭐' };
+            let bg = '#f1f5f9', ic = '⭐';
             if (h.reason) {
-                if (h.reason.includes('videosu')) style = icons['videosu'];
-                else if (h.reason.includes('—'))   style = icons['—'];
-                else if (h.reason.includes('Gündəlik')) style = icons['Gündəlik'];
+                if (h.reason.includes('videosu'))   { bg = '#eef2ff'; ic = '📹'; }
+                else if (h.reason.includes('—'))    { bg = '#ecfdf5'; ic = '📝'; }
+                else if (h.reason.includes('Gündəlik')) { bg = '#fff7ed'; ic = '🔥'; }
             }
-            return `
-            <div class="activity-item">
-                <div class="activity-dot" style="background:${style.bg};">${style.icon}</div>
+            return `<div class="activity-item">
+                <div class="activity-dot" style="background:${bg};">${ic}</div>
                 <div style="flex:1;">
                     <div class="activity-text">${h.reason || 'Xal qazanıldı'}</div>
                     <div class="activity-time">${h.date || ''} ${h.time || ''}</div>
@@ -461,65 +595,262 @@ function renderDashboard() {
         }).join('');
     }
 
-    // ── Streak ────────────────────────────────────────────────────────────────
-    // Collect all dates the user logged in:
-    // 1. From history entries (any activity = user was here)
-    // 2. From lastLoginDate (most recent daily login date)
-    // 3. From sessionStorage (current session, even if no points yet)
+    /* Streak */
     const loginDates = new Set();
-
-    // From history timestamps
-    history
-        .filter(h => h.timestamp)
-        .forEach(h => loginDates.add(new Date(h.timestamp).toISOString().slice(0, 10)));
-
-    // From lastLoginDate
-    if (myData.lastLoginDate) {
-        loginDates.add(myData.lastLoginDate.slice(0, 10));
-    }
-
-    // Current session = user is here today
-    const todayKey = new Date().toISOString().slice(0, 10);
+    history.filter(h => h.timestamp).forEach(h => loginDates.add(new Date(h.timestamp).toISOString().slice(0,10)));
+    if (myData.lastLoginDate) loginDates.add(myData.lastLoginDate.slice(0,10));
     loginDates.add(todayKey);
 
     const days = [];
     for (let i = 20; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
-        days.push({ key, isToday: i === 0, active: loginDates.has(key), label: d.getDate() });
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0,10);
+        days.push({ key, isToday: i===0, active: loginDates.has(key), label: d.getDate() });
     }
+    document.getElementById('streakGrid').innerHTML = days.map(d =>
+        `<div class="streak-day ${d.isToday?'today':d.active?'active':'empty'}" title="${d.key}">${d.label}</div>`
+    ).join('');
 
-    document.getElementById('streakGrid').innerHTML = days.map(d => `
-        <div class="streak-day ${d.isToday ? 'today' : d.active ? 'active' : 'empty'}" title="${d.key}">
-            ${d.label}
-        </div>
-    `).join('');
-
-    // Count current streak (consecutive days ending today)
     let streak = 0;
     for (let i = 0; i < 60; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        if (loginDates.has(d.toISOString().slice(0, 10))) streak++;
-        else break;
+        const d = new Date(); d.setDate(d.getDate() - i);
+        if (loginDates.has(d.toISOString().slice(0,10))) streak++; else break;
     }
-    document.getElementById('streakNum').textContent = streak;
+    document.getElementById('streakNum').textContent   = streak;
     document.getElementById('streakCount').textContent = streak;
     if (streak > 0) document.getElementById('streakBadge').style.display = 'inline-flex';
+
+    /* Teacher section */
+    if (freshUser.userType === 'teacher' || freshUser.role === 'admin') {
+        renderTeacherSection(freshUser);
+    }
 }
 
 renderDashboard();
 window.addEventListener('points:updated', renderDashboard);
 window.addEventListener('upstash:loaded', renderDashboard);
 
-function sendPremiumRequest() {
-    const result = requestPremium();
-    if (result.success) {
-        alert('✅ ' + result.message + '\n\nAdmin tərəfindən yoxlanılacaq.');
-        location.reload();
+/* ══════════════════════════════════════════════════════════════════════
+   MÜƏLLİM BÖLMƏSİ
+══════════════════════════════════════════════════════════════════════ */
+function renderTeacherSection(u) {
+    document.getElementById('teacherSection').style.display = 'block';
+
+    /* Read fresh user from allUsers */
+    const allUsers  = Storage.get('allUsers') || [];
+    const freshU    = allUsers.find(x => String(x.id) === String(u.id)) || u;
+
+    const accessCard  = document.getElementById('accessCard');
+    const addTestCard = document.getElementById('addTestCard');
+    const myTestsCard = document.getElementById('myTestsCard');
+
+    if (freshU.canAddTests === true) {
+        /* ── APPROVED: show the form ── */
+        accessCard.style.display  = 'none';
+        addTestCard.style.display = 'block';
+        myTestsCard.style.display = 'block';
+        if (document.getElementById('questionsContainer').children.length === 0) addQuestion();
+        loadMyTests(freshU);
     } else {
-        alert('❌ ' + result.message);
+        /* ── NOT YET APPROVED: show request card ── */
+        accessCard.style.display  = 'block';
+        addTestCard.style.display = 'none';
+        myTestsCard.style.display = 'none';
+
+        const badge = document.getElementById('accessBadge');
+        const title = document.getElementById('accessTitle');
+        const desc  = document.getElementById('accessDesc');
+        const btn   = document.getElementById('requestAccessBtn');
+
+        if (freshU.testAccessRequested) {
+            badge.className = 'access-badge badge-pending';
+            badge.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir';
+            title.textContent = 'Müraciətiniz İcmalda';
+            desc.textContent  = 'Admin müraciətinizi nəzərdən keçirir. Təsdiqlədikdən sonra sınaq formu avtomatik açılacaq.';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir';
+            btn.style.opacity = '.6';
+        } else {
+            badge.className = 'access-badge badge-none';
+            badge.innerHTML = '<i class="fas fa-lock"></i> İcazəsiz';
+            title.textContent = 'Sınaq Əlavəetmə İcazəsi';
+            desc.textContent  = 'Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur. Müraciət edərək admin onaylasın.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə';
+            btn.style.opacity = '1';
+        }
+    }
+}
+
+function requestTestAccess() {
+    const u = getCurrentUser();
+    if (!u) return;
+
+    const allUsers = Storage.get('allUsers') || [];
+    const idx = allUsers.findIndex(x => String(x.id) === String(u.id));
+    if (idx !== -1) {
+        allUsers[idx].testAccessRequested = true;
+        allUsers[idx].testAccessRequestedAt = new Date().toISOString();
+        Storage.set('allUsers', allUsers);
+    }
+    u.testAccessRequested = true;
+    Storage.set('currentUser', u);
+
+    /* Save request for admin */
+    const reqs = Storage.get('teacherTestRequests') || [];
+    reqs.unshift({
+        id: Date.now(), userId: u.id, userName: u.name, userEmail: u.email,
+        requestedAt: new Date().toISOString(), status: 'pending'
+    });
+    Storage.set('teacherTestRequests', reqs);
+
+    renderTeacherSection(u);
+
+    if (typeof showNotification === 'function') {
+        showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
+    }
+}
+
+/* ── Question builder ── */
+let qCount = 0;
+
+function addQuestion() {
+    qCount++;
+    const n = qCount;
+    const div = document.createElement('div');
+    div.className = 'question-row';
+    div.id = 'q_' + n;
+    div.innerHTML = `
+        <span class="q-num">Sual ${n}</span>
+        <button type="button" onclick="removeQ(${n})"
+            style="position:absolute;top:8px;right:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">
+            <i class="fas fa-times"></i>
+        </button>
+        <div style="margin:10px 0 8px;">
+            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual mətnini daxil edin *" required style="font-size:13px;">
+        </div>
+        <p style="font-size:11px;color:#6b7280;margin-bottom:6px;">Düzgün cavabı radio ilə seçin:</p>
+        <div class="options-2col">
+            ${[0,1,2,3].map(i=>`
+            <div class="opt-row">
+                <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
+                <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variantı" required>
+            </div>`).join('')}
+        </div>`;
+    document.getElementById('questionsContainer').appendChild(div);
+}
+
+function removeQ(n) {
+    const el = document.getElementById('q_' + n);
+    if (el) el.remove();
+}
+
+/* ── Submit test ── */
+function submitTest(e) {
+    e.preventDefault();
+    const u = getCurrentUser();
+    if (!u) return;
+
+    const title      = document.getElementById('tTitle').value.trim();
+    const emoji      = document.getElementById('tEmoji').value;
+    const difficulty = document.getElementById('tDifficulty').value;
+    const duration   = parseInt(document.getElementById('tDuration').value);
+    const isPremium  = document.getElementById('tType').value === 'premium';
+    const desc       = document.getElementById('tDesc').value.trim();
+
+    const qRows = document.querySelectorAll('.question-row');
+    if (qRows.length === 0) {
+        document.getElementById('addTestAlert').innerHTML =
+            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> Ən az 1 sual əlavə edin.</div>';
+        return;
+    }
+
+    const questions = [];
+    let valid = true;
+    qRows.forEach(row => {
+        const id   = row.id.replace('q_', '');
+        const text = (document.getElementById(`q${id}_text`)?.value || '').trim();
+        const opts = [0,1,2,3].map(i => (document.getElementById(`q${id}_opt${i}`)?.value || '').trim());
+        const corEl = document.querySelector(`input[name="cor_${id}"]:checked`);
+        const correct = corEl ? parseInt(corEl.value) : 0;
+        if (!text || opts.some(o => !o)) { valid = false; return; }
+        questions.push({ question: text, options: opts, correctAnswer: correct });
+    });
+
+    if (!valid) {
+        document.getElementById('addTestAlert').innerHTML =
+            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> Bütün sual və variantları doldurun.</div>';
+        return;
+    }
+
+    const teacherTests = Storage.get('teacherTests') || [];
+    teacherTests.unshift({
+        id: Date.now(),
+        teacherId: u.id, teacherName: u.name, teacherEmail: u.email,
+        title, emoji, difficulty, duration, isPremium, description: desc,
+        questions, submittedAt: new Date().toISOString(), status: 'pending'
+    });
+    Storage.set('teacherTests', teacherTests);
+
+    document.getElementById('addTestAlert').innerHTML =
+        '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> Sınaq admin yoxlamasına göndərildi!</div>';
+
+    resetTestForm();
+    loadMyTests(u);
+
+    setTimeout(() => { document.getElementById('addTestAlert').innerHTML = ''; }, 4000);
+}
+
+function resetTestForm() {
+    document.getElementById('testForm').reset();
+    document.getElementById('questionsContainer').innerHTML = '';
+    qCount = 0;
+    addQuestion();
+}
+
+/* ── My submitted tests ── */
+function loadMyTests(u) {
+    const all  = Storage.get('teacherTests') || [];
+    const mine = all.filter(t => String(t.teacherId) === String(u.id));
+    const cont = document.getElementById('myTestsList');
+
+    if (!mine.length) {
+        cont.innerHTML = '<p style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Hələ sınaq göndərməmisiniz.</p>';
+        return;
+    }
+
+    const statusMap = {
+        pending:  ['badge-pending',  '⏳ Gözlənilir'],
+        approved: ['badge-approved', '✅ Təsdiqləndi'],
+        rejected: ['badge-rejected', '❌ Rədd Edildi'],
+    };
+
+    cont.innerHTML = mine.map(t => {
+        const d = new Date(t.submittedAt);
+        const [cls, lbl] = statusMap[t.status] || statusMap.pending;
+        const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+        return `<div class="ti-item">
+            <div class="ti-emoji">${t.emoji || '📝'}</div>
+            <div class="ti-info" style="flex:1;">
+                <h5>${t.title}</h5>
+                <span>${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
+                ${t.adminNote ? `<br><span style="color:#ef4444;font-size:11px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>` : ''}
+            </div>
+            <span class="ti-badge ${cls}">${lbl}</span>
+        </div>`;
+    }).join('');
+}
+
+/* ── Premium request ── */
+function sendPremiumRequest() {
+    if (typeof requestPremium === 'function') {
+        const res = requestPremium();
+        if (res.success) {
+            alert('✅ ' + res.message + '\n\nAdmin tərəfindən yoxlanılacaq.');
+            location.reload();
+        } else {
+            alert('❌ ' + res.message);
+        }
     }
 }
 </script>

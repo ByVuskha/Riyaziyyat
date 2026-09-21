@@ -5,7 +5,7 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, and Teachers endpoints.",
+      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 to include teacher test-access request and teacher test submission flows added in dashboard.html.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -16,6 +16,16 @@
       },
       {
         "key": "token",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "userId",
+        "value": "1",
+        "type": "string"
+      },
+      {
+        "key": "teacherTestId",
         "value": "",
         "type": "string"
       }
@@ -544,6 +554,223 @@
                   "exec": [
                     "pm.test('Status 200 or 404', function () {",
                     "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Teacher Tests",
+        "item": [
+          {
+            "name": "Request Test-Add Access",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/request-access",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200 or 201', function () {",
+                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Has status field', function () {",
+                    "  pm.expect(json).to.have.property('status');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Submit Teacher Test",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Cəbr — Tənliklər\",\n  \"emoji\": \"📝\",\n  \"difficulty\": \"Orta\",\n  \"duration\": 15,\n  \"isPremium\": false,\n  \"description\": \"Tənliklər mövzusu üzrə yoxlama sınağı.\",\n  \"questions\": [\n    {\n      \"question\": \"2x + 4 = 10 tənliyinin həlli nədir?\",\n      \"options\": [\"x=2\", \"x=3\", \"x=4\", \"x=5\"],\n      \"correctAnswer\": 1\n    },\n    {\n      \"question\": \"3x - 6 = 0 tənliyinin həlli nədir?\",\n      \"options\": [\"x=1\", \"x=2\", \"x=3\", \"x=6\"],\n      \"correctAnswer\": 1\n    }\n  ]\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200 or 201', function () {",
+                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Has id', function () {",
+                    "  pm.expect(json).to.have.property('id');",
+                    "});",
+                    "pm.test('Status is pending', function () {",
+                    "  pm.expect(json.status).to.equal('pending');",
+                    "});",
+                    "if (json.id) pm.collectionVariables.set('teacherTestId', json.id);"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Get My Submitted Tests",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/mine"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "pm.test('Response is array', function () {",
+                    "  pm.expect(pm.response.json()).to.be.an('array');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Get All Pending Teacher Tests",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests?status=pending"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "pm.test('Response is array', function () {",
+                    "  pm.expect(pm.response.json()).to.be.an('array');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Approve Teacher Test",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/{{teacherTestId}}/approve",
+              "body": {
+                "mode": "raw",
+                "raw": "{}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Status updated to approved', function () {",
+                    "  pm.expect(json.status).to.equal('approved');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Reject Teacher Test",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/{{teacherTestId}}/reject",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"adminNote\": \"Suallar kifayət qədər aydın deyil.\"\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Status updated to rejected', function () {",
+                    "  pm.expect(json.status).to.equal('rejected');",
+                    "});",
+                    "pm.test('adminNote present', function () {",
+                    "  pm.expect(json.adminNote).to.be.a('string');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Grant Test-Add Access to User",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/users/{{userId}}/grant-test-access",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"canAddTests\": true\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('canAddTests is true', function () {",
+                    "  pm.expect(json.canAddTests).to.equal(true);",
                     "});"
                   ]
                 }
