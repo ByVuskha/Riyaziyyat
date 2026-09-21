@@ -7,6 +7,11 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInDocument()"></script>
     <style>
         .panel-hero {
             background: linear-gradient(135deg, #1e3a5f, #2563eb);
@@ -54,22 +59,78 @@
         .locked-overlay h4 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #374151; }
         .locked-overlay p  { color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
 
-        /* Questions builder */
+        /* ── Math Symbol Toolbar ───────────────────────────── */
+        .math-toolbar {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            padding: 6px 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        .math-toolbar-section {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            padding-right: 8px;
+            border-right: 1px solid #cbd5e1;
+            margin-right: 4px;
+        }
+        .math-toolbar-section:last-child { border-right: none; }
+        .math-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            padding: 3px 7px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .15s;
+            color: #1e293b;
+            min-width: 28px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        .math-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .math-btn-label { font-size: 10px; color: #64748b; padding: 2px 4px; font-weight: 600; }
+        .math-input {
+            border-radius: 0 0 8px 8px !important;
+            border-top: none !important;
+            font-family: 'Courier New', monospace;
+            font-size: 14px !important;
+        }
+        .math-preview {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 6px;
+            font-size: 14px;
+            min-height: 36px;
+            display: none;
+        }
+        .math-preview.active { display: block; }
+        .math-preview-label { font-size: 11px; color: #92400e; font-weight: 600; margin-bottom: 4px; }
+
+        /* ── Question Row ─────────────────────────────────── */
         .question-row {
             background: #f8fafc; border: 1px solid #e2e8f0;
-            border-radius: 10px; padding: 18px; margin-bottom: 14px; position: relative;
+            border-radius: 12px; padding: 20px; margin-bottom: 16px; position: relative;
         }
         .question-row .q-num {
-            position: absolute; top: -10px; left: 14px;
+            position: absolute; top: -11px; left: 14px;
             background: var(--primary); color: white;
-            border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700;
+            border-radius: 20px; padding: 2px 12px; font-size: 12px; font-weight: 700;
         }
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
         .option-row { display: flex; align-items: center; gap: 8px; }
-        .option-row input[type="radio"] { accent-color: var(--primary); }
-        .option-row input[type="text"] { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+        .option-row input[type="radio"] { accent-color: var(--primary); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+        .option-row .opt-label { font-weight: 700; font-size: 13px; color: #374151; width: 22px; flex-shrink: 0; }
+        .option-row input[type="text"] { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: 'Courier New', monospace; }
+        .option-row input[type="radio"]:checked + .opt-label { color: var(--primary); }
 
-        /* My tests list */
+        /* ── My tests list ─────────────────────────────────── */
         .test-item {
             display: flex; align-items: center; gap: 14px;
             padding: 14px; border: 1px solid var(--border);
@@ -80,12 +141,16 @@
         .test-item .ti-info { flex: 1; }
         .test-item .ti-info h5 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
         .test-item .ti-info span { font-size: 12px; color: #6b7280; }
-        .test-item .ti-badge {
-            padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-        }
+        .ti-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
         .badge-pending  { background: #fef3c7; color: #92400e; }
         .badge-approved { background: #ecfdf5; color: #065f46; }
         .badge-rejected { background: #fef2f2; color: #991b1b; }
+
+        /* hint */
+        .math-hint {
+            font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.5;
+        }
+        .math-hint code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; }
     </style>
 </head>
 <body>
@@ -117,7 +182,6 @@
     </div>
 </nav>
 
-<!-- Hero -->
 <div class="panel-hero">
     <div class="container">
         <h1>👨‍🏫 Müəllim Paneli</h1>
@@ -144,12 +208,12 @@
         <!-- Content -->
         <div>
 
-            <!-- Add test -->
+            <!-- ── Add test tab ──────────────────────────────── -->
             <div id="tab-addTest" class="panel-section active">
                 <div class="card-panel">
                     <h3><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Sınaq Əlavə Et</h3>
 
-                    <!-- Locked state (shown if not approved) -->
+                    <!-- Locked state -->
                     <div id="lockedState" class="locked-overlay" style="display:none;">
                         <div class="lock-icon">🔒</div>
                         <h4>Sınaq Əlavəetmə Gözləyir</h4>
@@ -160,9 +224,25 @@
                         </button>
                     </div>
 
-                    <!-- Active state -->
+                    <!-- Active form -->
                     <div id="addTestForm" style="display:none;">
                         <div id="addTestAlert"></div>
+
+                        <!-- Math writing guide -->
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+                            <div style="font-weight:700;font-size:13px;color:#1e40af;margin-bottom:6px;">
+                                <i class="fas fa-info-circle"></i> Riyazi ifadə yazma qaydası
+                            </div>
+                            <div style="font-size:12px;color:#374151;line-height:1.8;">
+                                Dollar işarəsi arasında LaTeX yazın: <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">$x^2 + 3x = 5$</code><br>
+                                Kəsr: <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">$\frac{a}{b}$</code> &nbsp;
+                                Kök: <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">$\sqrt{x}$</code> &nbsp;
+                                Pi: <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">$\pi$</code> &nbsp;
+                                Bucaq: <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">$\angle ABC$</code><br>
+                                Aşağı düymələrə basaraq da simvol əlavə edə bilərsiniz.
+                            </div>
+                        </div>
+
                         <form id="testForm" onsubmit="submitTest(event)">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
                                 <div class="form-group" style="margin:0;">
@@ -174,7 +254,8 @@
                                     <select class="form-control" id="testEmoji">
                                         <option>📝</option><option>🔢</option><option>📐</option>
                                         <option>∫</option><option>🎲</option><option>📊</option>
-                                        <option>🏆</option><option>⚡</option>
+                                        <option>🏆</option><option>⚡</option><option>🔺</option>
+                                        <option>🔵</option><option>📏</option><option>🧮</option>
                                     </select>
                                 </div>
                             </div>
@@ -205,8 +286,8 @@
                             <!-- Questions builder -->
                             <div style="margin-bottom:15px;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                                    <label style="margin:0;font-weight:700;">Suallar *</label>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="addQuestion()">
+                                    <label style="margin:0;font-weight:700;font-size:15px;">Suallar *</label>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addQuestion()">
                                         <i class="fas fa-plus"></i> Sual Əlavə Et
                                     </button>
                                 </div>
@@ -226,7 +307,7 @@
                 </div>
             </div>
 
-            <!-- My tests -->
+            <!-- ── My tests tab ──────────────────────────────── -->
             <div id="tab-myTests" class="panel-section">
                 <div class="card-panel">
                     <h3><i class="fas fa-list" style="color:var(--primary);"></i> Mənim Sınaqlarım</h3>
@@ -234,7 +315,7 @@
                 </div>
             </div>
 
-            <!-- Profile -->
+            <!-- ── Profile tab ──────────────────────────────── -->
             <div id="tab-profile" class="panel-section">
                 <div class="card-panel">
                     <h3><i class="fas fa-user-cog" style="color:var(--primary);"></i> Müəllim Profili</h3>
@@ -260,13 +341,173 @@
 <script src="js/mobile-menu.js"></script>
 <script src="js/notifications.js"></script>
 <script>
-// ── Access check ────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  KaTeX auto-render helper — called after KaTeX loads
+// ════════════════════════════════════════════════════════
+function renderMathInDocument() {
+    renderMathInElement(document.body, {
+        delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$',  right: '$',  display: false }
+        ],
+        throwOnError: false
+    });
+}
+
+function renderMathIn(el) {
+    if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(el, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$',  right: '$',  display: false }
+            ],
+            throwOnError: false
+        });
+    }
+}
+
+// ════════════════════════════════════════════════════════
+//  Math symbol toolbar definition
+// ════════════════════════════════════════════════════════
+const MATH_SYMBOLS = [
+    {
+        label: 'Əməliyyatlar',
+        items: [
+            { sym: '\\frac{□}{□}', display: 'ⁿ/ₙ', title: 'Kəsr' },
+            { sym: '\\sqrt{□}',    display: '√',   title: 'Kvadrat kök' },
+            { sym: '\\sqrt[n]{□}', display: 'ⁿ√',  title: 'n-ci dərəcəli kök' },
+            { sym: '^{□}',         display: 'xⁿ',  title: 'Üs' },
+            { sym: '_{□}',         display: 'xₙ',  title: 'Aşağı indeks' },
+            { sym: '\\pm',         display: '±',   title: 'Üstəgəl-çıxılsın' },
+            { sym: '\\cdot',       display: '·',   title: 'Vurma nöqtəsi' },
+            { sym: '\\div',        display: '÷',   title: 'Bölmə' },
+            { sym: '\\times',      display: '×',   title: 'Vurma (×)' },
+        ]
+    },
+    {
+        label: 'Bərabərsizlik',
+        items: [
+            { sym: '\\leq',  display: '≤', title: 'Kiçik bərabər' },
+            { sym: '\\geq',  display: '≥', title: 'Böyük bərabər' },
+            { sym: '\\neq',  display: '≠', title: 'Bərabər deyil' },
+            { sym: '\\approx', display: '≈', title: 'Təxminən bərabər' },
+            { sym: '\\infty', display: '∞', title: 'Sonsuzluq' },
+        ]
+    },
+    {
+        label: 'Yunan hərfləri',
+        items: [
+            { sym: '\\alpha',  display: 'α', title: 'Alfa' },
+            { sym: '\\beta',   display: 'β', title: 'Beta' },
+            { sym: '\\gamma',  display: 'γ', title: 'Qamma' },
+            { sym: '\\delta',  display: 'δ', title: 'Delta' },
+            { sym: '\\pi',     display: 'π', title: 'Pi' },
+            { sym: '\\theta',  display: 'θ', title: 'Teta' },
+            { sym: '\\lambda', display: 'λ', title: 'Lambda' },
+            { sym: '\\mu',     display: 'μ', title: 'Mü' },
+            { sym: '\\sigma',  display: 'σ', title: 'Siqma' },
+            { sym: '\\phi',    display: 'φ', title: 'Fi' },
+            { sym: '\\omega',  display: 'ω', title: 'Omeqa' },
+        ]
+    },
+    {
+        label: 'Həndəsə',
+        items: [
+            { sym: '\\angle',    display: '∠', title: 'Bucaq' },
+            { sym: '\\triangle', display: '△', title: 'Üçbucaq' },
+            { sym: '\\parallel', display: '∥', title: 'Paralel' },
+            { sym: '\\perp',     display: '⊥', title: 'Perpendikulyar' },
+            { sym: '\\circ',     display: '°', title: 'Dərəcə' },
+            { sym: '\\overrightarrow{AB}', display: 'AB→', title: 'Vektor' },
+            { sym: '\\overline{AB}',       display: 'AB‾', title: 'Parça' },
+            { sym: '\\sim',      display: '~', title: 'Oxşar' },
+            { sym: '\\cong',     display: '≅', title: 'Bərabər və oxşar' },
+        ]
+    },
+    {
+        label: 'Analiz',
+        items: [
+            { sym: '\\sum_{i=1}^{n}',  display: '∑',  title: 'Cəm (Sigma)' },
+            { sym: '\\int',            display: '∫',  title: 'İnteqral' },
+            { sym: '\\lim_{x\\to□}',  display: 'lim', title: 'Limit' },
+            { sym: '\\log',            display: 'log', title: 'Loqarifm' },
+            { sym: '\\ln',             display: 'ln',  title: 'Təbii loqarifm' },
+            { sym: '\\sin',            display: 'sin', title: 'Sinus' },
+            { sym: '\\cos',            display: 'cos', title: 'Kosinus' },
+            { sym: '\\tan',            display: 'tan', title: 'Tangens' },
+        ]
+    },
+    {
+        label: 'Çoxluqlar',
+        items: [
+            { sym: '\\in',      display: '∈', title: 'Daxildir' },
+            { sym: '\\notin',   display: '∉', title: 'Daxil deyil' },
+            { sym: '\\subset',  display: '⊂', title: 'Alt çoxluq' },
+            { sym: '\\cup',     display: '∪', title: 'Birləşmə' },
+            { sym: '\\cap',     display: '∩', title: 'Kəsişmə' },
+            { sym: '\\mathbb{R}', display: 'ℝ', title: 'Həqiqi ədədlər' },
+            { sym: '\\mathbb{Z}', display: 'ℤ', title: 'Tam ədədlər' },
+            { sym: '\\mathbb{N}', display: 'ℕ', title: 'Təbii ədədlər' },
+        ]
+    }
+];
+
+function buildMathToolbar(targetInputId) {
+    let html = '<div class="math-toolbar">';
+    for (const group of MATH_SYMBOLS) {
+        html += `<div class="math-toolbar-section">
+            <span class="math-btn-label">${group.label}</span>`;
+        for (const item of group.items) {
+            const sym = item.sym.replace(/'/g, "\\'");
+            html += `<button type="button" class="math-btn"
+                title="${item.title}"
+                onclick="insertMathSymbol('${targetInputId}','${sym}')">
+                ${item.display}
+            </button>`;
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    return html;
+}
+
+function insertMathSymbol(inputId, sym) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const start = el.selectionStart;
+    const end   = el.selectionEnd;
+    const before = el.value.substring(0, start);
+    const after  = el.value.substring(end);
+    // Wrap in $ if not already inside math mode
+    const insert = sym.includes('□') ? `$${sym}$` : sym;
+    el.value = before + insert + after;
+    el.focus();
+    const pos = start + insert.length;
+    el.setSelectionRange(pos, pos);
+    updateMathPreview(inputId);
+}
+
+function updateMathPreview(inputId) {
+    const el = document.getElementById(inputId);
+    const previewId = inputId + '_preview';
+    const preview = document.getElementById(previewId);
+    if (!preview || !el) return;
+    const val = el.value.trim();
+    if (!val) { preview.classList.remove('active'); return; }
+    preview.classList.add('active');
+    preview.innerHTML = `<div class="math-preview-label">Önizləmə:</div>${val}`;
+    renderMathIn(preview);
+}
+
+// ════════════════════════════════════════════════════════
+//  Access check
+// ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     if (!user) { window.location.href = 'login.html'; return; }
     if (user.userType !== 'teacher' && user.role !== 'admin') {
-        alert('Bu panel yalnız müəllimlər üçündür!');
-        window.location.href = 'dashboard.html';
+        showNotification('Bu panel yalnız müəllimlər üçündür!', 'error');
+        setTimeout(() => window.location.href = 'dashboard.html', 1500);
         return;
     }
     initPanel();
@@ -282,38 +523,35 @@ function initPanel() {
     checkAccessState(user);
     loadMyTests();
     loadProfile();
-    // Add first question by default
     if (document.getElementById('questionsContainer').children.length === 0) {
         addQuestion();
     }
 }
 
-// ── Check if teacher has test-add permission ─────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  Access control
+// ════════════════════════════════════════════════════════
 function checkAccessState(user) {
-    // Re-read fresh allUsers
     const allUsers = Storage.get('allUsers') || [];
     const freshUser = allUsers.find(u => String(u.id) === String(user.id)) || user;
 
-    const locked   = document.getElementById('lockedState');
-    const formEl   = document.getElementById('addTestForm');
-    const reqBtn   = document.getElementById('requestAccessBtn');
+    const locked = document.getElementById('lockedState');
+    const formEl = document.getElementById('addTestForm');
+    const reqBtn = document.getElementById('requestAccessBtn');
 
     if (freshUser.canAddTests === true) {
-        // Approved
-        locked.style.display  = 'none';
-        formEl.style.display  = 'block';
+        locked.style.display = 'none';
+        formEl.style.display = 'block';
     } else if (freshUser.testAccessRequested) {
-        // Pending
-        locked.style.display  = 'block';
-        formEl.style.display  = 'none';
+        locked.style.display = 'block';
+        formEl.style.display = 'none';
         if (reqBtn) {
             reqBtn.disabled = true;
             reqBtn.innerHTML = '<i class="fas fa-clock"></i> Müraciət göndərildi — gözlənilir';
         }
     } else {
-        // Not requested yet
-        locked.style.display  = 'block';
-        formEl.style.display  = 'none';
+        locked.style.display = 'block';
+        formEl.style.display = 'none';
         if (reqBtn) {
             reqBtn.disabled = false;
             reqBtn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə';
@@ -321,7 +559,6 @@ function checkAccessState(user) {
     }
 }
 
-// ── Request access ───────────────────────────────────────────────────────────
 function requestTestAccess() {
     const user = getCurrentUser();
     if (!user) return;
@@ -333,11 +570,9 @@ function requestTestAccess() {
         allUsers[idx].testAccessRequestedAt = new Date().toISOString();
         Storage.set('allUsers', allUsers);
     }
-    // Update currentUser
     user.testAccessRequested = true;
     Storage.set('currentUser', user);
 
-    // Save request to teacherTestRequests list (admin reads this)
     const reqs = Storage.get('teacherTestRequests') || [];
     reqs.unshift({
         id: Date.now(),
@@ -350,14 +585,12 @@ function requestTestAccess() {
     Storage.set('teacherTestRequests', reqs);
 
     checkAccessState(user);
-    if (typeof showNotification === 'function') {
-        showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
-    } else {
-        alert('✅ Müraciətiniz göndərildi. Admin yoxlayıb aktiv edəcək.');
-    }
+    showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
 }
 
-// ── Tab switch ───────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  Tab switch
+// ════════════════════════════════════════════════════════
 function showTab(name, el) {
     document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.side-nav a').forEach(a => a.classList.remove('active'));
@@ -365,7 +598,9 @@ function showTab(name, el) {
     el.classList.add('active');
 }
 
-// ── Questions builder ────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  Questions builder
+// ════════════════════════════════════════════════════════
 let qCount = 0;
 
 function addQuestion() {
@@ -374,33 +609,67 @@ function addQuestion() {
     const div = document.createElement('div');
     div.className = 'question-row';
     div.id = 'q_' + n;
+
+    // Build option rows
+    const optionLetters = ['A', 'B', 'C', 'D'];
+    const optionsHtml = optionLetters.map((ltr, i) => `
+        <div class="option-row">
+            <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Bu variantı düzgün cavab kimi seç" id="r_${n}_${i}">
+            <label class="opt-label" for="r_${n}_${i}">${ltr})</label>
+            <input type="text" class="form-control" id="q${n}_opt${i}"
+                   placeholder="Variant ${ltr} (riyazi ifadə: $x^2$)"
+                   oninput="updateMathPreview('q${n}_opt${i}')"
+                   required>
+        </div>
+        <div class="math-preview" id="q${n}_opt${i}_preview"></div>
+    `).join('');
+
     div.innerHTML = `
         <span class="q-num">Sual ${n}</span>
         <button type="button" onclick="removeQuestion(${n})"
-            style="position:absolute;top:10px;right:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;">
-            <i class="fas fa-times"></i>
+            style="position:absolute;top:10px;right:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">
+            <i class="fas fa-times"></i> Sil
         </button>
-        <div class="form-group" style="margin-bottom:10px;margin-top:8px;">
-            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual mətnini daxil edin *" required>
+
+        <div style="margin-top:18px;margin-bottom:10px;">
+            <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Sual mətni *</label>
+            ${buildMathToolbar('q'+n+'_text')}
+            <textarea class="form-control math-input" id="q${n}_text" rows="3"
+                      placeholder="Sual mətnini daxil edin. Riyazi ifadə: $2x+4=10$, kəsr: $\\frac{a}{b}$"
+                      oninput="updateMathPreview('q${n}_text')" required></textarea>
+            <div class="math-preview" id="q${n}_text_preview"></div>
+            <div class="math-hint">
+                Nümunə: <code>$x^2 + 3x - 10 = 0$</code> · Kəsr: <code>$\frac{3}{4}$</code> · Kök: <code>$\sqrt{16}$</code> · Bucaq: <code>$\angle ABC = 60°$</code>
+            </div>
         </div>
-        <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Variantları daxil edin, düzgün cavabı seçin:</p>
+
+        <div style="margin-bottom:8px;">
+            <label style="font-size:13px;font-weight:600;color:#374151;">Variantlar — düzgün cavabın yanındakı dairəni işarələ</label>
+        </div>
         <div class="options-grid">
-            ${[0,1,2,3].map(i => `
-            <div class="option-row">
-                <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
-                <input type="text" class="form-control" id="q${n}_opt${i}" placeholder="Variant ${String.fromCharCode(65+i)}" required>
-            </div>`).join('')}
+            ${optionsHtml}
         </div>
     `;
     document.getElementById('questionsContainer').appendChild(div);
+    div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function removeQuestion(n) {
     const el = document.getElementById('q_' + n);
     if (el) el.remove();
+    renumberQuestions();
 }
 
-// ── Submit test ──────────────────────────────────────────────────────────────
+function renumberQuestions() {
+    document.querySelectorAll('.question-row').forEach((row, idx) => {
+        const badge = row.querySelector('.q-num');
+        if (badge) badge.textContent = 'Sual ' + (idx + 1);
+    });
+}
+
+// ════════════════════════════════════════════════════════
+//  Submit test
+// ════════════════════════════════════════════════════════
 function submitTest(e) {
     e.preventDefault();
     const user = getCurrentUser();
@@ -413,7 +682,11 @@ function submitTest(e) {
     const isPremium  = document.getElementById('testType').value === 'premium';
     const desc       = document.getElementById('testDesc').value.trim();
 
-    // Collect questions
+    if (!title) {
+        showNotification('Sınaq adını daxil edin!', 'error');
+        return;
+    }
+
     const qRows = document.querySelectorAll('.question-row');
     if (qRows.length === 0) {
         document.getElementById('addTestAlert').innerHTML =
@@ -423,33 +696,35 @@ function submitTest(e) {
 
     const questions = [];
     let valid = true;
-    qRows.forEach(row => {
+    let errMsg = '';
+    qRows.forEach((row, idx) => {
         const id = row.id.replace('q_', '');
-        const qText = document.getElementById(`q${id}_text`)?.value.trim();
-        const opts   = [0,1,2,3].map(i => document.getElementById(`q${id}_opt${i}`)?.value.trim() || '');
+        const qText = document.getElementById(`q${id}_text`)?.value.trim() || '';
+        const opts  = [0,1,2,3].map(i => (document.getElementById(`q${id}_opt${i}`)?.value.trim() || ''));
         const corrEl = document.querySelector(`input[name="correct_${id}"]:checked`);
         const correct = corrEl ? parseInt(corrEl.value) : 0;
-        if (!qText || opts.some(o => !o)) { valid = false; return; }
+        if (!qText) { valid = false; errMsg = `Sual ${idx+1}: sual mətni boşdur.`; return; }
+        if (opts.some(o => !o)) { valid = false; errMsg = `Sual ${idx+1}: bütün 4 variant doldurulmalıdır.`; return; }
         questions.push({ question: qText, options: opts, correctAnswer: correct });
     });
 
     if (!valid) {
         document.getElementById('addTestAlert').innerHTML =
-            '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Bütün sual və variantları doldurun.</div>';
+            `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${errMsg}</div>`;
         return;
     }
 
-    // Save to teacherTests (admin reviews these)
     const teacherTests = Storage.get('teacherTests') || [];
     const newTest = {
         id: Date.now(),
-        teacherId: user.id,
+        teacherId:   user.id,
         teacherName: user.name,
-        teacherEmail: user.email,
-        title, emoji, difficulty, duration, isPremium, description: desc,
+        teacherEmail:user.email,
+        title, emoji, difficulty, duration, isPremium,
+        description: desc,
         questions,
         submittedAt: new Date().toISOString(),
-        status: 'pending'  // pending | approved | rejected
+        status: 'pending'
     };
     teacherTests.unshift(newTest);
     Storage.set('teacherTests', teacherTests);
@@ -457,19 +732,25 @@ function submitTest(e) {
     document.getElementById('addTestAlert').innerHTML =
         '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ✅ Sınaq admin yoxlamasına göndərildi!</div>';
 
+    showNotification('Sınaq admin yoxlamasına göndərildi!', 'success');
     resetTestForm();
     loadMyTests();
-    showTab('myTests', document.querySelector('.side-nav a:nth-child(2)'));
+    setTimeout(() => {
+        showTab('myTests', document.querySelector('.side-nav a:nth-child(2)'));
+    }, 1200);
 }
 
 function resetTestForm() {
     document.getElementById('testForm').reset();
     document.getElementById('questionsContainer').innerHTML = '';
+    document.getElementById('addTestAlert').innerHTML = '';
     qCount = 0;
     addQuestion();
 }
 
-// ── My tests list ────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  My tests
+// ════════════════════════════════════════════════════════
 function loadMyTests() {
     const user = getCurrentUser();
     if (!user) return;
@@ -488,10 +769,7 @@ function loadMyTests() {
 
     container.innerHTML = mine.map(t => {
         const d = new Date(t.submittedAt);
-        const dd = String(d.getDate()).padStart(2,'0');
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const yy = String(d.getFullYear()).slice(-2);
-        const dateStr = `${dd}/${mm}/${yy}`;
+        const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
         const statusMap = {
             pending:  ['badge-pending',  '⏳ Gözləyir'],
             approved: ['badge-approved', '✅ Təsdiqləndi'],
@@ -511,14 +789,15 @@ function loadMyTests() {
     }).join('');
 }
 
-// ── Profile ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  Profile
+// ════════════════════════════════════════════════════════
 function loadProfile() {
     const user = getCurrentUser();
     if (!user) return;
     const allUsers = Storage.get('allUsers') || [];
     const fresh = allUsers.find(u => String(u.id) === String(user.id)) || user;
-
-    const canAdd = fresh.canAddTests === true;
+    const canAdd    = fresh.canAddTests === true;
     const requested = fresh.testAccessRequested;
 
     document.getElementById('profileInfo').innerHTML = `
@@ -539,10 +818,10 @@ function loadProfile() {
             <div style="background:#f8fafc;border-radius:10px;padding:16px;">
                 <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#374151;">Sınaq Əlavəetmə Statusu</div>
                 ${canAdd
-                    ? '<div style="color:#065f46;font-size:14px;"><i class="fas fa-check-circle"></i> Admin tərəfindən icazə verilmişdir. Sınaq əlavə edə bilərsiniz.</div>'
+                    ? '<div style="color:#065f46;font-size:14px;"><i class="fas fa-check-circle"></i> Admin tərəfindən icazə verilmişdir.</div>'
                     : requested
-                        ? '<div style="color:#92400e;font-size:14px;"><i class="fas fa-clock"></i> Müraciətiniz admin tərəfindən nəzərdən keçirilir.</div>'
-                        : '<div style="color:#6b7280;font-size:14px;"><i class="fas fa-lock"></i> Hələ icazə alınmayıb. "Sınaq Əlavə Et" bölməsindən müraciət edin.</div>'
+                        ? '<div style="color:#92400e;font-size:14px;"><i class="fas fa-clock"></i> Müraciətiniz nəzərdən keçirilir.</div>'
+                        : '<div style="color:#6b7280;font-size:14px;"><i class="fas fa-lock"></i> Hələ icazə alınmayıb.</div>'
                 }
             </div>
         </div>

@@ -28,10 +28,18 @@ window.addEventListener('upstash:loaded', () => {
     loadUsers();
     // Always refresh teacher test badge so pending count is current
     _updateTeacherTestsBadge();
+    // Refresh PDF badge
+    _updatePdfBadge();
     // If teacher tests section is visible, reload it with fresh cloud data
     const ttSection = document.getElementById('teacherTests');
     if (ttSection && (ttSection.style.display === 'block' || ttSection.classList.contains('active'))) {
         loadTeacherTestsSection();
+    }
+    // If PDF section is visible, reload it
+    const pdfSection = document.getElementById('pdfs');
+    if (pdfSection && (pdfSection.style.display === 'block' || pdfSection.classList.contains('active'))) {
+        loadPdfs();
+        loadPdfDownloadRequests();
     }
 });
 
@@ -72,7 +80,8 @@ function showSection(section) {
         premium: 'Premium İdarəetməsi',
         leaderboard: 'Xal Liderliyi',
         devices: 'Cihaz İdarəetməsi',
-        settings: 'Tənzimləmələr'
+        settings: 'Tənzimləmələr',
+        pdfs: 'PDF Materiallar'
     };
     const pageTitle = document.getElementById('pageTitle');
     if (pageTitle) {
@@ -98,6 +107,7 @@ function showSection(section) {
         _updateTeacherTestsBadge();
     }
     if (section === 'devices') loadDevicesSection();
+    if (section === 'pdfs') { loadPdfs(); loadPdfDownloadRequests(); }
     if (section === 'premium') {
         loadPremiumRequestsEnhanced();
         loadPremiumUsers();
@@ -635,7 +645,7 @@ function saveNewsEdit(id) {
     
     document.querySelector('.news-details-row').remove();
     loadNews();
-    showSuccessMessage('Xəbər yeniləndi!');
+    showNotification('Xəbər yeniləndi!', 'success');
 }
 
 function deleteNews(id) {
@@ -648,9 +658,8 @@ function deleteNews(id) {
     
     const detailsRow = document.querySelector('.news-details-row');
     if (detailsRow) detailsRow.remove();
-    
     loadNews();
-    showSuccessMessage('Xəbər silindi!');
+    showNotification('Xəbər silindi!', 'success');
 }
 
 // Load Payments
@@ -876,7 +885,7 @@ function saveUserEdit(id) {
     
     document.querySelector('.user-details-row').remove();
     loadUsers();
-    showSuccessMessage('İstifadəçi yeniləndi!');
+    showNotification('İstifadəçi yeniləndi!', 'success');
 }
 
 function editUser(id) {
@@ -1092,7 +1101,7 @@ function saveVideoEdit(id) {
     
     document.querySelector('.video-details-row').remove();
     loadVideos();
-    showSuccessMessage('Video yeniləndi!');
+    showNotification('Video yeniləndi!', 'success');
 }
 
 function editVideo(id) {
@@ -1109,9 +1118,8 @@ function deleteVideo(id) {
     
     const detailsRow = document.querySelector('.video-details-row');
     if (detailsRow) detailsRow.remove();
-    
     loadVideos();
-    showSuccessMessage('Video silindi!');
+    showNotification('Video silindi!', 'success');
 }
 
 function showAddVideoModal() {
@@ -1225,7 +1233,7 @@ function saveTestEdit(id) {
     
     document.querySelector('.test-details-row').remove();
     loadTests();
-    showSuccessMessage('Sınaq yeniləndi!');
+    showNotification('Sınaq yeniləndi!', 'success');
 }
 
 function editTest(id) {
@@ -1242,9 +1250,8 @@ function deleteTest(id) {
     
     const detailsRow = document.querySelector('.test-details-row');
     if (detailsRow) detailsRow.remove();
-    
     loadTests();
-    showSuccessMessage('Sınaq silindi!');
+    showNotification('Sınaq silindi!', 'success');
 }
 
 function showAddTestModal() {
@@ -1857,7 +1864,7 @@ function editTeacher(id) {
     const teacher = teachers.find(t => t.id === id);
     
     if (!teacher) {
-        showSuccessMessage('Müəllim tapılmadı!');
+        showNotification('Müəllim tapılmadı!', 'error');
         return;
     }
     
@@ -1956,7 +1963,7 @@ function saveTeacherEdit(id) {
     const index = teachers.findIndex(t => t.id === id);
     
     if (index === -1) {
-        showSuccessMessage('Müəllim tapılmadı!');
+        showNotification('Müəllim tapılmadı!', 'error');
         return;
     }
     
@@ -1988,7 +1995,7 @@ function saveTeacherEdit(id) {
     
     document.querySelector('.teacher-edit-row').remove();
     loadTeachers();
-    showSuccessMessage('Müəllim məlumatları yeniləndi!');
+    showNotification('Müəllim məlumatları yeniləndi!', 'success');
 }
 
 function deleteTeacher(id) {
@@ -2004,7 +2011,7 @@ function deleteTeacher(id) {
     if (editRow) editRow.remove();
     
     loadTeachers();
-    showSuccessMessage('Müəllim silindi!');
+    showNotification('Müəllim silindi!', 'success');
 }
 
 
@@ -2079,7 +2086,7 @@ function clearAllSessions() {
     }
     
     Storage.set('userSessions', {});
-    showSuccessMessage('Bütün sessiyalar təmizləndi!');
+    showNotification('Bütün sessiyalar təmizləndi!', 'success');
 }
 
 
@@ -3388,4 +3395,283 @@ function rejectTeacherTest(testId) {
 
     if (typeof showNotification === 'function') showNotification('Sınaq rədd edildi', 'warning');
     loadTeacherTestsSection();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PDF MATERIALLAR — Admin Functions
+// ════════════════════════════════════════════════════════════════════════════
+
+let _pdfFileData = null; // { name, size, base64, mimeType }
+
+// ── Toggle upload form ───────────────────────────────────────────────────────
+function togglePdfUploadForm() {
+    const form = document.getElementById('pdfUploadForm');
+    if (!form) return;
+    const isOpen = form.style.display !== 'none';
+    form.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+        // Reset form when opening
+        document.getElementById('pdfTitle').value = '';
+        document.getElementById('pdfDescription').value = '';
+        document.getElementById('pdfPages').value = '';
+        document.getElementById('pdfPrice').value = '5';
+        document.getElementById('pdfType').value = 'free';
+        document.getElementById('pdfCategory').value = 'Cəbr';
+        document.getElementById('pdfFileInfo').style.display = 'none';
+        document.getElementById('pdfFileInfo').textContent = '';
+        document.getElementById('pdfPriceGroup').style.display = 'none';
+        _pdfFileData = null;
+    }
+}
+
+// ── Show/hide price field based on type ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const typeEl = document.getElementById('pdfType');
+    if (typeEl) {
+        typeEl.addEventListener('change', () => {
+            const pg = document.getElementById('pdfPriceGroup');
+            if (pg) pg.style.display = typeEl.value === 'paid' ? 'block' : 'none';
+        });
+    }
+    // Update badge on load
+    _updatePdfBadge();
+});
+
+function _updatePdfBadge() {
+    const reqs = Storage.get('pdfDownloadRequests') || [];
+    const pending = reqs.filter(r => r.status === 'pending').length;
+    const badge = document.getElementById('pdfPendingBadge');
+    if (!badge) return;
+    if (pending > 0) {
+        badge.textContent = pending;
+        badge.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// ── File selected ────────────────────────────────────────────────────────────
+function onPdfFileSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+        showNotification('Yalnız PDF faylı yükləyə bilərsiniz!', 'error');
+        input.value = '';
+        return;
+    }
+    const maxMB = 20;
+    if (file.size > maxMB * 1024 * 1024) {
+        showNotification(`PDF ölçüsü maksimum ${maxMB} MB ola bilər!`, 'error');
+        input.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        _pdfFileData = {
+            name: file.name,
+            size: file.size,
+            sizeLabel: _formatBytes(file.size),
+            base64: e.target.result, // data:application/pdf;base64,...
+            mimeType: file.type
+        };
+        const infoEl = document.getElementById('pdfFileInfo');
+        if (infoEl) {
+            infoEl.style.display = 'block';
+            infoEl.innerHTML = `<i class="fas fa-check-circle"></i> ${file.name} (${_formatBytes(file.size)})`;
+        }
+        const dz = document.getElementById('pdfDropZone');
+        if (dz) dz.style.borderColor = '#10b981';
+    };
+    reader.readAsDataURL(file);
+}
+
+function _formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ── Save PDF ─────────────────────────────────────────────────────────────────
+function savePdf() {
+    const title = document.getElementById('pdfTitle').value.trim();
+    const category = document.getElementById('pdfCategory').value;
+    const type = document.getElementById('pdfType').value;
+    const price = parseFloat(document.getElementById('pdfPrice').value) || 0;
+    const pages = parseInt(document.getElementById('pdfPages').value) || null;
+    const description = document.getElementById('pdfDescription').value.trim();
+
+    if (!title) { showNotification('Başlıq daxil edin!', 'error'); return; }
+    if (!_pdfFileData) { showNotification('PDF faylı seçin!', 'error'); return; }
+
+    const pdfs = Storage.get('pdfs') || [];
+    const newPdf = {
+        id: Date.now(),
+        title,
+        category,
+        type,            // 'free' | 'paid'
+        price: type === 'paid' ? price : 0,
+        pages,
+        description,
+        fileName: _pdfFileData.name,
+        fileSize: _pdfFileData.size,
+        fileSizeLabel: _pdfFileData.sizeLabel,
+        fileData: _pdfFileData.base64, // stored as base64 in localStorage
+        downloads: 0,
+        createdAt: new Date().toISOString(),
+        addedBy: (getCurrentUser() || {}).name || 'Admin'
+    };
+    pdfs.unshift(newPdf);
+    Storage.set('pdfs', pdfs);
+
+    _pdfFileData = null;
+    togglePdfUploadForm();
+    loadPdfs();
+    showNotification(`"${title}" PDF-i əlavə edildi!`, 'success');
+}
+
+// ── Load PDF table ───────────────────────────────────────────────────────────
+function loadPdfs() {
+    const typeFilter = document.getElementById('pdfFilterType')?.value || '';
+    const catFilter  = document.getElementById('pdfFilterCat')?.value || '';
+    let pdfs = Storage.get('pdfs') || [];
+
+    if (typeFilter) pdfs = pdfs.filter(p => p.type === typeFilter);
+    if (catFilter)  pdfs = pdfs.filter(p => p.category === catFilter);
+
+    const tbody = document.getElementById('pdfsTable');
+    if (!tbody) return;
+
+    if (pdfs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">PDF tapılmadı</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = pdfs.map(p => {
+        const d = new Date(p.createdAt);
+        const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+        const typeBadge = p.type === 'paid'
+            ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">💎 Ödənişli</span>'
+            : '<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">🆓 Pulsuz</span>';
+        return `<tr>
+            <td><strong><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:6px;"></i>${p.title}</strong>
+                ${p.description ? `<br><span style="font-size:11px;color:#6b7280;">${p.description.substring(0,60)}${p.description.length>60?'…':''}</span>` : ''}
+            </td>
+            <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:10px;font-size:12px;">${p.category}</span></td>
+            <td>${typeBadge}</td>
+            <td>${p.type === 'paid' ? p.price + ' ₼' : '—'}</td>
+            <td>${p.fileSizeLabel || '—'}</td>
+            <td><span style="font-weight:700;">${p.downloads || 0}</span></td>
+            <td style="font-size:12px;color:#6b7280;">${date}</td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-icon btn-view" onclick="previewPdf(${p.id})" title="Önizlə"><i class="fas fa-eye"></i></button>
+                    <button class="btn-icon btn-delete" onclick="deletePdf(${p.id})" title="Sil"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    _updatePdfBadge();
+}
+
+// ── Preview PDF ──────────────────────────────────────────────────────────────
+function previewPdf(id) {
+    const pdfs = Storage.get('pdfs') || [];
+    const p = pdfs.find(x => x.id === id);
+    if (!p || !p.fileData) { showNotification('PDF tapılmadı!', 'error'); return; }
+
+    // Open in new tab
+    const w = window.open();
+    w.document.write(`
+        <html><head><title>${p.title}</title></head>
+        <body style="margin:0;padding:0;">
+        <embed src="${p.fileData}" type="application/pdf" width="100%" height="100%" style="position:fixed;inset:0;border:none;">
+        </body></html>
+    `);
+}
+
+// ── Delete PDF ───────────────────────────────────────────────────────────────
+function deletePdf(id) {
+    const pdfs = Storage.get('pdfs') || [];
+    const p = pdfs.find(x => x.id === id);
+    if (!p) return;
+    showConfirm(`"${p.title}" PDF-ini silmək istədiyinizdən əminsiniz?`, () => {
+        const filtered = pdfs.filter(x => x.id !== id);
+        Storage.set('pdfs', filtered);
+        loadPdfs();
+        showNotification('PDF silindi!', 'success');
+    });
+}
+
+// ── Load pending download requests ──────────────────────────────────────────
+function loadPdfDownloadRequests() {
+    const reqs = Storage.get('pdfDownloadRequests') || [];
+    const pending = reqs.filter(r => r.status === 'pending');
+    const container = document.getElementById('pdfDownloadRequests');
+    const listEl    = document.getElementById('pdfRequestsList');
+    const countEl   = document.getElementById('pendingPdfRequestCount');
+    if (!container || !listEl) return;
+
+    if (countEl) countEl.textContent = pending.length;
+    container.style.display = pending.length > 0 ? 'block' : 'none';
+    _updatePdfBadge();
+
+    if (pending.length === 0) { listEl.innerHTML = ''; return; }
+
+    listEl.innerHTML = pending.map(r => {
+        const d = new Date(r.requestedAt);
+        const dt = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        return `
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:white;border-radius:10px;margin-bottom:8px;border:1px solid #fde68a;">
+            <div style="width:38px;height:38px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:16px;flex-shrink:0;">
+                ${(r.userName||'?')[0].toUpperCase()}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:700;font-size:13px;">${r.userName}</div>
+                <div style="font-size:12px;color:#6b7280;">${r.userEmail}</div>
+                <div style="font-size:12px;color:#374151;margin-top:2px;">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> ${r.pdfTitle}
+                    <span style="margin-left:8px;color:#92400e;font-weight:600;">${r.amount} ₼</span>
+                    <span style="margin-left:8px;color:#94a3b8;">${dt}</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-sm btn-success" onclick="approvePdfRequest(${r.id})">
+                    <i class="fas fa-check"></i> Təsdiqlə
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="rejectPdfRequest(${r.id})">
+                    <i class="fas fa-times"></i> Rədd Et
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Approve download request ─────────────────────────────────────────────────
+function approvePdfRequest(reqId) {
+    const reqs = Storage.get('pdfDownloadRequests') || [];
+    const idx  = reqs.findIndex(r => r.id === reqId);
+    if (idx === -1) return;
+
+    reqs[idx].status = 'approved';
+    reqs[idx].approvedAt = new Date().toISOString();
+    Storage.set('pdfDownloadRequests', reqs);
+
+    showNotification('Yükləmə müraciəti təsdiqləndi. İstifadəçi indi yükləyə bilər.', 'success');
+    loadPdfDownloadRequests();
+}
+
+// ── Reject download request ──────────────────────────────────────────────────
+function rejectPdfRequest(reqId) {
+    const reqs = Storage.get('pdfDownloadRequests') || [];
+    const idx  = reqs.findIndex(r => r.id === reqId);
+    if (idx === -1) return;
+
+    reqs[idx].status = 'rejected';
+    reqs[idx].rejectedAt = new Date().toISOString();
+    Storage.set('pdfDownloadRequests', reqs);
+
+    showNotification('Müraciət rədd edildi.', 'warning');
+    loadPdfDownloadRequests();
 }

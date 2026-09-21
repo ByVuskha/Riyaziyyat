@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Materiallar - Bizim Riyaziyyat</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-hero {
+            background: linear-gradient(135deg, #1e1b4b, #4f46e5);
+            color: white; padding: 56px 0 40px; text-align: center;
+        }
+        .page-hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 8px; }
+        .page-hero p  { opacity: .8; font-size: 15px; max-width: 520px; margin: 0 auto; }
+
+        /* Filters */
+        .filter-bar {
+            background: white; border-radius: 14px;
+            box-shadow: var(--shadow); padding: 18px 22px;
+            margin: 28px 0 24px; display: flex; gap: 14px;
+            align-items: center; flex-wrap: wrap;
+        }
+        .filter-bar label { font-weight: 600; font-size: 13px; color: #374151; margin: 0; }
+        .filter-bar select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+        .filter-bar input[type="search"] {
+            flex: 1; min-width: 200px; padding: 8px 14px;
+            border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;
+        }
+
+        /* PDF Grid */
+        .pdf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 22px;
+            margin-bottom: 50px;
+        }
+
+        /* PDF Card */
+        .pdf-card {
+            background: white; border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.07);
+            overflow: hidden; transition: transform .2s, box-shadow .2s;
+            display: flex; flex-direction: column;
+        }
+        .pdf-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+        .pdf-thumb {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            padding: 28px 0; text-align: center; position: relative;
+        }
+        .pdf-thumb i { font-size: 56px; color: #ef4444; }
+        .pdf-type-badge {
+            position: absolute; top: 12px; right: 12px;
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+        }
+        .type-free { background: #ecfdf5; color: #065f46; }
+        .type-paid { background: #fef3c7; color: #92400e; }
+
+        .pdf-body { padding: 18px 20px; flex: 1; display: flex; flex-direction: column; }
+        .pdf-body h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #1e293b; line-height: 1.4; }
+        .pdf-meta { font-size: 12px; color: #6b7280; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .pdf-meta span { display: flex; align-items: center; gap: 4px; }
+        .pdf-desc { font-size: 13px; color: #4b5563; margin-bottom: 14px; flex: 1; line-height: 1.5; }
+
+        .pdf-footer {
+            padding: 14px 20px;
+            border-top: 1px solid #f1f5f9;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px;
+        }
+        .pdf-price { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .pdf-price.free { color: #10b981; font-size: 14px; font-weight: 700; }
+
+        /* Status labels shown on card when request pending/approved/rejected */
+        .dl-status {
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; margin-right: 6px;
+        }
+        .dl-pending  { background: #fef3c7; color: #92400e; }
+        .dl-approved { background: #ecfdf5; color: #065f46; }
+        .dl-rejected { background: #fef2f2; color: #991b1b; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.55);
+            z-index: 9999; display: none; align-items: center;
+            justify-content: center; padding: 20px; backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; border-radius: 18px; padding: 34px;
+            width: 100%; max-width: 480px;
+        }
+        .modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+        .modal-box p  { color: #6b7280; font-size: 14px; margin-bottom: 22px; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center; padding: 70px 30px; color: #9ca3af;
+            grid-column: 1 / -1;
+        }
+        .empty-state i { font-size: 56px; opacity: .25; display: block; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
+            <div class="navbar-menu">
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="pdfs.html" class="active">PDF Materiallar</a>
+                <a href="teachers.html">Müəllimlər</a>
+            </div>
+            <div class="navbar-actions">
+                <div id="guestButtons">
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                    <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                </div>
+                <div id="userButtons" style="display:none;">
+                    <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user"></i> <span id="navUserName"></span>
+                    </a>
+                    <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero -->
+<div class="page-hero">
+    <div class="container">
+        <h1><i class="fas fa-file-pdf" style="margin-right:12px;"></i>PDF Materiallar</h1>
+        <p>Riyaziyyat üzrə dərs vəsaitləri, sınaq topluları və olimpiada materialları</p>
+    </div>
+</div>
+
+<div class="container" style="padding-top:10px;">
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <label><i class="fas fa-search" style="margin-right:5px;"></i></label>
+        <input type="search" id="pdfSearch" placeholder="PDF adı axtar..." oninput="renderPdfs()">
+        <label>Kateqoriya:</label>
+        <select id="catFilter" onchange="renderPdfs()">
+            <option value="">Hamısı</option>
+            <option>Cəbr</option><option>Həndəsə</option><option>Analiz</option>
+            <option>Ehtimal</option><option>Arifmetika</option><option>Olimpiada</option><option>Digər</option>
+        </select>
+        <label>Növ:</label>
+        <select id="typeFilter" onchange="renderPdfs()">
+            <option value="">Hamısı</option>
+            <option value="free">🆓 Pulsuz</option>
+            <option value="paid">💎 Ödənişli</option>
+        </select>
+    </div>
+
+    <!-- PDF Grid -->
+    <div class="pdf-grid" id="pdfGrid">
+        <div class="empty-state">
+            <i class="fas fa-file-pdf"></i>
+            <p>PDF materiallar yüklənir...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase / Request Modal -->
+<div class="modal-overlay" id="purchaseModal">
+    <div class="modal-box">
+        <h3 id="modalPdfTitle"></h3>
+        <p id="modalPdfDesc"></p>
+
+        <div id="modalBalanceInfo" style="background:#f8fafc;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:14px;"></div>
+
+        <div id="modalActions" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="modalConfirmBtn" class="btn btn-primary" onclick="confirmPurchase()">
+                <i class="fas fa-download"></i> Yüklə
+            </button>
+            <button class="btn btn-secondary" onclick="closePurchaseModal()">
+                <i class="fas fa-times"></i> Ləğv Et
+            </button>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-bottom"><p>&copy; 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p></div>
+    </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/navbar.js"></script>
+<script src="js/mobile-menu.js"></script>
+<script src="js/notifications.js"></script>
+<script>
+
+let _activePdfId = null;
+
+// ── Initial render ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', renderPdfs);
+window.addEventListener('upstash:loaded', renderPdfs);
+
+// ── Render PDF grid ───────────────────────────────────────────────────────────
+function renderPdfs() {
+    const search   = (document.getElementById('pdfSearch')?.value || '').toLowerCase();
+    const catF     = document.getElementById('catFilter')?.value || '';
+    const typeF    = document.getElementById('typeFilter')?.value || '';
+    const user     = getCurrentUser();
+
+    let pdfs = Storage.get('pdfs') || [];
+    if (catF)  pdfs = pdfs.filter(p => p.category === catF);
+    if (typeF) pdfs = pdfs.filter(p => p.type === typeF);
+    if (search) pdfs = pdfs.filter(p =>
+        p.title.toLowerCase().includes(search) ||
+        (p.description || '').toLowerCase().includes(search) ||
+        p.category.toLowerCase().includes(search)
+    );
+
+    const grid = document.getElementById('pdfGrid');
+    if (pdfs.length === 0) {
+        grid.innerHTML = `<div class="empty-state">
+            <i class="fas fa-search"></i>
+            <p>${search || catF || typeF ? 'Axtarış nəticəsi tapılmadı' : 'Hələ PDF material yoxdur'}</p>
+        </div>`;
+        return;
+    }
+
+    // Get user's download requests to show status
+    const myRequests = user ? (Storage.get('pdfDownloadRequests') || [])
+        .filter(r => String(r.userId) === String(user.id)) : [];
+
+    grid.innerHTML = pdfs.map(p => {
+        const typeBadge = p.type === 'paid'
+            ? '<span class="pdf-type-badge type-paid">💎 Ödənişli</span>'
+            : '<span class="pdf-type-badge type-free">🆓 Pulsuz</span>';
+
+        // Check if user already has access
+        const myReq = myRequests.find(r => r.pdfId === p.id);
+        const hasAccess = p.type === 'free' || (myReq && myReq.status === 'approved');
+
+        let actionBtn = '';
+        if (!user) {
+            actionBtn = `<button class="btn btn-primary btn-sm" onclick="requireLogin()">
+                <i class="fas fa-sign-in-alt"></i> Giriş Et
+            </button>`;
+        } else if (hasAccess) {
+            actionBtn = `<button class="btn btn-sm" style="background:#ecfdf5;color:#065f46;font-weight:700;"
+                onclick="downloadPdf(${p.id})">
+                <i class="fas fa-download"></i> Yüklə
+            </button>`;
+        } else if (myReq && myReq.status === 'pending') {
+            actionBtn = `<span class="dl-status dl-pending"><i class="fas fa-clock"></i> Gözləyir</span>`;
+        } else if (myReq && myReq.status === 'rejected') {
+            actionBtn = `<span class="dl-status dl-rejected"><i class="fas fa-times"></i> Rədd edildi</span>`;
+        } else {
+            actionBtn = `<button class="btn btn-primary btn-sm" onclick="openPurchaseModal(${p.id})">
+                <i class="fas fa-shopping-cart"></i> Əldə Et
+            </button>`;
+        }
+
+        return `
+        <div class="pdf-card">
+            <div class="pdf-thumb">
+                <i class="fas fa-file-pdf"></i>
+                ${typeBadge}
+            </div>
+            <div class="pdf-body">
+                <h4>${p.title}</h4>
+                <div class="pdf-meta">
+                    <span><i class="fas fa-tag"></i> ${p.category}</span>
+                    ${p.pages ? `<span><i class="fas fa-file"></i> ${p.pages} səhifə</span>` : ''}
+                    <span><i class="fas fa-download"></i> ${p.downloads || 0} yükləmə</span>
+                </div>
+                ${p.description ? `<div class="pdf-desc">${p.description}</div>` : ''}
+            </div>
+            <div class="pdf-footer">
+                <div class="${p.type === 'free' ? 'pdf-price free' : 'pdf-price'}">
+                    ${p.type === 'free' ? '<i class="fas fa-check-circle"></i> Pulsuz' : p.price + ' ₼'}
+                </div>
+                ${actionBtn}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Require login ─────────────────────────────────────────────────────────────
+function requireLogin() {
+    showConfirm('Bu materialı yükləmək üçün giriş etməlisiniz. Giriş səhifəsinə keçmək istərsiniz?',
+        () => window.location.href = 'login.html?redirect=pdfs.html'
+    );
+}
+
+// ── Free download ─────────────────────────────────────────────────────────────
+function downloadPdf(id) {
+    const pdfs = Storage.get('pdfs') || [];
+    const p = pdfs.find(x => x.id === id);
+    if (!p) { showNotification('PDF tapılmadı!', 'error'); return; }
+    if (!p.fileData) { showNotification('Fayl mövcud deyil!', 'error'); return; }
+
+    // Increment download count
+    const idx = pdfs.findIndex(x => x.id === id);
+    if (idx !== -1) { pdfs[idx].downloads = (pdfs[idx].downloads || 0) + 1; Storage.set('pdfs', pdfs); }
+
+    // Trigger download
+    const link = document.createElement('a');
+    link.href = p.fileData;
+    link.download = p.fileName || (p.title + '.pdf');
+    link.click();
+
+    showNotification('PDF yüklənir...', 'success');
+}
+
+// ── Open purchase modal ───────────────────────────────────────────────────────
+function openPurchaseModal(id) {
+    const user = getCurrentUser();
+    if (!user) { requireLogin(); return; }
+
+    const pdfs = Storage.get('pdfs') || [];
+    const p = pdfs.find(x => x.id === id);
+    if (!p) return;
+    _activePdfId = id;
+
+    document.getElementById('modalPdfTitle').textContent = p.title;
+    document.getElementById('modalPdfDesc').textContent  = p.description || '';
+
+    const balance = user.balance || 0;
+    const canAfford = balance >= p.price;
+
+    document.getElementById('modalBalanceInfo').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">PDF Qiyməti</div>
+                <div style="font-size:22px;font-weight:800;color:#1e293b;">${p.price} ₼</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;">Balansınız</div>
+                <div style="font-size:22px;font-weight:800;color:${canAfford ? '#10b981' : '#ef4444'};">${balance} ₼</div>
+            </div>
+        </div>
+        ${!canAfford ? `
+        <div style="margin-top:10px;padding:10px 12px;background:#fef2f2;border-radius:8px;color:#dc2626;font-size:13px;">
+            <i class="fas fa-exclamation-circle"></i>
+            Balansınız kifayət etmir. Balansınızı artırmaq üçün
+            <a href="payment.html" style="font-weight:700;color:#dc2626;text-decoration:underline;">buraya keçin</a>.
+        </div>` : `
+        <div style="margin-top:10px;padding:10px 12px;background:#ecfdf5;border-radius:8px;color:#065f46;font-size:13px;">
+            <i class="fas fa-check-circle"></i>
+            Yüklədikdən sonra balansınız <strong>${balance - p.price} ₼</strong> olacaq.
+            Admin ödənişi təsdiqləyəndən sonra PDF-i yükləyə biləcəksiniz.
+        </div>`}
+    `;
+
+    const btn = document.getElementById('modalConfirmBtn');
+    if (!canAfford) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.innerHTML = '<i class="fas fa-wallet"></i> Balans kifayət etmir';
+    } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Müraciət Göndər';
+    }
+
+    document.getElementById('purchaseModal').classList.add('active');
+}
+
+function closePurchaseModal() {
+    document.getElementById('purchaseModal').classList.remove('active');
+    _activePdfId = null;
+}
+
+// ── Confirm purchase (submit request to admin) ────────────────────────────────
+function confirmPurchase() {
+    const user = getCurrentUser();
+    if (!user || !_activePdfId) return;
+
+    const pdfs = Storage.get('pdfs') || [];
+    const p = pdfs.find(x => x.id === _activePdfId);
+    if (!p) return;
+
+    const balance = user.balance || 0;
+    if (balance < p.price) {
+        showNotification('Balansınız kifayət etmir!', 'error');
+        return;
+    }
+
+    // Deduct balance immediately (held pending admin approval)
+    user.balance = balance - p.price;
+    Storage.set('currentUser', user);
+    const allUsers = Storage.get('allUsers') || [];
+    const ui = allUsers.findIndex(u => String(u.id) === String(user.id));
+    if (ui !== -1) { allUsers[ui].balance = user.balance; Storage.set('allUsers', allUsers); }
+
+    // Create download request
+    const reqs = Storage.get('pdfDownloadRequests') || [];
+    reqs.unshift({
+        id: Date.now(),
+        userId:    user.id,
+        userName:  user.name,
+        userEmail: user.email,
+        pdfId:     p.id,
+        pdfTitle:  p.title,
+        amount:    p.price,
+        requestedAt: new Date().toISOString(),
+        status: 'pending'   // pending → approved | rejected
+    });
+    Storage.set('pdfDownloadRequests', reqs);
+
+    closePurchaseModal();
+    showNotification('Müraciətiniz göndərildi! Admin ödənişi təsdiqləyəndən sonra yükləyə bilərsiniz.', 'success');
+    renderPdfs();
+}
+
+// Close modal on backdrop click
+document.getElementById('purchaseModal').addEventListener('click', function(e) {
+    if (e.target === this) closePurchaseModal();
+});
+</script>
+</body>
+</html>

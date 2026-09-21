@@ -709,9 +709,9 @@ function requestPremium(packageType = 'monthly') {
             userName: user.name,
             userEmail: user.email,
             packageType: packageType,
-            packageName: package.name,
-            price: package.price,
-            duration: package.duration,
+            packageName: selectedPackage.name,
+            price: selectedPackage.price,
+            duration: selectedPackage.duration,
             requestedAt: new Date().toISOString(),
             status: 'pending',
             date: new Date().toLocaleDateString('az-AZ'),
@@ -720,12 +720,12 @@ function requestPremium(packageType = 'monthly') {
         Storage.set('premiumRequests', requests);
         
         // Log activity
-        logActivity(user.name, `Premium müraciət göndərdi (${package.name})`);
+        logActivity(user.name, `Premium müraciət göndərdi (${selectedPackage.name})`);
         
         return { 
             success: true, 
             message: 'Müraciətiniz göndərildi',
-            package: package
+            pkg: selectedPackage
         };
     }
     

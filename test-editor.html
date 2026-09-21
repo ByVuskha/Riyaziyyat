@@ -3,161 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sınaq Redaktəsi - Bizim Riyaziyyat</title>`n    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <title>Sınaq Redaktəsi - Bizim Riyaziyyat</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInDocument()"></script>
     <style>
-        .editor-container {
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
+        .editor-container { max-width: 1040px; margin: 36px auto; padding: 0 20px 60px; }
         .editor-header {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: var(--shadow);
+            background: linear-gradient(135deg,#1e3a5f,#2563eb);
+            color: white; border-radius: 14px; padding: 28px 30px; margin-bottom: 24px;
         }
-        .editor-header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+        .editor-header h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; }
+        .editor-header p  { opacity: .8; font-size: 13px; margin: 0; }
+
+        .card-section {
+            background: white; border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 28px; margin-bottom: 24px;
         }
-        .test-info {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: var(--shadow);
+        .card-section h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
+
+        .form-row { display: grid; grid-template-columns: repeat(2,1fr); gap: 15px; }
+        .form-row-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 15px; }
+        @media(max-width:640px){ .form-row,.form-row-3 { grid-template-columns: 1fr; } }
+
+        /* ── Math Toolbar ─────────────────────────────── */
+        .math-toolbar {
+            background: #f1f5f9; border: 1px solid #e2e8f0;
+            border-bottom: none; border-radius: 8px 8px 0 0;
+            padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 3px;
         }
-        .questions-list {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: var(--shadow);
+        .math-toolbar-group {
+            display: flex; gap: 2px; align-items: center;
+            padding-right: 8px; border-right: 1px solid #cbd5e1; margin-right: 3px;
         }
-        .question-item {
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            transition: all 0.2s;
+        .math-toolbar-group:last-child { border-right: none; }
+        .math-toolbar-label { font-size: 10px; color: #64748b; font-weight: 700; padding: 0 3px; }
+        .math-btn {
+            background: white; border: 1px solid #cbd5e1; border-radius: 5px;
+            padding: 3px 7px; font-size: 13px; cursor: pointer; transition: all .15s;
+            color: #1e293b; min-width: 28px; text-align: center; line-height: 1.6;
         }
-        .question-item:hover {
-            border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        .math-btn:hover { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .math-input-field {
+            width: 100%; border: 1px solid #e2e8f0 !important; border-radius: 0 0 8px 8px !important;
+            font-family: 'Courier New', monospace !important; font-size: 13px !important;
+            padding: 10px 12px; box-sizing: border-box; resize: vertical;
         }
-        .question-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .question-number {
-            background: var(--primary);
-            color: white;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .question-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .question-text {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--dark);
-        }
-        .options-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .option {
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .option.correct {
-            border-color: var(--success);
-            background: #ecfdf5;
-        }
-        .explanation-box {
-            background: #eff6ff;
-            border-left: 4px solid var(--primary);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .explanation-box strong {
-            color: var(--primary);
-            display: block;
-            margin-bottom: 8px;
-        }
-        .video-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: #dc2626;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-        .add-question-btn {
-            width: 100%;
-            padding: 20px;
-            border: 2px dashed var(--primary);
-            background: #eef2ff;
-            color: var(--primary);
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-        .add-question-btn:hover {
-            background: var(--primary);
-            color: white;
-            border-style: solid;
-        }
-        
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
+        .math-input-field:focus { outline: none; border-color: #4f46e5 !important; }
+        .math-preview {
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+            padding: 8px 12px; margin-top: 5px; font-size: 14px; min-height: 36px;
             display: none;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
+        }
+        .math-preview.active { display: block; }
+        .preview-label { font-size: 10px; color: #92400e; font-weight: 700; margin-bottom: 3px; }
+        .math-hint { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+        .math-hint code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; }
+
+        /* ── Question card ────────────────────────────── */
+        .q-card {
+            border: 2px solid #e2e8f0; border-radius: 12px;
+            padding: 22px; margin-bottom: 20px; position: relative; transition: border-color .2s;
+        }
+        .q-card:hover { border-color: #a5b4fc; }
+        .q-card-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 16px;
+        }
+        .q-badge {
+            background: #4f46e5; color: white;
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .q-text { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 14px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .opt-display {
+            padding: 10px 14px; border: 2px solid #e2e8f0;
+            border-radius: 8px; font-size: 13px; transition: all .2s;
+        }
+        .opt-display.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; font-weight: 600; }
+        .explanation-box {
+            background: #eff6ff; border-left: 4px solid #4f46e5;
+            padding: 12px 16px; border-radius: 8px; margin-top: 14px; font-size: 13px;
+        }
+
+        /* ── Modal ────────────────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.55);
+            z-index: 9999; display: none; align-items: center;
+            justify-content: center; padding: 20px; backdrop-filter: blur(4px);
         }
         .modal-overlay.active { display: flex; }
-        .modal {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            width: 90%;
-            max-width: 700px;
-            max-height: 90vh;
-            overflow-y: auto;
+        .modal-box {
+            background: white; border-radius: 16px; padding: 30px;
+            width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto;
         }
-        .modal h2 {
-            margin-bottom: 25px;
-            font-size: 22px;
+        .modal-box h2 { font-size: 20px; font-weight: 800; margin-bottom: 22px; }
+        .modal-footer { display: flex; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+
+        /* option rows in modal */
+        .opt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .opt-row label { font-weight: 700; width: 28px; flex-shrink: 0; color: #374151; }
+        .opt-row input[type="radio"] { width: 18px; height: 18px; accent-color: #4f46e5; flex-shrink: 0; cursor: pointer; }
+        .opt-row .opt-inp { flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; }
+
+        .add-q-btn {
+            width: 100%; padding: 18px; border: 2px dashed #4f46e5;
+            background: #eef2ff; color: #4f46e5; border-radius: 12px;
+            cursor: pointer; font-weight: 700; font-size: 15px; transition: all .2s;
         }
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+        .add-q-btn:hover { background: #4f46e5; color: white; border-style: solid; }
+
+        .info-box {
+            background: #eff6ff; border: 1px solid #bfdbfe;
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; font-size: 12px; color: #1e40af;
         }
+        .info-box strong { display: block; font-size: 13px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -165,9 +132,7 @@
 <nav class="navbar">
     <div class="container">
         <div class="navbar-inner">
-            <a href="index.html" class="navbar-logo">
-                <span>BR</span> Bizim Riyaziyyat
-            </a>
+            <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
             <div class="navbar-actions">
                 <a href="admin.html" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-left"></i> Admin Panelə Qayıt
@@ -178,119 +143,147 @@
 </nav>
 
 <div class="editor-container">
+
     <div class="editor-header">
         <h1><i class="fas fa-edit"></i> Sınaq Redaktəsi</h1>
-        <p style="color:var(--gray);margin-top:5px;">Sınaq məlumatlarını və sualları redaktə edin</p>
+        <p>Sınaq məlumatlarını doldurun, sualları əlavə edin. Riyazi ifadələri <strong>$...$</strong> içində yazın.</p>
     </div>
 
-    <div class="test-info">
-        <h3 style="margin-bottom:20px;">Sınaq Məlumatları</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Sınaq Adı</label>
+    <!-- ── Test Info ─────────────────────────────────── -->
+    <div class="card-section">
+        <h3><i class="fas fa-info-circle" style="color:#4f46e5;margin-right:8px;"></i>Sınaq Məlumatları</h3>
+
+        <div class="info-box">
+            <strong><i class="fas fa-superscript"></i> Riyazi ifadə yazma qaydası</strong>
+            Dollar işarəsi arasında LaTeX yazın: <code>$x^2 + 3x = 5$</code> ·
+            Kəsr: <code>$\frac{a}{b}$</code> · Kök: <code>$\sqrt{x}$</code> ·
+            Pi: <code>$\pi$</code> · Bucaq: <code>$\angle ABC$</code> ·
+            Üçbucaq: <code>$\triangle ABC$</code> · Cəm: <code>$\sum_{i=1}^{n} i$</code>
+        </div>
+
+        <div class="form-row" style="margin-bottom:15px;">
+            <div class="form-group" style="margin:0;">
+                <label>Sınaq Adı *</label>
                 <input type="text" class="form-control" id="testTitle" placeholder="Məs: Cəbr Sınağı">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin:0;">
                 <label>Kateqoriya</label>
-                <input type="text" class="form-control" id="testCategory" placeholder="Məs: Cəbr">
+                <input type="text" class="form-control" id="testCategory" placeholder="Məs: Cəbr, Həndəsə, Analiz">
             </div>
         </div>
-        <div class="form-row">
-            <div class="form-group">
+        <div class="form-row-3" style="margin-bottom:15px;">
+            <div class="form-group" style="margin:0;">
+                <label>Çətinlik</label>
+                <select class="form-control" id="testDifficulty">
+                    <option>Asan</option>
+                    <option selected>Orta</option>
+                    <option>Çətin</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
                 <label>Müddət (dəqiqə)</label>
-                <input type="number" class="form-control" id="testDuration" placeholder="45">
+                <input type="number" class="form-control" id="testDuration" placeholder="45" min="1" max="300">
             </div>
-            <div class="form-group">
-                <label>Qiymət (₼)</label>
-                <input type="number" class="form-control" id="testPrice" placeholder="5">
+            <div class="form-group" style="margin:0;">
+                <label>Növ</label>
+                <select class="form-control" id="testIsPremium">
+                    <option value="free">Pulsuz</option>
+                    <option value="premium">Premium</option>
+                </select>
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:20px;">
             <label>Təsvir</label>
-            <textarea class="form-control" id="testDescription" rows="3" placeholder="Sınaq haqqında qısa məlumat"></textarea>
+            <textarea class="form-control" id="testDescription" rows="2" placeholder="Sınaq haqqında qısa məlumat"></textarea>
         </div>
         <button class="btn btn-primary" onclick="saveTestInfo()">
-            <i class="fas fa-save"></i> Məlumatları Yadda Saxla
+            <i class="fas fa-save"></i> Sınağı Yadda Saxla
         </button>
     </div>
 
-    <div class="questions-list">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
-            <h3>Suallar (<span id="questionCount">0</span>)</h3>
-            <button class="btn btn-primary btn-sm" onclick="openAddQuestionModal()">
+    <!-- ── Questions ─────────────────────────────────── -->
+    <div class="card-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;">
+            <h3 style="margin:0;"><i class="fas fa-question-circle" style="color:#4f46e5;margin-right:8px;"></i>Suallar (<span id="questionCount">0</span>)</h3>
+            <button class="btn btn-primary btn-sm" onclick="openModal()">
                 <i class="fas fa-plus"></i> Yeni Sual
             </button>
         </div>
-        
-        <div id="questionsList">
-            <!-- Questions will be loaded here -->
-        </div>
-        
-        <button class="add-question-btn" onclick="openAddQuestionModal()">
+
+        <div id="questionsList"></div>
+
+        <button class="add-q-btn" onclick="openModal()">
             <i class="fas fa-plus-circle"></i> Yeni Sual Əlavə Et
         </button>
     </div>
 </div>
 
-<!-- Add/Edit Question Modal -->
+<!-- ── Question Modal ──────────────────────────────── -->
 <div class="modal-overlay" id="questionModal">
-    <div class="modal">
-        <h2 id="modalTitle">Yeni Sual Əlavə Et</h2>
-        
-        <div class="form-group">
-            <label>Sual Mətni *</label>
-            <textarea class="form-control" id="questionText" rows="3" placeholder="Sualı daxil edin"></textarea>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>A Variantı *</label>
-                <input type="text" class="form-control" id="optionA" placeholder="A variantı">
+    <div class="modal-box">
+        <h2 id="modalTitle"><i class="fas fa-plus-circle" style="color:#4f46e5;"></i> Yeni Sual Əlavə Et</h2>
+
+        <!-- Question text -->
+        <div class="form-group" style="margin-bottom:18px;">
+            <label style="font-weight:700;font-size:13px;">Sual Mətni *</label>
+            <div id="toolbar_qtext"></div>
+            <textarea class="math-input-field" id="questionText" rows="4"
+                      placeholder="Sualı daxil edin. Riyazi ifadə üçün: $2x + 4 = 10$"
+                      oninput="livePreview('questionText','qtext_preview')"></textarea>
+            <div class="math-preview" id="qtext_preview">
+                <div class="preview-label">Önizləmə:</div>
+                <div class="preview-content"></div>
             </div>
-            <div class="form-group">
-                <label>B Variantı *</label>
-                <input type="text" class="form-control" id="optionB" placeholder="B variantı">
+            <div class="math-hint">Nümunə: <code>$x^2-5x+6=0$</code> · <code>$\frac{3}{4}+\frac{1}{2}$</code> · <code>$\sqrt{49}$</code> · <code>$\angle ABC=60^\circ$</code></div>
+        </div>
+
+        <!-- Options -->
+        <div style="margin-bottom:6px;">
+            <label style="font-weight:700;font-size:13px;">Variantlar — düzgün cavabın yanındakı dairəni işarələ *</label>
+        </div>
+        <div id="optionsArea">
+            <div class="opt-row">
+                <input type="radio" name="correctOpt" value="0" id="rOpt0" checked>
+                <label for="rOpt0" style="font-weight:700;width:28px;">A)</label>
+                <input type="text" class="opt-inp" id="optA" placeholder="A variantı ($\frac{1}{2}$, 5, ...)" oninput="livePreview('optA','pA')">
             </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>C Variantı *</label>
-                <input type="text" class="form-control" id="optionC" placeholder="C variantı">
+            <div class="math-preview" id="pA"><div class="preview-label">Önizləmə A:</div><div class="preview-content"></div></div>
+            <div class="opt-row">
+                <input type="radio" name="correctOpt" value="1" id="rOpt1">
+                <label for="rOpt1" style="font-weight:700;width:28px;">B)</label>
+                <input type="text" class="opt-inp" id="optB" placeholder="B variantı" oninput="livePreview('optB','pB')">
             </div>
-            <div class="form-group">
-                <label>D Variantı *</label>
-                <input type="text" class="form-control" id="optionD" placeholder="D variantı">
+            <div class="math-preview" id="pB"><div class="preview-label">Önizləmə B:</div><div class="preview-content"></div></div>
+            <div class="opt-row">
+                <input type="radio" name="correctOpt" value="2" id="rOpt2">
+                <label for="rOpt2" style="font-weight:700;width:28px;">C)</label>
+                <input type="text" class="opt-inp" id="optC" placeholder="C variantı" oninput="livePreview('optC','pC')">
             </div>
+            <div class="math-preview" id="pC"><div class="preview-label">Önizləmə C:</div><div class="preview-content"></div></div>
+            <div class="opt-row">
+                <input type="radio" name="correctOpt" value="3" id="rOpt3">
+                <label for="rOpt3" style="font-weight:700;width:28px;">D)</label>
+                <input type="text" class="opt-inp" id="optD" placeholder="D variantı" oninput="livePreview('optD','pD')">
+            </div>
+            <div class="math-preview" id="pD"><div class="preview-label">Önizləmə D:</div><div class="preview-content"></div></div>
         </div>
-        
-        <div class="form-group">
-            <label>Düzgün Cavab *</label>
-            <select class="form-control" id="correctAnswer">
-                <option value="">Seçin</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-            </select>
+
+        <!-- Explanation -->
+        <div class="form-group" style="margin-top:18px;">
+            <label style="font-weight:700;font-size:13px;">İzah (istəyə bağlı)</label>
+            <textarea class="form-control" id="explanation" rows="2" placeholder="Cavabın izahı..."></textarea>
         </div>
-        
         <div class="form-group">
-            <label>İzah</label>
-            <textarea class="form-control" id="explanation" rows="3" placeholder="Cavabın izahı (istəyə bağlı)"></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>İzah Videosu (YouTube Link)</label>
+            <label style="font-weight:700;font-size:13px;">İzah Videosu (YouTube link)</label>
             <input type="url" class="form-control" id="explanationVideo" placeholder="https://youtube.com/watch?v=...">
-            <small style="color:var(--gray);font-size:12px;">Sınaq bitdikdən sonra istifadəçiyə tövsiyə olunacaq</small>
+            <small style="color:#94a3b8;font-size:12px;">Sınaq bitdikdən sonra şagirdə tövsiyə olunacaq</small>
         </div>
-        
-        <div style="display:flex;gap:10px;margin-top:25px;">
+
+        <div class="modal-footer">
             <button class="btn btn-primary" onclick="saveQuestion()">
                 <i class="fas fa-save"></i> Yadda Saxla
             </button>
-            <button class="btn btn-secondary" onclick="closeQuestionModal()">
+            <button class="btn btn-secondary" onclick="closeModal()">
                 <i class="fas fa-times"></i> Ləğv Et
             </button>
         </div>
@@ -301,245 +294,370 @@
 <script src="js/upstash.js"></script>
 <script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/notifications.js"></script>
 <script>
-let questions = [];
-let editingQuestionIndex = -1;
+// ════════════════════════════════════════════════════════
+//  KaTeX helpers
+// ════════════════════════════════════════════════════════
+function renderMathInDocument() {
+    renderMathInElement(document.body, {
+        delimiters: [
+            { left:'$$', right:'$$', display:true },
+            { left:'$',  right:'$',  display:false }
+        ],
+        throwOnError: false
+    });
+}
 
-// Load test data
-document.addEventListener('DOMContentLoaded', () => {
-    const testId = new URLSearchParams(window.location.search).get('id');
-    if (testId) {
-        loadTestData(testId);
+function renderIn(el) {
+    if (typeof renderMathInElement === 'undefined') return;
+    renderMathInElement(el, {
+        delimiters: [
+            { left:'$$', right:'$$', display:true },
+            { left:'$',  right:'$',  display:false }
+        ],
+        throwOnError: false
+    });
+}
+
+function livePreview(inputId, previewId) {
+    const val = document.getElementById(inputId)?.value.trim() || '';
+    const box = document.getElementById(previewId);
+    if (!box) return;
+    if (!val || !val.includes('$')) { box.classList.remove('active'); return; }
+    box.classList.add('active');
+    const content = box.querySelector('.preview-content') || box;
+    content.textContent = val;
+    renderIn(content.parentElement || box);
+}
+
+// ════════════════════════════════════════════════════════
+//  Math Symbol Toolbar
+// ════════════════════════════════════════════════════════
+const MATH_GROUPS = [
+    { label:'Əməl', items:[
+        ['\\frac{□}{□}','ⁿ/ₙ','Kəsr'],
+        ['\\sqrt{□}','√','Kök'],
+        ['\\sqrt[n]{□}','ⁿ√','n-ci kök'],
+        ['^{□}','xⁿ','Üs'],
+        ['_{□}','xₙ','Alt indeks'],
+        ['\\pm','±','±'],
+        ['\\times','×','×'],
+        ['\\div','÷','÷'],
+        ['\\cdot','·','·'],
+    ]},
+    { label:'Bərabərsizlik', items:[
+        ['\\leq','≤','≤'],
+        ['\\geq','≥','≥'],
+        ['\\neq','≠','≠'],
+        ['\\approx','≈','≈'],
+        ['\\infty','∞','∞'],
+    ]},
+    { label:'Həndəsə', items:[
+        ['\\angle','∠','Bucaq'],
+        ['\\triangle','△','Üçbucaq'],
+        ['\\parallel','∥','Paralel'],
+        ['\\perp','⊥','Perp.'],
+        ['\\circ','°','Dərəcə'],
+        ['\\overrightarrow{AB}','→','Vektor'],
+        ['\\overline{AB}','‾','Parça'],
+        ['\\sim','~','Oxşar'],
+        ['\\cong','≅','≅'],
+    ]},
+    { label:'Yunan', items:[
+        ['\\alpha','α','α'],
+        ['\\beta','β','β'],
+        ['\\pi','π','π'],
+        ['\\theta','θ','θ'],
+        ['\\delta','δ','δ'],
+        ['\\sigma','σ','σ'],
+        ['\\phi','φ','φ'],
+        ['\\omega','ω','ω'],
+    ]},
+    { label:'Analiz', items:[
+        ['\\sum_{i=1}^{n}','∑','Cəm'],
+        ['\\int','∫','İnteqral'],
+        ['\\lim_{x\\to 0}','lim','Limit'],
+        ['\\log','log','log'],
+        ['\\ln','ln','ln'],
+        ['\\sin','sin','sin'],
+        ['\\cos','cos','cos'],
+        ['\\tan','tan','tan'],
+    ]},
+    { label:'Çoxluqlar', items:[
+        ['\\in','∈','∈'],
+        ['\\notin','∉','∉'],
+        ['\\subset','⊂','⊂'],
+        ['\\cup','∪','∪'],
+        ['\\cap','∩','∩'],
+        ['\\mathbb{R}','ℝ','ℝ'],
+        ['\\mathbb{Z}','ℤ','ℤ'],
+        ['\\mathbb{N}','ℕ','ℕ'],
+    ]},
+];
+
+function buildToolbar(targetId) {
+    const container = document.getElementById('toolbar_' + targetId.replace('#',''));
+    if (!container) return;
+    let html = '<div class="math-toolbar">';
+    for (const g of MATH_GROUPS) {
+        html += `<div class="math-toolbar-group"><span class="math-toolbar-label">${g.label}</span>`;
+        for (const [sym, disp, title] of g.items) {
+            const s = sym.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            html += `<button type="button" class="math-btn" title="${title}" onclick="insertSym('${targetId}','${s}')">${disp}</button>`;
+        }
+        html += '</div>';
     }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function insertSym(inputId, rawSym) {
+    const sym = rawSym.replace(/\\\\/g,'\\');
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const s = el.selectionStart, e = el.selectionEnd;
+    const insert = sym.includes('□') ? `$${sym}$` : sym;
+    el.value = el.value.substring(0,s) + insert + el.value.substring(e);
+    el.focus();
+    const pos = s + insert.length;
+    el.setSelectionRange(pos, pos);
+    // trigger preview
+    el.dispatchEvent(new Event('input'));
+}
+
+// Build toolbar for question text after page load
+document.addEventListener('DOMContentLoaded', () => {
+    buildToolbar('questionText');
+
+    // Load existing test if ?id= param
+    const testId = new URLSearchParams(window.location.search).get('id');
+    if (testId) loadTestData(testId);
+    renderQuestions();
 });
 
+// ════════════════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════════════════
+let questions = [];
+let editingIdx = -1;
+
+// ════════════════════════════════════════════════════════
+//  Load existing test
+// ════════════════════════════════════════════════════════
 function loadTestData(testId) {
-    // Mock data - backend-dən gələcək
-    const testData = {
-        id: testId,
-        title: 'Cəbr Sınağı',
-        category: 'Cəbr',
-        duration: 45,
-        price: 5,
-        description: 'Cəbr mövzusu üzrə ümumi sınaq',
-        questions: [
-            {
-                text: '2x + 5 = 15 tənliyində x-in qiyməti nədir?',
-                optionA: '5',
-                optionB: '10',
-                optionC: '7',
-                optionD: '8',
-                correctAnswer: 'A',
-                explanation: 'Tənliyi həll edək: 2x = 15 - 5, 2x = 10, x = 5',
-                explanationVideo: 'https://youtube.com/watch?v=example1'
-            }
-        ]
-    };
-    
-    document.getElementById('testTitle').value = testData.title;
-    document.getElementById('testCategory').value = testData.category;
-    document.getElementById('testDuration').value = testData.duration;
-    document.getElementById('testPrice').value = testData.price;
-    document.getElementById('testDescription').value = testData.description;
-    
-    questions = testData.questions;
+    const tests = Storage.get('tests') || [];
+    const t = tests.find(x => String(x.id) === String(testId));
+    if (!t) { showNotification('Sınaq tapılmadı!', 'error'); return; }
+
+    document.getElementById('testTitle').value       = t.title || '';
+    document.getElementById('testCategory').value    = t.category || '';
+    document.getElementById('testDifficulty').value  = t.difficulty || 'Orta';
+    document.getElementById('testDuration').value    = t.duration || 30;
+    document.getElementById('testIsPremium').value   = t.isPremium ? 'premium' : 'free';
+    document.getElementById('testDescription').value = t.description || '';
+
+    // Normalise question format
+    questions = (t.questions || []).map(q => ({
+        text: q.question || q.text || '',
+        options: q.options || [q.optionA||'', q.optionB||'', q.optionC||'', q.optionD||''],
+        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : (['A','B','C','D'].indexOf(q.correctAnswer) >= 0 ? ['A','B','C','D'].indexOf(q.correctAnswer) : 0),
+        explanation: q.explanation || '',
+        explanationVideo: q.explanationVideo || ''
+    }));
     renderQuestions();
 }
 
+// ════════════════════════════════════════════════════════
+//  Render question list
+// ════════════════════════════════════════════════════════
 function renderQuestions() {
-    const container = document.getElementById('questionsList');
+    const list = document.getElementById('questionsList');
     document.getElementById('questionCount').textContent = questions.length;
-    
+
     if (questions.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Hələ sual əlavə edilməyib</p>';
+        list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px 0;">Hələ sual əlavə edilməyib</p>';
         return;
     }
-    
-    container.innerHTML = questions.map((q, index) => `
-        <div class="question-item">
-            <div class="question-header">
-                <div class="question-number">${index + 1}</div>
-                <div class="question-actions">
-                    <button class="btn-icon btn-edit" onclick="editQuestion(${index})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteQuestion(${index})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
+
+    const letters = ['A','B','C','D'];
+    list.innerHTML = questions.map((q, i) => `
+        <div class="q-card">
+            <div class="q-card-header">
+                <div class="q-badge">${i+1}</div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-sm btn-secondary" onclick="editQuestion(${i})"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteQuestion(${i})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
-            
-            <div class="question-text">${q.text}</div>
-            
+            <div class="q-text">${q.text}</div>
             <div class="options-grid">
-                <div class="option ${q.correctAnswer === 'A' ? 'correct' : ''}">
-                    <strong>A)</strong> ${q.optionA}
-                </div>
-                <div class="option ${q.correctAnswer === 'B' ? 'correct' : ''}">
-                    <strong>B)</strong> ${q.optionB}
-                </div>
-                <div class="option ${q.correctAnswer === 'C' ? 'correct' : ''}">
-                    <strong>C)</strong> ${q.optionC}
-                </div>
-                <div class="option ${q.correctAnswer === 'D' ? 'correct' : ''}">
-                    <strong>D)</strong> ${q.optionD}
-                </div>
+                ${q.options.map((opt,oi) => `
+                    <div class="opt-display ${oi === q.correctAnswer ? 'correct' : ''}">
+                        <strong>${letters[oi]})</strong> ${opt}
+                        ${oi === q.correctAnswer ? ' <i class="fas fa-check" style="float:right;color:#10b981;"></i>' : ''}
+                    </div>`).join('')}
             </div>
-            
-            ${q.explanation || q.explanationVideo ? `
+            ${(q.explanation || q.explanationVideo) ? `
                 <div class="explanation-box">
-                    <strong><i class="fas fa-lightbulb"></i> İzah:</strong>
-                    ${q.explanation || 'İzah əlavə edilməyib'}
-                    ${q.explanationVideo ? `
-                        <a href="${q.explanationVideo}" target="_blank" class="video-link">
-                            <i class="fab fa-youtube"></i> Video İzah
-                        </a>
-                    ` : ''}
-                </div>
-            ` : ''}
+                    <strong style="color:#4f46e5;font-size:12px;"><i class="fas fa-lightbulb"></i> İzah:</strong>
+                    <span style="font-size:13px;">${q.explanation || ''}</span>
+                    ${q.explanationVideo ? `<a href="${q.explanationVideo}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;color:#dc2626;font-size:13px;margin-top:6px;"><i class="fab fa-youtube"></i> Video İzah</a>` : ''}
+                </div>` : ''}
         </div>
     `).join('');
+
+    // Re-render math in the list
+    setTimeout(() => renderIn(list), 50);
 }
 
-function openAddQuestionModal() {
-    editingQuestionIndex = -1;
-    document.getElementById('modalTitle').textContent = 'Yeni Sual Əlavə Et';
-    clearQuestionForm();
+// ════════════════════════════════════════════════════════
+//  Modal open / close
+// ════════════════════════════════════════════════════════
+function openModal() {
+    editingIdx = -1;
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:#4f46e5;"></i> Yeni Sual Əlavə Et';
+    clearModal();
     document.getElementById('questionModal').classList.add('active');
 }
 
-function editQuestion(index) {
-    editingQuestionIndex = index;
-    const q = questions[index];
-    
-    document.getElementById('modalTitle').textContent = 'Sualı Redaktə Et';
-    document.getElementById('questionText').value = q.text;
-    document.getElementById('optionA').value = q.optionA;
-    document.getElementById('optionB').value = q.optionB;
-    document.getElementById('optionC').value = q.optionC;
-    document.getElementById('optionD').value = q.optionD;
-    document.getElementById('correctAnswer').value = q.correctAnswer;
+function editQuestion(idx) {
+    editingIdx = idx;
+    const q = questions[idx];
+    document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit" style="color:#4f46e5;"></i> Sual ${idx+1} Redaktə`;
+    clearModal();
+
+    document.getElementById('questionText').value = q.text || '';
+    const opts = q.options || ['','','',''];
+    const ids = ['optA','optB','optC','optD'];
+    ids.forEach((id,i) => { document.getElementById(id).value = opts[i] || ''; });
+    const rOpt = document.getElementById('rOpt' + q.correctAnswer);
+    if (rOpt) rOpt.checked = true;
     document.getElementById('explanation').value = q.explanation || '';
     document.getElementById('explanationVideo').value = q.explanationVideo || '';
-    
+
     document.getElementById('questionModal').classList.add('active');
 }
 
-function saveQuestion() {
-    const question = {
-        text: document.getElementById('questionText').value,
-        optionA: document.getElementById('optionA').value,
-        optionB: document.getElementById('optionB').value,
-        optionC: document.getElementById('optionC').value,
-        optionD: document.getElementById('optionD').value,
-        correctAnswer: document.getElementById('correctAnswer').value,
-        explanation: document.getElementById('explanation').value,
-        explanationVideo: document.getElementById('explanationVideo').value
-    };
-    
-    if (!question.text || !question.optionA || !question.optionB || !question.optionC || !question.optionD || !question.correctAnswer) {
-        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
-        return;
-    }
-    
-    if (editingQuestionIndex >= 0) {
-        questions[editingQuestionIndex] = question;
-    } else {
-        questions.push(question);
-    }
-    
-    renderQuestions();
-    closeQuestionModal();
-    alert('Sual yadda saxlanıldı!');
-}
-
-function deleteQuestion(index) {
-    if (confirm('Bu sualı silmək istədiyinizdən əminsiniz?')) {
-        questions.splice(index, 1);
-        renderQuestions();
-    }
-}
-
-function closeQuestionModal() {
+function closeModal() {
     document.getElementById('questionModal').classList.remove('active');
-    clearQuestionForm();
+    clearModal();
 }
 
-function clearQuestionForm() {
-    document.getElementById('questionText').value = '';
-    document.getElementById('optionA').value = '';
-    document.getElementById('optionB').value = '';
-    document.getElementById('optionC').value = '';
-    document.getElementById('optionD').value = '';
-    document.getElementById('correctAnswer').value = '';
-    document.getElementById('explanation').value = '';
-    document.getElementById('explanationVideo').value = '';
+function clearModal() {
+    ['questionText','optA','optB','optC','optD','explanation','explanationVideo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('rOpt0').checked = true;
+    ['qtext_preview','pA','pB','pC','pD'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    });
 }
 
+// ════════════════════════════════════════════════════════
+//  Save question
+// ════════════════════════════════════════════════════════
+function saveQuestion() {
+    const text = document.getElementById('questionText').value.trim();
+    const opts = [
+        document.getElementById('optA').value.trim(),
+        document.getElementById('optB').value.trim(),
+        document.getElementById('optC').value.trim(),
+        document.getElementById('optD').value.trim(),
+    ];
+    const correctEl = document.querySelector('input[name="correctOpt"]:checked');
+    const correct   = correctEl ? parseInt(correctEl.value) : 0;
+
+    if (!text) { showNotification('Sual mətni boş ola bilməz!', 'error'); return; }
+    if (opts.some(o => !o)) { showNotification('Bütün 4 variant doldurulmalıdır!', 'error'); return; }
+
+    const q = {
+        text,
+        options: opts,
+        correctAnswer: correct,
+        explanation: document.getElementById('explanation').value.trim(),
+        explanationVideo: document.getElementById('explanationVideo').value.trim()
+    };
+
+    if (editingIdx >= 0) {
+        questions[editingIdx] = q;
+        showNotification('Sual yeniləndi!', 'success');
+    } else {
+        questions.push(q);
+        showNotification('Sual əlavə edildi!', 'success');
+    }
+
+    closeModal();
+    renderQuestions();
+}
+
+function deleteQuestion(idx) {
+    showConfirm('Bu sualı silmək istədiyinizdən əminsiniz?', () => {
+        questions.splice(idx, 1);
+        renderQuestions();
+        showNotification('Sual silindi!', 'success');
+    });
+}
+
+// ════════════════════════════════════════════════════════
+//  Save test
+// ════════════════════════════════════════════════════════
 function saveTestInfo() {
-    const titleEl = document.getElementById('testTitle');
-    const descEl = document.getElementById('testDescription');
-    const categoryEl = document.getElementById('testCategory');
-    const difficultyEl = document.getElementById('testDifficulty');
-    const durationEl = document.getElementById('testDuration');
-    
+    const title = document.getElementById('testTitle').value.trim();
+    if (!title) { showNotification('Sınaq adını daxil edin!', 'error'); return; }
+    if (questions.length === 0) { showNotification('Ən azı 1 sual əlavə edin!', 'error'); return; }
+
     const testData = {
         id: Date.now(),
-        title: titleEl ? titleEl.value : 'Yeni Sınaq',
-        description: descEl ? descEl.value : '',
-        category: categoryEl ? categoryEl.value : 'Ümumi',
-        difficulty: difficultyEl ? difficultyEl.value : 'Orta',
-        duration: durationEl ? parseInt(durationEl.value) : 30,
-        isPremium: false,
-        questions: questions.map((q, index) => ({
-            id: index + 1,
+        title,
+        category:    document.getElementById('testCategory').value.trim() || 'Ümumi',
+        difficulty:  document.getElementById('testDifficulty').value,
+        duration:    parseInt(document.getElementById('testDuration').value) || 30,
+        isPremium:   document.getElementById('testIsPremium').value === 'premium',
+        description: document.getElementById('testDescription').value.trim(),
+        questions: questions.map((q, i) => ({
+            id: i + 1,
             question: q.text,
-            options: [q.optionA, q.optionB, q.optionC, q.optionD],
-            correctAnswer: ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer),
+            options: q.options,
+            correctAnswer: q.correctAnswer,
             explanation: q.explanation || '',
             explanationVideo: q.explanationVideo || ''
         })),
         createdAt: new Date().toISOString()
     };
-    
-    if (!testData.title) {
-        alert('❌ Sınaq adını daxil edin!');
-        return;
-    }
-    
-    if (questions.length === 0) {
-        alert('❌ Ən azı 1 sual əlavə edin!');
-        return;
-    }
-    
-    // Save to localStorage
+
     const tests = Storage.get('tests') || [];
-    tests.push(testData);
-    Storage.set('tests', tests);
-    
-    console.log('✅ Sınaq saxlanıldı:', testData);
-    
-    // Auto-sync to Upstash if available
-    if (typeof syncToUpstash !== 'undefined') {
-        console.log('🔄 Upstash-a sinxronlaşdırılır...');
-        syncToUpstash().then(() => {
-            console.log('✅ Upstash sinxronlaşdırıldı');
-        }).catch(err => {
-            console.error('❌ Upstash sinxronlaşdırma xətası:', err);
-        });
-    }
-    
-    alert(`✅ Sınaq uğurla saxlanıldı!\n\n📝 ${testData.title}\n❓ ${questions.length} sual\n⏱️ ${testData.duration} dəqiqə\n\n💡 Digər cihazlarda görünməsi üçün bir neçə saniyə gözləyin.`);
-    
-    // Reset form
-    if (confirm('Yeni sınaq yaratmaq istəyirsiniz?')) {
-        location.reload();
+    // If editing (URL has ?id=), replace existing
+    const urlId = new URLSearchParams(window.location.search).get('id');
+    if (urlId) {
+        const idx = tests.findIndex(t => String(t.id) === String(urlId));
+        if (idx !== -1) { tests[idx] = { ...tests[idx], ...testData, id: tests[idx].id }; }
+        else tests.push(testData);
     } else {
-        window.location.href = 'admin.html';
+        tests.push(testData);
     }
+    Storage.set('tests', tests);
+
+    if (typeof syncToUpstash !== 'undefined') {
+        syncToUpstash().catch(() => {});
+    }
+
+    showNotification(`✅ "${testData.title}" sınağı saxlanıldı! (${questions.length} sual)`, 'success');
+
+    setTimeout(() => {
+        showConfirm('Yeni sınaq yaratmaq istəyirsiniz?',
+            () => location.href = 'test-editor.html',
+            () => location.href = 'admin.html'
+        );
+    }, 800);
 }
 
-renderQuestions();
+// Close modal on backdrop click
+document.getElementById('questionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
 </script>
 </body>
 </html>

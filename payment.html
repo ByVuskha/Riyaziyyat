@@ -362,10 +362,33 @@ function processPayment() {
     alertBox.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Ödəniş emal edilir...</div>';
 
     setTimeout(() => {
-        // Update balance in localStorage
+        // Update balance — both currentUser AND allUsers
         const user = getCurrentUser();
         user.balance = (user.balance || 0) + selectedAmount;
         Storage.set('currentUser', user);
+
+        // Keep allUsers in sync so balance persists after re-login
+        const allUsers = Storage.get('allUsers') || [];
+        const ui = allUsers.findIndex(u => String(u.id) === String(user.id));
+        if (ui !== -1) {
+            allUsers[ui].balance = user.balance;
+            Storage.set('allUsers', allUsers);
+        }
+
+        // Record payment
+        const payments = Storage.get('payments') || [];
+        payments.unshift({
+            id: Date.now(),
+            userId: user.id,
+            user: user.name,
+            userEmail: user.email,
+            amount: selectedAmount,
+            plan: selectedPlan,
+            date: new Date().toLocaleDateString('az-AZ'),
+            time: new Date().toLocaleTimeString('az-AZ'),
+            status: 'completed'
+        });
+        Storage.set('payments', payments);
 
         document.getElementById('panelCard').style.display = 'none';
         document.getElementById('panelSuccess').style.display = 'block';
@@ -379,8 +402,9 @@ function processPayment() {
         document.getElementById('step3').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
         document.getElementById('step3').classList.add('done');
 
-        // Update navbar balance
-        document.getElementById('balanceAmount').textContent = user.balance;
+        // Update navbar balance if element exists
+        const balEl = document.getElementById('balanceAmount');
+        if (balEl) balEl.textContent = user.balance;
     }, 2000);
 }
 </script>
