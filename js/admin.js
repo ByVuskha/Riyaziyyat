@@ -11,14 +11,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render with whatever is in localStorage
     loadDashboardStats();
     loadUsers();
+    // Always refresh teacher test badge + section on page load
+    _updateTeacherTestsBadge();
+    // If teacher tests section is already visible, load it
+    const ttSection = document.getElementById('teacherTests');
+    if (ttSection && ttSection.style.display !== 'none') {
+        loadTeacherTestsSection();
+    }
 });
 
-// Re-load after Upstash data arrives
+// Re-load after Upstash data arrives — refresh everything
 window.addEventListener('upstash:loaded', () => {
     const user = getCurrentUser();
     if (!user || user.role !== 'admin') return;
     loadDashboardStats();
     loadUsers();
+    // Always refresh teacher test badge so pending count is current
+    _updateTeacherTestsBadge();
+    // If teacher tests section is visible, reload it with fresh cloud data
+    const ttSection = document.getElementById('teacherTests');
+    if (ttSection && (ttSection.style.display === 'block' || ttSection.classList.contains('active'))) {
+        loadTeacherTestsSection();
+    }
 });
 
 // Show section
@@ -79,7 +93,10 @@ function showSection(section) {
         loadFrozenAccounts();
     }
     if (section === 'leaderboard') loadPointsLeaderboard();
-    if (section === 'teacherTests') loadTeacherTestsSection();
+    if (section === 'teacherTests') {
+        loadTeacherTestsSection();
+        _updateTeacherTestsBadge();
+    }
     if (section === 'devices') loadDevicesSection();
     if (section === 'premium') {
         loadPremiumRequestsEnhanced();

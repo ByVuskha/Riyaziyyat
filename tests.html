@@ -425,87 +425,186 @@ function nextQuestion() {
 
 function showResult() {
     const pct = Math.round((score / currentTest.questions) * 100);
+    // 100-ballıq sistem: neçə sualdan neçəsi düzgün → ball
+    const ballScore = pct; // 100-ballıq (faiz ilə eyni: 10/10=100, 8/10=80 ...)
     const user = getCurrentUser();
-    
-    // Award points (awardTestPoints handles duplicate check internally via testId)
+
+    // Award xal (points) — duplicate-safe
     let earnedPoints = 0;
     const pointsData = typeof getUserPoints === 'function' ? getUserPoints(user.id) : null;
     const alreadyEarned = pointsData && (pointsData.completedTests || []).includes(String(currentTest.id));
     if (typeof awardTestPoints === 'function') {
         earnedPoints = awardTestPoints(currentTest.title, score, currentTest.questions, currentTest.id);
     }
-    
-    // Save test result
+
+    // ── 100-ballıq nəticəni profildə saxla ─────────────────────────────────
+    saveTestScore(user, currentTest, score, ballScore);
+
+    // Save full test result record
     saveTestResult({
-        testId: currentTest.id,
-        testTitle: currentTest.title,
-        userId: user.id,
-        userName: user.name,
-        userEmail: user.email,
-        score: score,
-        total: currentTest.questions,
-        percentage: pct,
+        testId:       currentTest.id,
+        testTitle:    currentTest.title,
+        userId:       user.id,
+        userName:     user.name,
+        userEmail:    user.email,
+        score:        score,
+        total:        currentTest.questions,
+        percentage:   pct,
+        ballScore:    ballScore,
         earnedPoints: earnedPoints,
-        date: new Date().toISOString(),
-        timestamp: Date.now()
+        date:         new Date().toISOString(),
+        timestamp:    Date.now()
     });
-    
-    // Update test stats
+
+    // Update attempt / unique-user stats
     updateTestStats(currentTest.id);
-    
-    // Result emoji and message
-    const emoji = pct === 100 ? '🏆' : pct >= 80 ? '🌟' : pct >= 60 ? '👍' : '📚';
-    const msg = pct === 100 ? 'Mükəmməl!' : pct >= 80 ? 'Əla!' : pct >= 60 ? 'Yaxşı!' : 'Daha çox məşq lazımdır';
+
+    // Grade label (100-ballıq)
+    const grade = ballScore === 100 ? '🏆 Mükəmməl'
+                : ballScore >= 80  ? '🌟 Əla'
+                : ballScore >= 60  ? '👍 Yaxşı'
+                : ballScore >= 40  ? '📖 Qənaətbəxş'
+                : '📚 Zəif';
+    const gradeColor = ballScore >= 60 ? '#10b981' : ballScore >= 40 ? '#f59e0b' : '#ef4444';
     const wrong = currentTest.questions - score;
-    
+
     const modal = document.createElement('div');
     modal.id = 'resultModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
     modal.innerHTML = `
-        <div style="background:white;border-radius:20px;padding:35px;max-width:440px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-            <div style="font-size:64px;margin-bottom:10px;">${emoji}</div>
-            <h2 style="font-size:20px;font-weight:700;color:#1f2937;margin-bottom:5px;">${currentTest.title}</h2>
-            <p style="color:#6b7280;margin-bottom:20px;">${msg}</p>
-            
-            <!-- Score big -->
-            <div style="font-size:56px;font-weight:800;color:${pct >= 60 ? '#10b981' : '#ef4444'};line-height:1;">
-                ${score}/${currentTest.questions}
+        <div style="background:white;border-radius:20px;padding:32px;max-width:460px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:92vh;overflow-y:auto;">
+
+            <!-- 100-ballıq böyük göstərici -->
+            <div style="background:linear-gradient(135deg,#0f0c29,#302b63);border-radius:16px;padding:22px 20px;margin-bottom:20px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05);"></div>
+                <div style="font-size:13px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Sınaq Balı</div>
+                <div style="font-size:72px;font-weight:900;color:white;line-height:1;">${ballScore}</div>
+                <div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:2px;">100 bal üzərindən</div>
+                <div style="margin-top:10px;display:inline-block;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 16px;font-size:13px;font-weight:700;color:white;">${grade}</div>
             </div>
-            <div style="font-size:18px;color:#6b7280;margin-bottom:20px;">${pct}%</div>
-            
-            <!-- Stats row -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
-                <div style="background:#ecfdf5;border-radius:10px;padding:12px;">
-                    <div style="font-size:22px;font-weight:800;color:#10b981;">${score}</div>
+
+            <h3 style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:4px;">${currentTest.title}</h3>
+            <p style="color:#9ca3af;font-size:13px;margin-bottom:18px;">${currentTest.questions} sual · ${currentTest.time || currentTest.duration || '?'} dəq</p>
+
+            <!-- Stats üçlüyü -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+                <div style="background:#ecfdf5;border-radius:12px;padding:14px 8px;">
+                    <div style="font-size:24px;font-weight:800;color:#10b981;">${score}</div>
                     <div style="font-size:11px;color:#6b7280;">Düzgün</div>
                 </div>
-                <div style="background:#fef2f2;border-radius:10px;padding:12px;">
-                    <div style="font-size:22px;font-weight:800;color:#ef4444;">${wrong}</div>
+                <div style="background:#fef2f2;border-radius:12px;padding:14px 8px;">
+                    <div style="font-size:24px;font-weight:800;color:#ef4444;">${wrong}</div>
                     <div style="font-size:11px;color:#6b7280;">Səhv</div>
                 </div>
-                <div style="background:#eef2ff;border-radius:10px;padding:12px;">
-                    <div style="font-size:22px;font-weight:800;color:#667eea;">${pct}%</div>
-                    <div style="font-size:11px;color:#6b7280;">Nəticə</div>
+                <div style="background:#eef2ff;border-radius:12px;padding:14px 8px;">
+                    <div style="font-size:24px;font-weight:800;color:#667eea;">${pct}%</div>
+                    <div style="font-size:11px;color:#6b7280;">Faiz</div>
                 </div>
             </div>
-            
-            <!-- Points earned -->
+
+            <!-- Qazanılan xal -->
             ${earnedPoints > 0 ? `
-                <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:12px;padding:12px 20px;margin-bottom:20px;">
-                    <div style="color:white;font-weight:700;font-size:18px;">+${earnedPoints} xal qazandınız! 🎉</div>
+                <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:12px;padding:11px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <span style="font-size:20px;">🎉</span>
+                    <span style="color:white;font-weight:700;font-size:16px;">+${earnedPoints} xal qazandınız!</span>
                 </div>
             ` : alreadyEarned ? `
-                <div style="background:#f3f4f6;border-radius:12px;padding:10px 16px;margin-bottom:20px;">
-                    <div style="color:#6b7280;font-size:13px;">Bu sınaqdan artıq xal qazanmısınız</div>
+                <div style="background:#f3f4f6;border-radius:12px;padding:10px 16px;margin-bottom:18px;">
+                    <div style="color:#6b7280;font-size:13px;"><i class="fas fa-info-circle"></i> Bu sınaqdan artıq xal qazanmısınız</div>
                 </div>
             ` : ''}
-            
-            <button onclick="closeResult()" class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;">
-                Bağla
-            </button>
+
+            <!-- Uğurlar düyməsi -->
+            <div style="display:flex;gap:10px;">
+                <button onclick="closeResult()" class="btn btn-secondary" style="flex:1;padding:13px;font-size:14px;">
+                    Bağla
+                </button>
+                <a href="success.html" class="btn btn-primary" style="flex:1;padding:13px;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <i class="fas fa-trophy"></i> Uğurlar
+                </a>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
+}
+
+// ── 100-ballıq nəticəni userPoints.testScores və allUsers-da saxla ────────────
+function saveTestScore(user, test, rawScore, ballScore) {
+    if (!user || !test) return;
+
+    // 1. userPoints.testScores — yalnız ən yüksək balı saxla
+    if (typeof getUserPoints === 'function' && typeof saveUserPoints === 'function') {
+        const data = getUserPoints(user.id);
+        if (!data.testScores) data.testScores = {};
+        const key = String(test.id);
+        const prev = data.testScores[key];
+        // Həmişə saxla; əgər daha yüksəkdirsə üzərinə yaz
+        if (!prev || ballScore > prev.ballScore) {
+            data.testScores[key] = {
+                testId:    key,
+                testTitle: test.title,
+                ballScore: ballScore,
+                rawScore:  rawScore,
+                total:     test.questions,
+                date:      new Date().toISOString().slice(0, 10),
+                timestamp: Date.now()
+            };
+            // saveUserPoints həm localStorage-a həm Upstash-a yazır + points:updated atır
+            saveUserPoints(user.id, data);
+        }
+    }
+
+    // 2. allUsers — testScores array (ən son 30 nəticə, best-per-test)
+    const allUsers = Storage.get('allUsers') || [];
+    const ui = allUsers.findIndex(u => String(u.id) === String(user.id));
+    if (ui !== -1) {
+        if (!Array.isArray(allUsers[ui].testScores)) allUsers[ui].testScores = [];
+        const existing = allUsers[ui].testScores.findIndex(s => String(s.testId) === String(test.id));
+        const entry = {
+            testId:    String(test.id),
+            testTitle: test.title,
+            ballScore: ballScore,
+            rawScore:  rawScore,
+            total:     test.questions,
+            date:      new Date().toISOString().slice(0, 10),
+            timestamp: Date.now()
+        };
+        if (existing !== -1) {
+            // Yalnız ən yüksəyi saxla
+            if (ballScore >= allUsers[ui].testScores[existing].ballScore) {
+                allUsers[ui].testScores[existing] = entry;
+            }
+        } else {
+            allUsers[ui].testScores.unshift(entry);
+            if (allUsers[ui].testScores.length > 30) allUsers[ui].testScores.length = 30;
+        }
+        allUsers[ui].lastTestScore  = ballScore;
+        allUsers[ui].lastTestTitle  = test.title;
+        allUsers[ui].lastTestDate   = new Date().toISOString().slice(0, 10);
+        Storage.set('allUsers', allUsers);
+    }
+
+    // 3. currentUser-u da yenilə ki, dashboard dərhal görsün
+    const cu = Storage.get('currentUser');
+    if (cu && String(cu.id) === String(user.id)) {
+        if (!Array.isArray(cu.testScores)) cu.testScores = [];
+        const ex = cu.testScores.findIndex(s => String(s.testId) === String(test.id));
+        const entry = {
+            testId: String(test.id), testTitle: test.title,
+            ballScore, rawScore, total: test.questions,
+            date: new Date().toISOString().slice(0,10), timestamp: Date.now()
+        };
+        if (ex !== -1) {
+            if (ballScore >= cu.testScores[ex].ballScore) cu.testScores[ex] = entry;
+        } else {
+            cu.testScores.unshift(entry);
+            if (cu.testScores.length > 30) cu.testScores.length = 30;
+        }
+        cu.lastTestScore = ballScore;
+        cu.lastTestTitle = test.title;
+        cu.lastTestDate  = new Date().toISOString().slice(0,10);
+        Storage.set('currentUser', cu);
+    }
 }
 
 function closeQuiz() {

@@ -5,7 +5,7 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 to include teacher test-access request and teacher test submission flows added in dashboard.html.",
+      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 (admin.js) to load teacher tests badge and section on DOMContentLoaded and upstash:loaded. Added GET /teacher-tests/requests and GET /teacher-tests/requests?status=pending endpoints required by _updateTeacherTestsBadge() and _loadAccessRequests().",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -651,6 +651,58 @@
                     "pm.test('Response is array', function () {",
                     "  pm.expect(pm.response.json()).to.be.an('array');",
                     "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Get All Teacher Access Requests",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/requests"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "pm.test('Response is array', function () {",
+                    "  pm.expect(pm.response.json()).to.be.an('array');",
+                    "});",
+                    "// Required by _loadAccessRequests() which populates #teacherAccessRequestsList"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Admin — Get Pending Teacher Access Requests (Badge)",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/teacher-tests/requests?status=pending"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "pm.test('Response is array', function () {",
+                    "  pm.expect(pm.response.json()).to.be.an('array');",
+                    "});",
+                    "// Required by _updateTeacherTestsBadge() — counts pending requests for #teacherTestsBadge"
                   ]
                 }
               }
