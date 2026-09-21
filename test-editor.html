@@ -298,6 +298,8 @@
 </div>
 
 <script src="js/config.js"></script>
+<script src="js/upstash.js"></script>
+<script src="js/storage-wrapper.js"></script>
 <script src="js/auth.js"></script>
 <script>
 let questions = [];
@@ -539,24 +541,5 @@ function saveTestInfo() {
 
 renderQuestions();
 </script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
-</body>
-</html>
-        category: document.getElementById('testCategory').value,
-        duration: document.getElementById('testDuration').value,
-        price: document.getElementById('testPrice').value,
-        description: document.getElementById('testDescription').value,
-        questions: questions
-    };
-    
-    console.log('Test data:', testData);
-    alert('Sınaq məlumatları yadda saxlanıldı!');
-    // Backend-ə göndəriləcək
-}
-</script>
-
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
 </body>
 </html>

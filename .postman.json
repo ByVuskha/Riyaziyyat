@@ -362,7 +362,7 @@
               "url": "{{base_url}}/news",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"title\": \"Yeni Riyaziyyat Olimpiadası\",\n  \"content\": \"Bu il olimpiada martda keçiriləcək.\",\n  \"emoji\": \"🏆\",\n  \"author\": \"Admin\"\n}"
+                "raw": "{\n  \"title\": \"Yeni Riyaziyyat Olimpiadası\",\n  \"text\": \"Bu il olimpiada martda keçiriləcək.\",\n  \"emoji\": \"🏆\",\n  \"author\": \"Admin\"\n}"
               }
             },
             "event": [
@@ -686,6 +686,13 @@
     "name": "Bizim Riyaziyyat - Local",
     "values": [
       { "key": "base_url", "value": "http://localhost:8080/api", "enabled": true },
+      { "key": "token", "value": "", "enabled": true }
+    ]
+  },
+  "environmentProduction": {
+    "name": "Bizim Riyaziyyat - Production",
+    "values": [
+      { "key": "base_url", "value": "https://bizimriyaziyyat.work.gd/api", "enabled": true },
       { "key": "token", "value": "", "enabled": true }
     ]
   }
