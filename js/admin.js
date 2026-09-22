@@ -1,3677 +1,638 @@
-// Admin Panel JavaScript
+/**
+ * admin.js  —  Admin Panel Logic
+ * All data operations go through API.* (Vercel serverless → Upstash Redis).
+ * No direct Storage/localStorage calls for shared data.
+ */
 
-// Check admin access — wait for upstash:loaded so data is fresh
-document.addEventListener('DOMContentLoaded', () => {
-    const user = getCurrentUser();
-    if (!user || user.role !== 'admin') {
-        alert('Bu səhifəyə giriş yalnız adminlər üçündür!');
-        window.location.href = 'index.html';
-        return;
-    }
-    // Initial render with whatever is in localStorage
+'use strict';
+
+// ════════════════════════════════════════════════════════
+//  Boot: require admin, then load dashboard
+// ════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await requireAdminPage();   // from app.js — redirects if not admin
+    if (!user) return;
+    renderAdminUser(user);
     loadDashboardStats();
     loadUsers();
-    // Always refresh teacher test badge + section on page load
     _updateTeacherTestsBadge();
-    // If teacher tests section is already visible, load it
-    const ttSection = document.getElementById('teacherTests');
-    if (ttSection && ttSection.style.display !== 'none') {
-        loadTeacherTestsSection();
-    }
-});
-
-// Re-load after Upstash data arrives — refresh everything
-window.addEventListener('upstash:loaded', () => {
-    const user = getCurrentUser();
-    if (!user || user.role !== 'admin') return;
-    loadDashboardStats();
-    loadUsers();
-    // Always refresh teacher test badge so pending count is current
-    _updateTeacherTestsBadge();
-    // Refresh PDF badge
     _updatePdfBadge();
-    // If teacher tests section is visible, reload it with fresh cloud data
-    const ttSection = document.getElementById('teacherTests');
-    if (ttSection && (ttSection.style.display === 'block' || ttSection.classList.contains('active'))) {
-        loadTeacherTestsSection();
-    }
-    // If PDF section is visible, reload it
-    const pdfSection = document.getElementById('pdfs');
-    if (pdfSection && (pdfSection.style.display === 'block' || pdfSection.classList.contains('active'))) {
-        loadPdfs();
-        loadPdfDownloadRequests();
-    }
 });
 
-// Show section
+function renderAdminUser(user) {
+    const el = document.getElementById('adminUserName');
+    if (el) el.textContent = user.name;
+    const av = document.getElementById('adminAvatar');
+    if (av) av.textContent = user.name[0].toUpperCase();
+}
+
+// ════════════════════════════════════════════════════════
+//  Section routing
+// ════════════════════════════════════════════════════════
 function showSection(section) {
-    // Hide all sections
     document.querySelectorAll('.admin-section').forEach(s => {
         s.style.display = 'none';
         s.classList.remove('active');
     });
-    
-    // Show selected section
-    const targetSection = document.getElementById(section);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        targetSection.classList.add('active');
-    }
-    
-    // Update menu
-    document.querySelectorAll('.admin-menu-item').forEach(item => item.classList.remove('active'));
-    if (event && event.target) {
-        event.target.closest('.admin-menu-item').classList.add('active');
-    }
-    
-    // Update title
+    const target = document.getElementById(section);
+    if (target) { target.style.display = 'block'; target.classList.add('active'); }
+
+    document.querySelectorAll('.admin-menu-item').forEach(i => i.classList.remove('active'));
+    if (event?.target) event.target.closest('.admin-menu-item')?.classList.add('active');
+
     const titles = {
-        dashboard: 'Dashboard',
-        users: 'İstifadəçilər',
-        teachers: 'Müəllimlər',
-        teacherTests: 'Müəllim Sınaq Müraciətləri',
-        videos: 'Video Dərslər',
-        tests: 'Sınaqlar',
-        testResults: 'Sınaq Nəticələri',
-        siteEditor: 'Sayt Redaktoru',
-        news: 'Xəbərlər',
-        payments: 'Ödənişlər',
-        suspicious: 'Şübhəli Fəaliyyətlər',
-        premium: 'Premium İdarəetməsi',
-        leaderboard: 'Xal Liderliyi',
-        devices: 'Cihaz İdarəetməsi',
-        settings: 'Tənzimləmələr',
-        pdfs: 'PDF Materiallar'
+        dashboard:'Dashboard', users:'İstifadəçilər', teachers:'Müəllimlər',
+        teacherTests:'Müəllim Sınaqları', videos:'Video Dərslər', tests:'Sınaqlar',
+        testResults:'Sınaq Nəticələri', news:'Xəbərlər', payments:'Ödənişlər',
+        premium:'Premium İdarəetməsi', pdfs:'PDF Materiallar', settings:'Tənzimləmələr',
+        leaderboard:'Xal Liderliyi', devices:'Cihaz İdarəetməsi',
+        suspicious:'Şübhəli Fəaliyyətlər', activeUsers:'Aktiv İstifadəçilər',
     };
-    const pageTitle = document.getElementById('pageTitle');
-    if (pageTitle) {
-        pageTitle.textContent = titles[section] || 'Dashboard';
-    }
-    
-    // Load data for section
-    if (section === 'users') loadUsers();
-    if (section === 'teachers') loadTeachers();
-    if (section === 'videos') loadVideos();
-    if (section === 'tests') loadTests();
-    if (section === 'testResults') loadTestResults();
-    if (section === 'siteEditor') loadSiteSettings();
-    if (section === 'news') loadNews();
-    if (section === 'payments') loadPayments();
-    if (section === 'suspicious') {
-        loadSuspiciousActivities();
-        loadFrozenAccounts();
-    }
-    if (section === 'leaderboard') loadPointsLeaderboard();
-    if (section === 'teacherTests') {
-        loadTeacherTestsSection();
-        _updateTeacherTestsBadge();
-    }
-    if (section === 'devices') loadDevicesSection();
-    if (section === 'pdfs') { loadPdfs(); loadPdfDownloadRequests(); }
-    if (section === 'premium') {
-        loadPremiumRequestsEnhanced();
-        loadPremiumUsers();
-    }
-    if (section === 'activeUsers') {
-        startActiveUsersTracking();
-        // Update stats
-        setTimeout(() => {
-            const activeUsers = Storage.get('activeUsers') || {};
-            const now = Date.now();
-            const fiveMin = 5 * 60 * 1000;
-            const active = Object.values(activeUsers).filter(u => now - u.lastSeen < fiveMin);
-            const premium = active.filter(u => u.premium).length;
-            const free = active.filter(u => !u.premium && u.role !== 'admin').length;
-            
-            const totalEl = document.getElementById('activeCountTotal');
-            const premiumEl = document.getElementById('activePremiumCount');
-            const freeEl = document.getElementById('activeFreeCount');
-            const updateEl = document.getElementById('activeLastUpdate');
-            
-            if (totalEl) totalEl.textContent = active.length;
-            if (premiumEl) premiumEl.textContent = premium;
-            if (freeEl) freeEl.textContent = free;
-            if (updateEl) updateEl.textContent = new Date().toLocaleTimeString('az-AZ');
-        }, 100);
-    } else {
-        stopActiveUsersTracking();
-    }
+    const pt = document.getElementById('pageTitle');
+    if (pt) pt.textContent = titles[section] || 'Dashboard';
+
+    const loaders = {
+        users:        () => loadUsers(),
+        teachers:     () => loadTeachers(),
+        tests:        () => loadTests(),
+        news:         () => loadNews(),
+        payments:     () => loadPayments(),
+        teacherTests: () => { loadTeacherTestsSection(); _updateTeacherTestsBadge(); },
+        pdfs:         () => { loadPdfs(); loadPdfDownloadRequests(); },
+        premium:      () => loadPremiumRequests(),
+        leaderboard:  () => loadLeaderboard(),
+    };
+    if (loaders[section]) loaders[section]();
 }
 
-// Load Dashboard Stats
+// ════════════════════════════════════════════════════════
+//  Dashboard Stats
+// ════════════════════════════════════════════════════════
 async function loadDashboardStats() {
-    // Load fresh data from Upstash
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const [cloudUsers, cloudPayments, cloudRevenue] = await Promise.all([
-                upstash.get('allUsers'),
-                upstash.get('payments'),
-                upstash.get('revenue')
-            ]);
-            if (cloudUsers)   Storage.set('allUsers',  cloudUsers);
-            if (cloudPayments) Storage.set('payments', cloudPayments);
-            if (cloudRevenue)  Storage.set('revenue',  cloudRevenue);
-        } catch (e) { console.warn('Upstash dashboard load error:', e); }
+    try {
+        const stats = await API.stats.get();
+        _setStat('statUsers',    stats.users);
+        _setStat('statTests',    stats.tests);
+        _setStat('statNews',     stats.news);
+        _setStat('statTeachers', stats.teachers);
+        _setStat('statPdfs',     stats.pdfs);
+        _setStat('statPremium',  stats.premium);
+    } catch(e) {
+        console.warn('Stats load failed', e);
     }
-
-    const users    = Storage.get('allUsers')  || MOCK_USERS;
-    const videos   = Storage.get('videos')    || [];
-    const tests    = Storage.get('tests')     || [];
-    const payments = Storage.get('payments')  || [];
-
-    document.getElementById('totalUsers').textContent  = users.length;
-    document.getElementById('totalVideos').textContent = videos.length;
-    document.getElementById('totalTests').textContent  = tests.length;
-
-    // Revenue — prefer stored revenue total, fallback to payments sum
-    const revenueData = Storage.get('revenue') || {};
-    const totalRevenue = revenueData.total || payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2) + ' ₼';
-
-    // Active users count
-    const activeUsers = Storage.get('activeUsers') || {};
-    const now = Date.now();
-    const activeCount = Object.values(activeUsers).filter(u => now - u.lastSeen < 5 * 60 * 1000).length;
-    const activeEl = document.getElementById('activeUsersCount');
-    if (activeEl) activeEl.textContent = activeCount;
-
-    // Premium users count
-    const premiumUsers = users.filter(u => u.premium).length;
-    const premiumEl = document.getElementById('totalPremiumUsers');
-    if (premiumEl) premiumEl.textContent = premiumUsers;
-
-    // Pending premium requests
-    const requests = Storage.get('premiumRequests') || [];
-    const pendingCount = requests.filter(r => r.status === 'pending').length;
-    const badge = document.getElementById('premiumPendingBadge');
-    if (badge) {
-        badge.textContent = pendingCount;
-        badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
-    }
-
-    loadRecentRegistrations();
-    loadActiveUsers();
-    loadActivityLog();
-    // Teacher test requests badge
-    _updateTeacherTestsBadge();
+}
+function _setStat(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val ?? '—';
 }
 
-// Load Recent Registrations Chart
-function loadRecentRegistrations() {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    
-    // Get registrations from last 7 days
-    const last7Days = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
-        
-        const count = users.filter(u => {
-            if (!u.registeredAt) return false;
-            const regDate = new Date(u.registeredAt);
-            return regDate.toDateString() === date.toDateString();
-        }).length;
-        
-        last7Days.push({ date: dateStr, count });
-    }
-    
-    // Create simple bar chart
-    const chartContainer = document.querySelector('.chart-container');
-    if (!chartContainer) return;
-    
-    const maxCount = Math.max(...last7Days.map(d => d.count), 1);
-    
-    chartContainer.innerHTML = `
-        <div style="display:flex;align-items:flex-end;justify-content:space-around;height:100%;padding:20px;">
-            ${last7Days.map(day => `
-                <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;">
-                    <div style="background:var(--primary);width:30px;height:${(day.count / maxCount) * 200}px;border-radius:4px;transition:all 0.3s;" title="${day.count} qeydiyyat"></div>
-                    <span style="font-size:11px;color:var(--gray);">${day.date}</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--primary);">${day.count}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// Load Active Users
-function loadActiveUsers() {
-    const sessions = Storage.get('userSessions') || {};
-    const users = Storage.get('allUsers') || [];
-    
-    const activeCount = Object.keys(sessions).length;
-    const totalUsers = users.length;
-    const percentage = totalUsers > 0 ? Math.round((activeCount / totalUsers) * 100) : 0;
-    
-    const chartContainers = document.querySelectorAll('.chart-container');
-    if (chartContainers.length < 2) return;
-    
-    const activeUsersChart = chartContainers[1];
-    
-    activeUsersChart.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;">
-            <div style="position:relative;width:150px;height:150px;">
-                <svg viewBox="0 0 36 36" style="transform:rotate(-90deg);">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" stroke-width="3"></circle>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--success)" stroke-width="3" 
-                            stroke-dasharray="${percentage} 100" stroke-linecap="round"></circle>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                    <div style="font-size:32px;font-weight:800;color:var(--success);">${activeCount}</div>
-                    <div style="font-size:12px;color:var(--gray);">Aktiv</div>
-                </div>
-            </div>
-            <div style="margin-top:15px;text-align:center;">
-                <div style="font-size:14px;color:var(--gray);">Ümumi: ${totalUsers}</div>
-                <div style="font-size:13px;color:var(--success);font-weight:600;">${percentage}% Aktiv</div>
-            </div>
-        </div>
-    `;
-}
-
-// Load Activity Log
-function loadActivityLog() {
-    const activities = Storage.get('activities') || [];
-    const users = Storage.get('allUsers') || [];
-    const videos = Storage.get('videos') || [];
-    const tests = Storage.get('tests') || [];
-    
-    // Generate recent activities
-    const recentActivities = [];
-    
-    // Recent registrations
-    const recentUsers = users
-        .filter(u => u.registeredAt)
-        .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
-        .slice(0, 3);
-    
-    recentUsers.forEach(u => {
-        recentActivities.push({
-            user: u.name,
-            action: 'Yeni qeydiyyat',
-            date: new Date(u.registeredAt).toLocaleDateString('az-AZ'),
-            status: 'success',
-            icon: 'user-plus'
-        });
-    });
-    
-    // Recent videos
-    const recentVideos = videos
-        .filter(v => v.createdAt)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 2);
-    
-    recentVideos.forEach(v => {
-        recentActivities.push({
-            user: 'Admin',
-            action: `Video əlavə edildi: "${v.title}"`,
-            date: new Date(v.createdAt).toLocaleDateString('az-AZ'),
-            status: 'success',
-            icon: 'video'
-        });
-    });
-    
-    // Recent tests
-    const recentTests = tests
-        .filter(t => t.createdAt)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 2);
-    
-    recentTests.forEach(t => {
-        recentActivities.push({
-            user: 'Admin',
-            action: `Sınaq əlavə edildi: "${t.title}"`,
-            date: new Date(t.createdAt).toLocaleDateString('az-AZ'),
-            status: 'success',
-            icon: 'clipboard-list'
-        });
-    });
-    
-    // Sort by date and take last 10
-    recentActivities.sort((a, b) => {
-        const dateA = new Date(a.date.split('.').reverse().join('-'));
-        const dateB = new Date(b.date.split('.').reverse().join('-'));
-        return dateB - dateA;
-    });
-    
-    const displayActivities = recentActivities.slice(0, 10);
-    
-    const tbody = document.getElementById('activityLog');
-    
-    if (displayActivities.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray);">Fəaliyyət yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = displayActivities.map(a => `
-        <tr>
-            <td>
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:35px;height:35px;border-radius:50%;background:#eef2ff;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-${a.icon}" style="color:var(--primary);font-size:14px;"></i>
-                    </div>
-                    <strong>${a.user}</strong>
-                </div>
-            </td>
-            <td>${a.action}</td>
-            <td>${a.date}</td>
-            <td><span class="badge badge-${a.status === 'success' ? 'success' : 'warning'}">${a.status === 'success' ? 'Uğurlu' : 'Gözləyir'}</span></td>
-        </tr>
-    `).join('');
-}
-
-// Load Users
+// ════════════════════════════════════════════════════════
+//  Users
+// ════════════════════════════════════════════════════════
 async function loadUsers() {
-    // Fetch fresh from Upstash so newly registered teachers appear
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloud = await upstash.get('allUsers');
-            if (cloud) Storage.set('allUsers', cloud);
-        } catch (e) {}
-    }
-    const users = Storage.get('allUsers') || MOCK_USERS;
     const tbody = document.getElementById('usersTable');
-    
-    if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);">İstifadəçi yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = users.map(user => {
-        const userTypeIcon = user.userType === 'teacher' ? '<i class="fas fa-chalkboard-teacher" style="color:var(--success);"></i>' : '<i class="fas fa-user-graduate" style="color:var(--primary);"></i>';
-        const userTypeText = user.userType === 'teacher' ? 'Müəllim' : 'Şagird';
-        const pwId = `tblpw_${user.id}`;
-        
-        return `
-        <tr>
-            <td>${user.id}</td>
-            <td><strong>${user.name}</strong></td>
-            <td>${user.email}</td>
-            <td>
-                <span style="display:inline-flex;align-items:center;gap:6px;">
-                    <span id="${pwId}" style="font-family:monospace;font-size:13px;">••••••</span>
-                    <button onclick="toggleTablePassword('${pwId}','${(user.password||'').replace(/'/g,"\\'")}')"
-                        style="border:none;background:none;cursor:pointer;color:#9ca3af;padding:0;" title="Göstər">
-                        <i class="fas fa-eye" style="font-size:12px;"></i>
-                    </button>
-                </span>
-            </td>
-            <td><span class="badge badge-${user.role === 'admin' ? 'danger' : 'primary'}">${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}</span></td>
-            <td>${userTypeIcon} ${userTypeText}</td>
-            <td>${user.balance || 0} ₼</td>
-            <td>${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('az-AZ') : '2024-01-01'}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewUser(${user.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editUser(${user.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteUser(${user.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `}).join('');
-}
-
-function toggleTablePassword(elId, password) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    if (el.dataset.visible === '1') {
-        el.textContent = '••••••';
-        el.dataset.visible = '0';
-    } else {
-        el.textContent = password || '(yoxdur)';
-        el.dataset.visible = '1';
-    }
-}
-
-// Load Videos
-function loadVideos() {
-    const videos = Storage.get('videos') || [
-        { id: 1, title: 'Riyaziyyata Giriş', category: 'Əsaslar', duration: '15:30', views: 1250, status: 'active', source: 'youtube' },
-        { id: 2, title: 'Cəbr və Tənliklər', category: 'Cəbr', duration: '22:45', views: 890, status: 'active', source: 'youtube' },
-        { id: 3, title: 'Həndəsə Əsasları', category: 'Həndəsə', duration: '18:20', views: 670, status: 'draft', source: 'youtube' }
-    ];
-    
-    const tbody = document.getElementById('videosTable');
-    tbody.innerHTML = videos.map(v => `
-        <tr>
-            <td>${v.id}</td>
-            <td><strong>${v.title}</strong></td>
-            <td>${v.category}</td>
-            <td>${v.duration}</td>
-            <td>${v.views}</td>
-            <td>
-                <span class="badge badge-${v.status === 'active' ? 'success' : 'warning'}">
-                    ${v.status === 'active' ? 'Aktiv' : 'Qaralama'}
-                </span>
-                ${v.source === 'upload' ? '<span class="badge badge-primary" style="margin-left:5px;">Yüklənmiş</span>' : ''}
-            </td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewVideo(${v.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editVideo(${v.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteVideo(${v.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Load Tests
-function loadTests() {
-    const tests = Storage.get('tests') || [
-        { id: 1, title: 'Ümumi Riyaziyyat Testi', questions: 30, duration: '45 dəq', price: 5, status: 'active' },
-        { id: 2, title: 'Cəbr Sınağı', questions: 25, duration: '40 dəq', price: 5, status: 'active' },
-        { id: 3, title: 'Həndəsə Testi', questions: 20, duration: '35 dəq', price: 5, status: 'draft' }
-    ];
-    
-    const tbody = document.getElementById('testsTable');
-    tbody.innerHTML = tests.map(t => `
-        <tr>
-            <td>${t.id}</td>
-            <td><strong>${t.title}</strong></td>
-            <td>${t.questions}</td>
-            <td>${t.duration}</td>
-            <td>${t.price} ₼</td>
-            <td><span class="badge badge-${t.status === 'active' ? 'success' : 'warning'}">${t.status === 'active' ? 'Aktiv' : 'Qaralama'}</span></td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewTest(${t.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editTest(${t.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteTest(${t.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Load News - Only user-added news
-function loadNews() {
-    const news = Storage.get('news') || [];
-    
-    const tbody = document.getElementById('newsTable');
-    
-    if (news.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);">Xəbər yoxdur. <a href="news-add.html">İlk xəbəri əlavə edin</a></td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = news.map(n => `
-        <tr>
-            <td>${n.id}</td>
-            <td><strong>${n.emoji || '📰'} ${n.title}</strong></td>
-            <td>${n.author || 'Admin'}</td>
-            <td>${n.date}</td>
-            <td>${n.views || 0}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewNews(${n.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editNews(${n.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteNews(${n.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function viewNews(id) {
-    const news = Storage.get('news') || [];
-    const item = news.find(n => n.id === id);
-    if (!item) return;
-    
-    const row = event.target.closest('tr');
-    const existingDetails = row.nextElementSibling;
-    
-    if (existingDetails && existingDetails.classList.contains('news-details-row')) {
-        existingDetails.remove();
-        return;
-    }
-    
-    const detailsRow = document.createElement('tr');
-    detailsRow.className = 'news-details-row';
-    detailsRow.innerHTML = `
-        <td colspan="6" style="background:#f8fafc;padding:25px;">
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
-                <div>
-                    <h4 style="font-size:18px;margin-bottom:15px;">${item.emoji || '📰'} ${item.title}</h4>
-                    <p style="white-space:pre-wrap;line-height:1.6;">${item.content || item.text}</p>
-                    <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border);">
-                        <small style="color:var(--gray);">
-                            📅 ${item.date} | 👤 ${item.author || 'Admin'} | 👁️ ${item.views || 0} baxış
-                        </small>
-                    </div>
-                </div>
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
-                    <button class="btn btn-primary btn-sm" onclick="editNews(${item.id})" style="margin-bottom:8px;width:100%;">
-                        <i class="fas fa-edit"></i> Redaktə Et
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteNews(${item.id})" style="width:100%;">
-                        <i class="fas fa-trash"></i> Sil
-                    </button>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    row.after(detailsRow);
-}
-
-function editNews(id) {
-    const news = Storage.get('news') || [];
-    const item = news.find(n => n.id === id);
-    if (!item) return;
-    
-    const detailsRow = document.querySelector('.news-details-row');
-    if (!detailsRow) {
-        // If not in details view, create edit row
-        const row = event.target.closest('tr');
-        const editRow = document.createElement('tr');
-        editRow.className = 'news-details-row';
-        editRow.innerHTML = getNewsEditHTML(item);
-        row.after(editRow);
-    } else {
-        detailsRow.innerHTML = getNewsEditHTML(item);
-    }
-}
-
-function getNewsEditHTML(item) {
-    return `
-        <td colspan="6" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
-            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Xəbəri Redaktə Et</h4>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
-                <div class="form-group">
-                    <label>Başlıq</label>
-                    <input type="text" class="form-control" id="editNewsTitle_${item.id}" value="${item.title}">
-                </div>
-                <div class="form-group">
-                    <label>Emoji</label>
-                    <input type="text" class="form-control" id="editNewsEmoji_${item.id}" value="${item.emoji || '📰'}" maxlength="2">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Məzmun</label>
-                <textarea class="form-control" id="editNewsContent_${item.id}" rows="6">${item.content || item.text}</textarea>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:15px;">
-                <button class="btn btn-primary" onclick="saveNewsEdit(${item.id})">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="document.querySelector('.news-details-row').remove()">
-                    <i class="fas fa-times"></i> Ləğv Et
-                </button>
-            </div>
-        </td>
-    `;
-}
-
-function saveNewsEdit(id) {
-    const news = Storage.get('news') || [];
-    const index = news.findIndex(n => n.id === id);
-    if (index === -1) return;
-    
-    news[index].title = document.getElementById(`editNewsTitle_${id}`).value;
-    news[index].emoji = document.getElementById(`editNewsEmoji_${id}`).value;
-    news[index].content = document.getElementById(`editNewsContent_${id}`).value;
-    news[index].text = document.getElementById(`editNewsContent_${id}`).value;
-    
-    Storage.set('news', news);
-    
-    document.querySelector('.news-details-row').remove();
-    loadNews();
-    showNotification('Xəbər yeniləndi!', 'success');
-}
-
-function deleteNews(id) {
-    if (!confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
-        return;
-    }
-    const news = Storage.get('news') || [];
-    const filtered = news.filter(n => n.id !== id);
-    Storage.set('news', filtered);
-    
-    const detailsRow = document.querySelector('.news-details-row');
-    if (detailsRow) detailsRow.remove();
-    loadNews();
-    showNotification('Xəbər silindi!', 'success');
-}
-
-// Load Payments
-function loadPayments() {
-    const payments = Storage.get('payments') || [
-        { id: 1, user: 'Tələbə', amount: 25, method: 'Kart', date: '2024-01-15', status: 'completed' },
-        { id: 2, user: 'Test User', amount: 50, method: 'Kart', date: '2024-01-14', status: 'completed' },
-        { id: 3, user: 'Demo User', amount: 10, method: 'Kart', date: '2024-01-13', status: 'pending' }
-    ];
-    
-    const tbody = document.getElementById('paymentsTable');
-    tbody.innerHTML = payments.map(p => `
-        <tr>
-            <td>${p.id}</td>
-            <td><strong>${p.user}</strong></td>
-            <td>${p.amount} ₼</td>
-            <td>${p.method}</td>
-            <td>${p.date}</td>
-            <td><span class="badge badge-${p.status === 'completed' ? 'success' : 'warning'}">${p.status === 'completed' ? 'Tamamlandı' : 'Gözləyir'}</span></td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewPayment(${p.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// User Actions - Inline Editing (No Popups)
-async function viewUser(id) {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    const user = users.find(u => u.id === id);
-    if (!user) return;
-    
-    const row = event.target.closest('tr');
-    const existingDetails = row.nextElementSibling;
-    if (existingDetails && existingDetails.classList.contains('user-details-row')) {
-        existingDetails.remove();
-        return;
-    }
-    
-    const watchedVideos = Storage.get('userVideos_' + user.id) || [];
-    const userTypeText = user.userType === 'teacher' ? '👨‍🏫 Müəllim' : '👨‍🎓 Şagird';
-
-    // Load device session from Upstash
-    let sessionData = null;
-    if (typeof upstash !== 'undefined' && upstash) {
-        try { sessionData = await upstash.get(`user_session:${user.id}`); } catch (e) {}
-    }
-    if (!sessionData) {
-        const sessions = Storage.get('userSessions') || {};
-        sessionData = sessions[user.id] || null;
-    }
-
-    const deviceHTML = sessionData ? `
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-top:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <strong style="font-size:13px;">📱 Aktiv Cihaz</strong>
-                <button onclick="revokeDeviceAccess(${user.id})" 
-                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600;">
-                    <i class="fas fa-ban"></i> İcazəni Ləğv Et
-                </button>
-            </div>
-            <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-                <span>🖥️ Tip: <strong>${sessionData.deviceType || 'Naməlum'}</strong></span>
-                <span>🌐 Brauzer: <strong>${sessionData.browser || 'Naməlum'}</strong></span>
-                <span>💿 OS: <strong>${sessionData.os || 'Naməlum'}</strong></span>
-                <span>📅 Giriş: <strong>${sessionData.loginTime ? new Date(sessionData.loginTime).toLocaleString('az-AZ') : 'Naməlum'}</strong></span>
-                <span style="grid-column:1/-1;word-break:break-all;color:#6b7280;font-size:11px;">
-                    ID: ${sessionData.deviceId ? sessionData.deviceId.substring(0, 30) + '...' : '-'}
-                </span>
-            </div>
-        </div>
-    ` : `<div style="background:#f1f5f9;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;color:#6b7280;">
-            <i class="fas fa-mobile-alt"></i> Aktiv cihaz yoxdur
-        </div>`;
-    
-    const detailsRow = document.createElement('tr');
-    detailsRow.className = 'user-details-row';
-    detailsRow.innerHTML = `
-        <td colspan="9" style="background:#f8fafc;padding:25px;">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əsas Məlumat</h4>
-                    <p><strong>Ad:</strong> ${user.name}</p>
-                    <p><strong>Email:</strong> ${user.email}</p>
-                    <p><strong>Rol:</strong> ${user.role === 'admin' ? 'Admin' : 'İstifadəçi'}</p>
-                    <p><strong>Tip:</strong> ${userTypeText}</p>
-                    <p style="display:flex;align-items:center;gap:8px;">
-                        <strong>Şifrə:</strong>
-                        <span id="pw_${user.id}" style="font-family:monospace;background:#e2e8f0;padding:2px 8px;border-radius:4px;letter-spacing:2px;">••••••••</span>
-                        <button onclick="togglePassword(${user.id},'${(user.password||'').replace(/'/g,"\\'")}')
-" style="border:none;background:none;cursor:pointer;color:#667eea;font-size:12px;" title="Göstər/Gizlət">
-                            <i class="fas fa-eye" id="pwIcon_${user.id}"></i>
-                        </button>
-                    </p>
-                    ${deviceHTML}
-                </div>
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Statistika</h4>
-                    <p><strong>Balans:</strong> ${user.balance || 0} ₼</p>
-                    <p><strong>İzlənmiş Videolar:</strong> ${watchedVideos.length}</p>
-                    <p><strong>Demo Testlər:</strong> ${user.demoTests || 0}</p>
-                    <p><strong>Qeydiyyat:</strong> ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('az-AZ') : 'N/A'}</p>
-                </div>
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
-                    <button class="btn btn-primary btn-sm" onclick="editUserInline(${user.id})" style="margin-bottom:8px;width:100%;">
-                        <i class="fas fa-edit"></i> Redaktə Et
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})" style="width:100%;">
-                        <i class="fas fa-trash"></i> Sil
-                    </button>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    row.after(detailsRow);
-}
-
-async function revokeDeviceAccess(userId) {
-    showConfirm('Bu istifadəçinin cihaz icazəsini ləğv etmək istədiyinizə əminsiniz?\n\nİstifadəçi növbəti girişdə yenidən cihaz qeydiyyatından keçməli olacaq.', async () => {
-        // Remove from localStorage
-        const sessions = Storage.get('userSessions') || {};
-        delete sessions[userId];
-        Storage.set('userSessions', sessions);
-
-        // Remove from Upstash
-        if (typeof upstash !== 'undefined' && upstash) {
-            try {
-                await upstash.delete(`user_session:${userId}`);
-                await upstash.set('userSessions', sessions, 86400 * 30);
-            } catch (e) {}
+    if (!tbody) return;
+    showTableLoading(tbody, 9);
+    try {
+        const { data: users } = await API.users.list({ limit: 100 });
+        if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
+            return;
         }
-
-        showNotification('✅ Cihaz icazəsi ləğv edildi', 'success');
-        // Refresh the row
-        document.querySelector('.user-details-row')?.remove();
-        loadUsers();
-    });
-}
-
-function editUserInline(id) {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    const user = users.find(u => u.id === id);
-    if (!user) return;
-    
-    const detailsRow = document.querySelector('.user-details-row');
-    if (!detailsRow) return;
-    
-    detailsRow.innerHTML = `
-        <td colspan="8" style="background:#f8fafc;padding:25px;">
-            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> İstifadəçini Redaktə Et</h4>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
-                <div class="form-group">
-                    <label>Ad</label>
-                    <input type="text" class="form-control" id="editUserName_${id}" value="${user.name}">
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" class="form-control" id="editUserEmail_${id}" value="${user.email}" disabled style="background:#e2e8f0;">
-                </div>
-                <div class="form-group">
-                    <label>Şifrə</label>
-                    <div style="position:relative;">
-                        <input type="text" class="form-control" id="editUserPassword_${id}"
-                            value="${user.password || ''}"
-                            style="padding-right:40px;font-family:monospace;">
-                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;">
-                            <i class="fas fa-key"></i>
-                        </span>
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td style="font-size:12px;color:#94a3b8;">${String(u.id).slice(0,8)}</td>
+                <td><strong>${escapeHtml(u.name)}</strong></td>
+                <td>${escapeHtml(u.email)}</td>
+                <td><span class="badge badge-${u.role==='admin'?'danger':'primary'}">${u.role==='admin'?'Admin':'İstifadəçi'}</span></td>
+                <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':'Şagird'}</td>
+                <td>${u.balance||0} ₼</td>
+                <td>${u.premium?'<span style="color:#f59e0b;">👑 Premium</span>':'—'}</td>
+                <td>${u.registeredAt ? formatDate(u.registeredAt) : '—'}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-view"   onclick="viewUser('${u.id}')"   title="Bax"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon btn-edit"   onclick="editUserModal('${u.id}')" title="Redaktə"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteUser('${u.id}')" title="Sil"><i class="fas fa-trash"></i></button>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Balans (₼)</label>
-                    <input type="number" class="form-control" id="editUserBalance_${id}" value="${user.balance || 0}">
-                </div>
-                <div class="form-group">
-                    <label>Rol</label>
-                    <select class="form-control" id="editUserRole_${id}">
-                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>İstifadəçi</option>
-                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                    </select>
-                </div>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:15px;">
-                <button class="btn btn-primary" onclick="saveUserEdit(${id})">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="document.querySelector('.user-details-row').remove()">
-                    <i class="fas fa-times"></i> Ləğv Et
-                </button>
-            </div>
-        </td>
-    `;
-}
-
-function saveUserEdit(id) {
-    const users = Storage.get('allUsers') || MOCK_USERS;
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) return;
-    
-    const name     = document.getElementById(`editUserName_${id}`).value.trim();
-    const password = document.getElementById(`editUserPassword_${id}`).value.trim();
-    const balance  = parseFloat(document.getElementById(`editUserBalance_${id}`).value) || 0;
-    const role     = document.getElementById(`editUserRole_${id}`).value;
-
-    if (!name) { alert('Ad boş ola bilməz'); return; }
-    if (!password) { alert('Şifrə boş ola bilməz'); return; }
-
-    users[index].name     = name;
-    users[index].balance  = balance;
-    users[index].role     = role;
-    users[index].password = password;
-    
-    Storage.set('allUsers', users);
-    if (typeof upstash !== 'undefined' && upstash) {
-        upstash.set('allUsers', users, 86400 * 30).catch(() => {});
+                </td>
+            </tr>`).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
     }
-    
-    document.querySelector('.user-details-row').remove();
-    loadUsers();
-    showNotification('İstifadəçi yeniləndi!', 'success');
 }
 
-function editUser(id) {
-    editUserInline(id);
-    // Scroll to the row
-    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
+async function viewUser(id) {
+    try {
+        const { user: u } = await API.users.get(id);
+        showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}`, 'info', 7000);
+    } catch(e) { showNotification(e.message, 'error'); }
 }
 
-function togglePassword(userId, password) {
-    const el   = document.getElementById(`pw_${userId}`);
-    const icon = document.getElementById(`pwIcon_${userId}`);
-    if (!el) return;
-    if (el.dataset.visible === '1') {
-        el.textContent = '••••••••';
-        el.dataset.visible = '0';
-        if (icon) { icon.className = 'fas fa-eye'; }
-    } else {
-        el.textContent = password || '(şifrə yoxdur)';
-        el.dataset.visible = '1';
-        if (icon) { icon.className = 'fas fa-eye-slash'; }
-    }
+async function editUserModal(id) {
+    try {
+        const { user: u } = await API.users.get(id);
+        showPrompt(`Balans (₼) — ${u.name}`, String(u.balance||0), async (val) => {
+            const balance = parseFloat(val);
+            if (isNaN(balance)) { showNotification('Düzgün rəqəm daxil edin', 'error'); return; }
+            await API.users.update(id, { balance });
+            showNotification('Balans yeniləndi!', 'success');
+            loadUsers();
+        });
+    } catch(e) { showNotification(e.message, 'error'); }
 }
 
 function deleteUser(id) {
-    const users = Storage.get('allUsers') || [];
-    const target = users.find(u => u.id === id);
-    if (!target) return;
-    showConfirm(`"${target.name}" adlı istifadəçini silmək istədiyinizdən əminsiniz?`, () => {
-        const filtered = users.filter(u => u.id !== id);
-        Storage.set('allUsers', filtered);
-        // Remove details row if open
-        const detailsRow = document.querySelector('.user-details-row');
-        if (detailsRow) detailsRow.remove();
-        loadUsers();
-        loadDashboardStats();
-        showNotification('İstifadəçi uğurla silindi!', 'success');
+    showConfirm('Bu istifadəçini silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.users.remove(id);
+            showNotification('İstifadəçi silindi!', 'success');
+            loadUsers();
+            loadDashboardStats();
+        } catch(e) { showNotification(e.message, 'error'); }
     });
 }
 
-function toggleUserForm() {
-    const form = document.getElementById('addUserForm');
-    if (form.style.display === 'none') {
-        form.style.display = 'block';
-        // Clear form
-        document.getElementById('newUserName').value = '';
-        document.getElementById('newUserEmail').value = '';
-        document.getElementById('newUserPassword').value = '';
-        document.getElementById('newUserPhone').value = '';
-        document.getElementById('newUserRole').value = 'user';
-        document.getElementById('newUserBalance').value = '0';
-    } else {
-        form.style.display = 'none';
-    }
-}
-
-function saveNewUser() {
-    const name = document.getElementById('newUserName').value.trim();
-    const email = document.getElementById('newUserEmail').value.trim();
-    const password = document.getElementById('newUserPassword').value;
-    const phone = document.getElementById('newUserPhone').value.trim();
-    const role = document.getElementById('newUserRole').value;
-    const balance = parseFloat(document.getElementById('newUserBalance').value) || 0;
-    
-    if (!name || !email || !password) {
-        showNotification('Zəhmət olmasa bütün məcburi sahələri doldurun!', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showNotification('Şifrə minimum 6 simvol olmalıdır!', 'error');
-        return;
-    }
-    
-    const users = Storage.get('allUsers') || [];
-    
-    if (users.find(u => u.email === email)) {
-        showNotification('Bu email artıq qeydiyyatdadır!', 'error');
-        return;
-    }
-    
-    const newUser = {
-        id: Date.now(),
-        name, email, password, phone, role, balance,
-        demoTests: 3,
-        premium: false,
-        active: true,
-        registeredAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-    };
-    
-    users.push(newUser);
-    Storage.set('allUsers', users);
-    
-    toggleUserForm();
-    loadUsers();
-    loadDashboardStats();
-    showNotification('İstifadəçi uğurla əlavə edildi!', 'success');
-}
-
-function showAddUserModal() {
-    toggleUserForm();
-}
-
-// Video Actions - Inline Editing
-function viewVideo(id) {
-    const videos = Storage.get('videos') || [];
-    const video = videos.find(v => v.id === id);
-    if (!video) return;
-    
-    const row = event.target.closest('tr');
-    const existingDetails = row.nextElementSibling;
-    
-    if (existingDetails && existingDetails.classList.contains('video-details-row')) {
-        existingDetails.remove();
-        return;
-    }
-    
-    const detailsRow = document.createElement('tr');
-    detailsRow.className = 'video-details-row';
-    detailsRow.innerHTML = `
-        <td colspan="7" style="background:#f8fafc;padding:25px;">
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Video Məlumatları</h4>
-                    <p><strong>Başlıq:</strong> ${video.title}</p>
-                    <p><strong>Kateqoriya:</strong> ${video.category}</p>
-                    <p><strong>Müddət:</strong> ${video.duration}</p>
-                    <p><strong>Baxış:</strong> ${video.views}</p>
-                    <p><strong>Status:</strong> ${video.status === 'active' ? 'Aktiv' : 'Qaralama'}</p>
-                    ${video.description ? `<p><strong>Təsvir:</strong> ${video.description}</p>` : ''}
-                </div>
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
-                    <button class="btn btn-primary btn-sm" onclick="editVideoInline(${video.id})" style="margin-bottom:8px;width:100%;">
-                        <i class="fas fa-edit"></i> Redaktə Et
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteVideo(${video.id})" style="width:100%;">
-                        <i class="fas fa-trash"></i> Sil
-                    </button>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    row.after(detailsRow);
-}
-
-function editVideoInline(id) {
-    const videos = Storage.get('videos') || [];
-    const video = videos.find(v => v.id === id);
-    if (!video) return;
-    
-    const detailsRow = document.querySelector('.video-details-row');
-    if (!detailsRow) return;
-    
-    detailsRow.innerHTML = `
-        <td colspan="7" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
-            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Videonu Redaktə Et</h4>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
-                <div class="form-group">
-                    <label>Başlıq</label>
-                    <input type="text" class="form-control" id="editVideoTitle_${id}" value="${video.title}">
-                </div>
-                <div class="form-group">
-                    <label>Kateqoriya</label>
-                    <select class="form-control" id="editVideoCategory_${id}">
-                        <option value="Həndəsə" ${video.category === 'Həndəsə' ? 'selected' : ''}>Həndəsə</option>
-                        <option value="Cəbr" ${video.category === 'Cəbr' ? 'selected' : ''}>Cəbr</option>
-                        <option value="Analiz" ${video.category === 'Analiz' ? 'selected' : ''}>Analiz</option>
-                        <option value="Triqonometriya" ${video.category === 'Triqonometriya' ? 'selected' : ''}>Triqonometriya</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Müddət</label>
-                    <input type="text" class="form-control" id="editVideoDuration_${id}" value="${video.duration}">
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select class="form-control" id="editVideoStatus_${id}">
-                        <option value="active" ${video.status === 'active' ? 'selected' : ''}>Aktiv</option>
-                        <option value="draft" ${video.status === 'draft' ? 'selected' : ''}>Qaralama</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Təsvir</label>
-                <textarea class="form-control" id="editVideoDescription_${id}" rows="3">${video.description || ''}</textarea>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:15px;">
-                <button class="btn btn-primary" onclick="saveVideoEdit(${video.id})">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="document.querySelector('.video-details-row').remove()">
-                    <i class="fas fa-times"></i> Ləğv Et
-                </button>
-            </div>
-        </td>
-    `;
-}
-
-function saveVideoEdit(id) {
-    const videos = Storage.get('videos') || [];
-    const index = videos.findIndex(v => v.id === id);
-    if (index === -1) return;
-    
-    videos[index].title = document.getElementById(`editVideoTitle_${id}`).value;
-    videos[index].category = document.getElementById(`editVideoCategory_${id}`).value;
-    videos[index].duration = document.getElementById(`editVideoDuration_${id}`).value;
-    videos[index].status = document.getElementById(`editVideoStatus_${id}`).value;
-    videos[index].description = document.getElementById(`editVideoDescription_${id}`).value;
-    
-    Storage.set('videos', videos);
-    
-    document.querySelector('.video-details-row').remove();
-    loadVideos();
-    showNotification('Video yeniləndi!', 'success');
-}
-
-function editVideo(id) {
-    editVideoInline(id);
-    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function deleteVideo(id) {
-    if (!confirm('Bu videonu silmək istədiyinizdən əminsiniz?')) return;
-    
-    const videos = Storage.get('videos') || [];
-    const filtered = videos.filter(v => v.id !== id);
-    Storage.set('videos', filtered);
-    
-    const detailsRow = document.querySelector('.video-details-row');
-    if (detailsRow) detailsRow.remove();
-    loadVideos();
-    showNotification('Video silindi!', 'success');
-}
-
-function showAddVideoModal() {
-    window.location.href = 'video-upload.html';
-}
-
-// Test Actions - Inline Editing
-function viewTest(id) {
-    const tests = Storage.get('tests') || [];
-    const test = tests.find(t => t.id === id);
-    if (!test) return;
-    
-    const row = event.target.closest('tr');
-    const existingDetails = row.nextElementSibling;
-    
-    if (existingDetails && existingDetails.classList.contains('test-details-row')) {
-        existingDetails.remove();
-        return;
-    }
-    
-    const detailsRow = document.createElement('tr');
-    detailsRow.className = 'test-details-row';
-    detailsRow.innerHTML = `
-        <td colspan="7" style="background:#f8fafc;padding:25px;">
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Sınaq Məlumatları</h4>
-                    <p><strong>Başlıq:</strong> ${test.title}</p>
-                    <p><strong>Sual Sayı:</strong> ${test.questions?.length || 0}</p>
-                    <p><strong>Müddət:</strong> ${test.duration} dəqiqə</p>
-                    <p><strong>Kateqoriya:</strong> ${test.category || 'Ümumi'}</p>
-                    ${test.description ? `<p><strong>Təsvir:</strong> ${test.description}</p>` : ''}
-                </div>
-                <div>
-                    <h4 style="font-size:14px;color:var(--gray);margin-bottom:10px;">Əməliyyatlar</h4>
-                    <button class="btn btn-primary btn-sm" onclick="editTestInline(${test.id})" style="margin-bottom:8px;width:100%;">
-                        <i class="fas fa-edit"></i> Redaktə Et
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteTest(${test.id})" style="width:100%;">
-                        <i class="fas fa-trash"></i> Sil
-                    </button>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    row.after(detailsRow);
-}
-
-function editTestInline(id) {
-    const tests = Storage.get('tests') || [];
-    const test = tests.find(t => t.id === id);
-    if (!test) return;
-    
-    const detailsRow = document.querySelector('.test-details-row');
-    if (!detailsRow) return;
-    
-    detailsRow.innerHTML = `
-        <td colspan="7" style="background:#f8fafc;padding:25px;max-height:500px;overflow-y:auto;">
-            <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Sınağı Redaktə Et</h4>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
-                <div class="form-group">
-                    <label>Başlıq</label>
-                    <input type="text" class="form-control" id="editTestTitle_${id}" value="${test.title}">
-                </div>
-                <div class="form-group">
-                    <label>Kateqoriya</label>
-                    <input type="text" class="form-control" id="editTestCategory_${id}" value="${test.category || 'Ümumi'}">
-                </div>
-                <div class="form-group">
-                    <label>Müddət (dəqiqə)</label>
-                    <input type="number" class="form-control" id="editTestDuration_${id}" value="${test.duration}">
-                </div>
-                <div class="form-group">
-                    <label>Çətinlik</label>
-                    <select class="form-control" id="editTestDifficulty_${id}">
-                        <option value="Asan" ${test.difficulty === 'Asan' ? 'selected' : ''}>Asan</option>
-                        <option value="Orta" ${test.difficulty === 'Orta' ? 'selected' : ''}>Orta</option>
-                        <option value="Çətin" ${test.difficulty === 'Çətin' ? 'selected' : ''}>Çətin</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Təsvir</label>
-                <textarea class="form-control" id="editTestDescription_${id}" rows="3">${test.description || ''}</textarea>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:15px;">
-                <button class="btn btn-primary" onclick="saveTestEdit(${test.id})">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="document.querySelector('.test-details-row').remove()">
-                    <i class="fas fa-times"></i> Ləğv Et
-                </button>
-            </div>
-        </td>
-    `;
-}
-
-function saveTestEdit(id) {
-    const tests = Storage.get('tests') || [];
-    const index = tests.findIndex(t => t.id === id);
-    if (index === -1) return;
-    
-    tests[index].title = document.getElementById(`editTestTitle_${id}`).value;
-    tests[index].category = document.getElementById(`editTestCategory_${id}`).value;
-    tests[index].duration = parseInt(document.getElementById(`editTestDuration_${id}`).value);
-    tests[index].difficulty = document.getElementById(`editTestDifficulty_${id}`).value;
-    tests[index].description = document.getElementById(`editTestDescription_${id}`).value;
-    
-    Storage.set('tests', tests);
-    
-    document.querySelector('.test-details-row').remove();
-    loadTests();
-    showNotification('Sınaq yeniləndi!', 'success');
-}
-
-function editTest(id) {
-    editTestInline(id);
-    event.target.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function deleteTest(id) {
-    if (!confirm('Bu sınağı silmək istədiyinizdən əminsiniz?')) return;
-    
-    const tests = Storage.get('tests') || [];
-    const filtered = tests.filter(t => t.id !== id);
-    Storage.set('tests', filtered);
-    
-    const detailsRow = document.querySelector('.test-details-row');
-    if (detailsRow) detailsRow.remove();
-    loadTests();
-    showNotification('Sınaq silindi!', 'success');
-}
-
-function showAddTestModal() {
-    window.location.href = 'test-editor.html';
-}
-
-// Payment Actions
-function viewPayment(id) {
-    const payments = Storage.get('payments') || [];
-    const p = payments.find(x => x.id === id);
-    if (!p) { showNotification('Ödəniş tapılmadı', 'error'); return; }
-    showNotification(`Ödəniş #${p.id} — ${p.user || p.userName || 'Naməlum'} — ${p.amount} ₼ — ${p.date}`, 'info', 6000);
-}
-
-// Settings
-function saveSettings() {
-    const settings = {
-        siteName: document.getElementById('siteName').value,
-        siteDomain: document.getElementById('siteDomain').value,
-        testPrice: document.getElementById('testPrice').value,
-        demoTests: document.getElementById('demoTests').value,
-        siteEmail: document.getElementById('siteEmail').value,
-        sitePhone: document.getElementById('sitePhone').value
-    };
-    
-    Storage.set('siteSettings', settings);
-    alert('Tənzimləmələr yadda saxlanıldı!');
-}
-
-
-// Load Teachers
-function loadTeachers() {
-    const teachers = Storage.get('teachers') || [
-        { id: 1, name: 'Dr. Əli Məmmədov', title: 'Professor', subjects: 'Cəbr, Analiz', experience: 25, students: 2500, rating: 4.9 },
-        { id: 2, name: 'Leyla Həsənova', title: 'Müəllim', subjects: 'Həndəsə', experience: 15, students: 1800, rating: 4.8 },
-        { id: 3, name: 'Rəşad Əliyev', title: 'Mütəxəssis', subjects: 'Analiz', experience: 20, students: 2200, rating: 4.9 }
-    ];
-    
-    const tbody = document.getElementById('teachersTable');
-    if (teachers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);">Müəllim yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = teachers.map(t => `
-        <tr>
-            <td>${t.id}</td>
-            <td><strong>${t.name}</strong></td>
-            <td>${t.title}</td>
-            <td>${t.subjects}</td>
-            <td>${t.experience} il</td>
-            <td>${t.students}</td>
-            <td><span class="badge badge-success">${t.rating} ⭐</span></td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="viewTeacher(${t.id})" title="Bax">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon btn-edit" onclick="editTeacher(${t.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteTeacher(${t.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Teacher Actions
-function viewTeacher(id) {
-    const teachers = Storage.get('teachers') || [];
-    const teacher = teachers.find(t => t.id === id);
-    if (teacher) {
-        alert(`Ad: ${teacher.name}\nVəzifə: ${teacher.title}\nİxtisas: ${teacher.subjects}\nTəcrübə: ${teacher.experience} il\nTələbə: ${teacher.students}\nReytinq: ${teacher.rating}`);
-    }
-}
-
-function editTeacher(id) {
-    const teachers = Storage.get('teachers') || [];
-    const teacher = teachers.find(t => t.id === id);
-    if (teacher) {
-        const name = prompt('Ad:', teacher.name);
-        const title = prompt('Vəzifə:', teacher.title);
-        if (name) teacher.name = name;
-        if (title) teacher.title = title;
-        Storage.set('teachers', teachers);
-        loadTeachers();
-        alert('Müəllim yeniləndi!');
-    }
-}
-
-function deleteTeacher(id) {
-    showConfirm('Bu müəllimi silmək istədiyinizdən əminsiniz?', () => {
-        const teachers = Storage.get('teachers') || [];
-        const filtered = teachers.filter(t => t.id !== id);
-        Storage.set('teachers', filtered);
-        showNotification('Müəllim uğurla silindi', 'success');
-        loadTeachers();
-    });
-}
-
-function toggleTeacherForm() {
-    const form = document.getElementById('addTeacherForm');
-    if (form.style.display === 'none') {
-        form.style.display = 'block';
-        // Clear form
-        document.getElementById('newTeacherName').value = '';
-        document.getElementById('newTeacherTitle').value = '';
-        document.getElementById('newTeacherSubjects').value = '';
-        document.getElementById('newTeacherImage').value = '';
-        document.getElementById('newTeacherExperience').value = '0';
-        document.getElementById('newTeacherEmail').value = '';
-        document.getElementById('newTeacherPhone').value = '';
-        document.getElementById('newTeacherBio').value = '';
-    } else {
-        form.style.display = 'none';
-    }
-}
-
-function saveNewTeacher() {
-    const name = document.getElementById('newTeacherName').value;
-    const title = document.getElementById('newTeacherTitle').value;
-    const subjects = document.getElementById('newTeacherSubjects').value;
-    const image = document.getElementById('newTeacherImage').value;
-    const experience = parseInt(document.getElementById('newTeacherExperience').value) || 0;
-    const email = document.getElementById('newTeacherEmail').value;
-    const phone = document.getElementById('newTeacherPhone').value;
-    const bio = document.getElementById('newTeacherBio').value;
-    
-    if (!name || !title || !subjects) {
-        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
-        return;
-    }
-    
-    const teachers = Storage.get('teachers') || [];
-    const newTeacher = {
-        id: teachers.length + 1,
-        name: name,
-        title: title,
-        subjects: subjects,
-        image: image,
-        experience: experience,
-        email: email,
-        phone: phone,
-        bio: bio,
-        students: 0,
-        rating: 5.0,
-        active: true,
-        createdAt: new Date().toISOString()
-    };
-    
-    teachers.push(newTeacher);
-    Storage.set('teachers', teachers);
-    
-    toggleTeacherForm();
-    loadTeachers();
-    loadDashboardStats();
-    alert('Müəllim uğurla əlavə edildi!');
-}
-
-function showAddTeacherModal() {
-    toggleTeacherForm();
-}
-
-
-// ==================== TEST RESULTS ====================
-
-function loadTestResults() {
-    const results = Storage.get('testResults') || [];
-    const stats = Storage.get('testStats') || {};
-    const tests = Storage.get('tests') || [];
-    
-    // Statistikaları hesabla
-    const totalAttempts = results.length;
-    const uniqueUsers = new Set(results.map(r => r.userEmail)).size;
-    const avgScore = results.length > 0 
-        ? Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length)
-        : 0;
-    const passRate = results.length > 0
-        ? Math.round((results.filter(r => r.percentage >= 60).length / results.length) * 100)
-        : 0;
-    
-    // Statistikaları göstər
-    document.getElementById('totalTestAttempts').textContent = totalAttempts;
-    document.getElementById('uniqueTestTakers').textContent = uniqueUsers;
-    document.getElementById('avgTestScore').textContent = avgScore + '%';
-    document.getElementById('passRate').textContent = passRate + '%';
-    
-    // Filtr dropdown-unu doldur
-    const filterTest = document.getElementById('filterTest');
-    const testIds = [...new Set(results.map(r => r.testId))];
-    filterTest.innerHTML = '<option value="">Hamısı</option>';
-    testIds.forEach(testId => {
-        const test = tests.find(t => t.id == testId);
-        const testTitle = test ? test.title : `Sınaq ${testId}`;
-        filterTest.innerHTML += `<option value="${testId}">${testTitle}</option>`;
-    });
-    
-    // Nəticələri göstər
-    renderTestResults(results);
-}
-
-function renderTestResults(results = null) {
-    if (!results) {
-        results = Storage.get('testResults') || [];
-    }
-    
-    const tbody = document.getElementById('testResultsTable');
-    
-    if (results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:40px;">Nəticə yoxdur</td></tr>';
-        return;
-    }
-    
-    // Tarixə görə sırala (ən yeni əvvəl)
-    results.sort((a, b) => b.timestamp - a.timestamp);
-    
-    tbody.innerHTML = results.map(r => {
-        const date = new Date(r.date).toLocaleString('az-AZ', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        const statusColor = r.percentage >= 80 ? 'success' : r.percentage >= 60 ? 'warning' : 'danger';
-        const statusText = r.percentage >= 80 ? 'Əla' : r.percentage >= 60 ? 'Yaxşı' : 'Zəif';
-        
-        return `
-            <tr>
-                <td>${date}</td>
-                <td>
-                    <div style="font-weight:600;">${r.userName}</div>
-                    <div style="font-size:12px;color:var(--gray);">${r.userEmail}</div>
-                </td>
-                <td>${r.testTitle}</td>
-                <td><strong>${r.score}/${r.total}</strong></td>
-                <td><strong>${r.percentage}%</strong></td>
-                <td><span class="badge badge-${statusColor}">${statusText}</span></td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn-icon btn-view" onclick="viewTestResult('${r.timestamp}')" title="Ətraflı">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn-icon btn-delete" onclick="deleteTestResult('${r.timestamp}')" title="Sil">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function filterTestResults() {
-    const testFilter = document.getElementById('filterTest').value;
-    const userFilter = document.getElementById('filterUser').value.toLowerCase();
-    
-    let results = Storage.get('testResults') || [];
-    
-    // Sınaq filtri
-    if (testFilter) {
-        results = results.filter(r => r.testId == testFilter);
-    }
-    
-    // İstifadəçi filtri
-    if (userFilter) {
-        results = results.filter(r => 
-            r.userName.toLowerCase().includes(userFilter) ||
-            r.userEmail.toLowerCase().includes(userFilter)
-        );
-    }
-    
-    renderTestResults(results);
-}
-
-function viewTestResult(timestamp) {
-    const results = Storage.get('testResults') || [];
-    const result = results.find(r => r.timestamp == timestamp);
-    
-    if (!result) {
-        alert('Nəticə tapılmadı!');
-        return;
-    }
-    
-    const info = `
-📊 Sınaq Nəticəsi
-
-👤 İstifadəçi: ${result.userName}
-📧 Email: ${result.userEmail}
-📝 Sınaq: ${result.testTitle}
-
-✅ Düzgün: ${result.score}
-❌ Səhv: ${result.total - result.score}
-📊 Ümumi: ${result.total}
-📈 Faiz: ${result.percentage}%
-
-📅 Tarix: ${new Date(result.date).toLocaleString('az-AZ')}
-    `.trim();
-    
-    alert(info);
-}
-
-function deleteTestResult(timestamp) {
-    if (!confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')) {
-        return;
-    }
-    
-    let results = Storage.get('testResults') || [];
-    results = results.filter(r => r.timestamp != timestamp);
-    Storage.set('testResults', results);
-    
-    loadTestResults();
-    alert('Nəticə silindi!');
-}
-
-function exportTestResults() {
-    const results = Storage.get('testResults') || [];
-    
-    if (results.length === 0) {
-        alert('Export ediləcək nəticə yoxdur!');
-        return;
-    }
-    
-    // CSV formatında export
-    let csv = 'Tarix,İstifadəçi,Email,Sınaq,Bal,Ümumi,Faiz\n';
-    
-    results.forEach(r => {
-        const date = new Date(r.date).toLocaleString('az-AZ');
-        csv += `"${date}","${r.userName}","${r.userEmail}","${r.testTitle}",${r.score},${r.total},${r.percentage}%\n`;
-    });
-    
-    // Download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `sinaq-neticeleri-${Date.now()}.csv`;
-    link.click();
-    
-    alert('Nəticələr export edildi!');
-}
-
-
-// ==================== SITE EDITOR ====================
-
-// Tab switching
-function switchEditorTab(tab) {
-    // Hide all tabs
-    document.querySelectorAll('.editor-content').forEach(c => c.style.display = 'none');
-    document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
-    
-    // Show selected tab
-    document.getElementById('editor' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
-    event.target.classList.add('active');
-}
-
-// Load site settings
-function loadSiteSettings() {
-    const settings = Storage.get('siteSettings') || getDefaultSettings();
-    
-    // Branding
-    if (settings.branding) {
-        document.getElementById('siteName').value = settings.branding.name || 'Bizim Riyaziyyat';
-        document.getElementById('logoShort').value = settings.branding.logoShort || 'BR';
-        document.getElementById('siteSlogan').value = settings.branding.slogan || 'Riyaziyyatı Asan Öyrən';
-        document.getElementById('metaDescription').value = settings.branding.metaDescription || '';
-    }
-    
-    // Colors
-    if (settings.colors) {
-        document.getElementById('colorPrimary').value = settings.colors.primary || '#3b82f6';
-        document.getElementById('colorSecondary').value = settings.colors.secondary || '#8b5cf6';
-        document.getElementById('colorSuccess').value = settings.colors.success || '#10b981';
-        document.getElementById('colorWarning').value = settings.colors.warning || '#f59e0b';
-        document.getElementById('colorDanger').value = settings.colors.danger || '#ef4444';
-        document.getElementById('colorDark').value = settings.colors.dark || '#1e293b';
-    }
-    
-    // Typography
-    if (settings.typography) {
-        document.getElementById('fontFamily').value = settings.typography.fontFamily || "'Inter', sans-serif";
-        document.getElementById('fontSize').value = settings.typography.fontSize || 16;
-        document.getElementById('fontSizeValue').textContent = (settings.typography.fontSize || 16) + 'px';
-        document.getElementById('headingFont').value = settings.typography.headingFont || "'Inter', sans-serif";
-        document.getElementById('lineHeight').value = settings.typography.lineHeight || 1.6;
-        document.getElementById('lineHeightValue').textContent = settings.typography.lineHeight || 1.6;
-    }
-    
-    // Content
-    if (settings.content) {
-        document.getElementById('heroTitle').value = settings.content.heroTitle || 'Riyaziyyatı Asan Öyrən';
-        document.getElementById('heroSubtitle').value = settings.content.heroSubtitle || '';
-        document.getElementById('ctaButton1').value = settings.content.ctaButton1 || 'İndi Başla';
-        document.getElementById('ctaButton2').value = settings.content.ctaButton2 || 'Pulsuz Sınaq';
-        document.getElementById('statVideos').value = settings.content.statVideos || '500+';
-        document.getElementById('statStudents').value = settings.content.statStudents || '10K+';
-        document.getElementById('statTests').value = settings.content.statTests || '1000+';
-        document.getElementById('statSatisfaction').value = settings.content.statSatisfaction || '98%';
-    }
-    
-    // Footer
-    if (settings.footer) {
-        document.getElementById('footerEmail').value = settings.footer.email || 'info@bizimriyaziyyat.az';
-        document.getElementById('footerPhone').value = settings.footer.phone || '+994 50 123 45 67';
-        document.getElementById('footerInstagram').value = settings.footer.instagram || '@bizimriyaziyyat';
-        document.getElementById('footerTelegram').value = settings.footer.telegram || '@bizimriyaziyyat';
-        document.getElementById('footerCopyright').value = settings.footer.copyright || '© 2026 Bizim Riyaziyyat';
-        document.getElementById('footerDescription').value = settings.footer.description || '';
-    }
-    
-    // Range input listeners
-    document.getElementById('fontSize').addEventListener('input', function() {
-        document.getElementById('fontSizeValue').textContent = this.value + 'px';
-    });
-    
-    document.getElementById('lineHeight').addEventListener('input', function() {
-        document.getElementById('lineHeightValue').textContent = this.value;
-    });
-}
-
-// Get default settings
-function getDefaultSettings() {
-    return {
-        branding: {
-            name: 'Bizim Riyaziyyat',
-            logoShort: 'BR',
-            slogan: 'Riyaziyyatı Asan Öyrən',
-            metaDescription: 'Azərbaycanın ən böyük riyaziyyat öyrənmə platforması'
-        },
-        colors: {
-            primary: '#3b82f6',
-            secondary: '#8b5cf6',
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#ef4444',
-            dark: '#1e293b'
-        },
-        typography: {
-            fontFamily: "'Inter', sans-serif",
-            fontSize: 16,
-            headingFont: "'Inter', sans-serif",
-            lineHeight: 1.6
-        },
-        content: {
-            heroTitle: 'Riyaziyyatı Asan Öyrən',
-            heroSubtitle: 'Peşəkar müəllimlərdən video dərslər, sınaqlar və interaktiv tapşırıqlarla riyaziyyatı mənimsə.',
-            ctaButton1: 'İndi Başla',
-            ctaButton2: 'Pulsuz Sınaq',
-            statVideos: '500+',
-            statStudents: '10K+',
-            statTests: '1000+',
-            statSatisfaction: '98%'
-        },
-        footer: {
-            email: 'info@bizimriyaziyyat.az',
-            phone: '+994 50 123 45 67',
-            instagram: '@bizimriyaziyyat',
-            telegram: '@bizimriyaziyyat',
-            copyright: '© 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.',
-            description: 'Azərbaycanın ən böyük riyaziyyat öyrənmə platforması. Hər yaşdan tələbə üçün.'
-        }
-    };
-}
-
-// Save site settings
-function saveSiteSettings() {
-    const settings = {
-        branding: {
-            name: document.getElementById('siteName').value,
-            logoShort: document.getElementById('logoShort').value,
-            slogan: document.getElementById('siteSlogan').value,
-            metaDescription: document.getElementById('metaDescription').value
-        },
-        colors: {
-            primary: document.getElementById('colorPrimary').value,
-            secondary: document.getElementById('colorSecondary').value,
-            success: document.getElementById('colorSuccess').value,
-            warning: document.getElementById('colorWarning').value,
-            danger: document.getElementById('colorDanger').value,
-            dark: document.getElementById('colorDark').value
-        },
-        typography: {
-            fontFamily: document.getElementById('fontFamily').value,
-            fontSize: parseInt(document.getElementById('fontSize').value),
-            headingFont: document.getElementById('headingFont').value,
-            lineHeight: parseFloat(document.getElementById('lineHeight').value)
-        },
-        content: {
-            heroTitle: document.getElementById('heroTitle').value,
-            heroSubtitle: document.getElementById('heroSubtitle').value,
-            ctaButton1: document.getElementById('ctaButton1').value,
-            ctaButton2: document.getElementById('ctaButton2').value,
-            statVideos: document.getElementById('statVideos').value,
-            statStudents: document.getElementById('statStudents').value,
-            statTests: document.getElementById('statTests').value,
-            statSatisfaction: document.getElementById('statSatisfaction').value
-        },
-        footer: {
-            email: document.getElementById('footerEmail').value,
-            phone: document.getElementById('footerPhone').value,
-            instagram: document.getElementById('footerInstagram').value,
-            telegram: document.getElementById('footerTelegram').value,
-            copyright: document.getElementById('footerCopyright').value,
-            description: document.getElementById('footerDescription').value
-        },
-        updatedAt: new Date().toISOString()
-    };
-    
-    Storage.set('siteSettings', settings);
-    
-    // Apply CSS variables
-    applySiteStyles(settings);
-    
-    alert('✅ Dəyişikliklər saxlanıldı və tətbiq edildi!');
-}
-
-// Apply site styles
-function applySiteStyles(settings) {
-    const root = document.documentElement;
-    
-    // Colors
-    if (settings.colors) {
-        root.style.setProperty('--primary', settings.colors.primary);
-        root.style.setProperty('--secondary', settings.colors.secondary);
-        root.style.setProperty('--success', settings.colors.success);
-        root.style.setProperty('--warning', settings.colors.warning);
-        root.style.setProperty('--danger', settings.colors.danger);
-        root.style.setProperty('--dark', settings.colors.dark);
-    }
-    
-    // Typography
-    if (settings.typography) {
-        root.style.setProperty('--font-family', settings.typography.fontFamily);
-        document.body.style.fontFamily = settings.typography.fontFamily;
-        document.body.style.fontSize = settings.typography.fontSize + 'px';
-        document.body.style.lineHeight = settings.typography.lineHeight;
-        
-        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-        headings.forEach(h => {
-            h.style.fontFamily = settings.typography.headingFont;
-        });
-    }
-}
-
-// Preview site
-function previewSite() {
-    window.open('index.html', '_blank');
-}
-
-// Reset to defaults
-function resetSiteSettings() {
-    if (!confirm('Bütün dəyişiklikləri sıfırlamaq istədiyinizə əminsiniz?')) {
-        return;
-    }
-    
-    Storage.remove('siteSettings');
-    loadSiteSettings();
-    alert('✅ Tənzimləmələr sıfırlandı!');
-}
-
-
-// ==================== TEACHERS ====================
-
-function loadTeachers() {
-    const teachers = Storage.get('teachers') || [];
-    const tbody = document.getElementById('teachersTable');
-    
-    if (!tbody) {
-        console.warn('teachersTable not found');
-        return;
-    }
-    
-    if (teachers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:40px;">Müəllim yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = teachers.map(t => `
-        <tr>
-            <td>${t.id}</td>
-            <td>
-                <div style="font-weight:600;">${t.name}</div>
-                <div style="font-size:12px;color:var(--gray);">${t.email}</div>
-            </td>
-            <td>${t.title || 'Müəllim'}</td>
-            <td>${t.subjects || '-'}</td>
-            <td>${t.students || 0}</td>
-            <td>
-                <span style="color:#f59e0b;">★</span> ${t.rating || 5.0}
-            </td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-edit" onclick="editTeacher(${t.id})" title="Redaktə">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="deleteTeacher(${t.id})" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function editTeacher(id) {
-    const teachers = Storage.get('teachers') || [];
-    const teacher = teachers.find(t => t.id === id);
-    
-    if (!teacher) {
-        showNotification('Müəllim tapılmadı!', 'error');
-        return;
-    }
-    
-    const row = event.target.closest('tr');
-    const existingEdit = row.nextElementSibling;
-    
-    if (existingEdit && existingEdit.classList.contains('teacher-edit-row')) {
-        existingEdit.remove();
-        return;
-    }
-    
-    // Create edit row with scrollable content
-    const editRow = document.createElement('tr');
-    editRow.className = 'teacher-edit-row';
-    editRow.innerHTML = `
-        <td colspan="7" style="background:#f8fafc;padding:0;">
-            <div style="max-height:500px;overflow-y:auto;padding:25px;">
-                <h4 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Müəllimi Redaktə Et</h4>
-                
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;">
-                    <div class="form-group">
-                        <label>Ad Soyad</label>
-                        <input type="text" class="form-control" id="editTeacherName_${id}" value="${teacher.name}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" class="form-control" id="editTeacherEmail_${id}" value="${teacher.email || ''}" disabled style="background:#e2e8f0;">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Vəzifə/Başlıq</label>
-                        <input type="text" class="form-control" id="editTeacherTitle_${id}" value="${teacher.title || ''}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Telefon</label>
-                        <input type="tel" class="form-control" id="editTeacherPhone_${id}" value="${teacher.phone || ''}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Təcrübə (il)</label>
-                        <input type="number" class="form-control" id="editTeacherExperience_${id}" value="${teacher.experience || 0}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Reytinq</label>
-                        <input type="number" class="form-control" id="editTeacherRating_${id}" min="1" max="5" step="0.1" value="${teacher.rating || 5.0}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Tələbə Sayı</label>
-                        <input type="number" class="form-control" id="editTeacherStudents_${id}" value="${teacher.students || 0}">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Fənlər (vergüllə ayırın)</label>
-                    <input type="text" class="form-control" id="editTeacherSubjects_${id}" value="${teacher.subjects || ''}">
-                </div>
-                
-                <div class="form-group">
-                    <label>Şəkil URL</label>
-                    <input type="url" class="form-control" id="editTeacherImage_${id}" value="${teacher.image || ''}" placeholder="https://example.com/image.jpg">
-                    <small style="color:var(--gray);font-size:12px;">Müəllimin şəklinin URL-ni daxil edin</small>
-                </div>
-                
-                <div class="form-group">
-                    <label>Bio</label>
-                    <textarea class="form-control" id="editTeacherBio_${id}" rows="3">${teacher.bio || ''}</textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label>Təhsil</label>
-                    <textarea class="form-control" id="editTeacherEducation_${id}" rows="2">${teacher.education || ''}</textarea>
-                </div>
-                
-                <div style="display:flex;gap:10px;margin-top:15px;">
-                    <button class="btn btn-primary" onclick="saveTeacherEdit(${id})">
-                        <i class="fas fa-save"></i> Yadda Saxla
-                    </button>
-                    <button class="btn btn-secondary" onclick="this.closest('.teacher-edit-row').remove()">
-                        <i class="fas fa-times"></i> Ləğv Et
-                    </button>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    row.after(editRow);
-    editRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function saveTeacherEdit(id) {
-    const teachers = Storage.get('teachers') || [];
-    const index = teachers.findIndex(t => t.id === id);
-    
-    if (index === -1) {
-        showNotification('Müəllim tapılmadı!', 'error');
-        return;
-    }
-    
-    // Update teacher data
-    teachers[index] = {
-        ...teachers[index],
-        name: document.getElementById(`editTeacherName_${id}`).value,
-        title: document.getElementById(`editTeacherTitle_${id}`).value,
-        bio: document.getElementById(`editTeacherBio_${id}`).value,
-        subjects: document.getElementById(`editTeacherSubjects_${id}`).value,
-        image: document.getElementById(`editTeacherImage_${id}`).value,
-        phone: document.getElementById(`editTeacherPhone_${id}`).value,
-        experience: parseInt(document.getElementById(`editTeacherExperience_${id}`).value) || 0,
-        rating: parseFloat(document.getElementById(`editTeacherRating_${id}`).value) || 5.0,
-        students: parseInt(document.getElementById(`editTeacherStudents_${id}`).value) || 0,
-        education: document.getElementById(`editTeacherEducation_${id}`).value,
-        updatedAt: new Date().toISOString()
-    };
-    
-    Storage.set('teachers', teachers);
-    
-    // Also update in allUsers if exists
-    const allUsers = Storage.get('allUsers') || [];
-    const userIndex = allUsers.findIndex(u => u.email === teachers[index].email);
-    if (userIndex !== -1) {
-        allUsers[userIndex].name = teachers[index].name;
-        Storage.set('allUsers', allUsers);
-    }
-    
-    document.querySelector('.teacher-edit-row').remove();
-    loadTeachers();
-    showNotification('Müəllim məlumatları yeniləndi!', 'success');
-}
-
-function deleteTeacher(id) {
-    if (!confirm('Bu müəllimi silmək istədiyinizə əminsiniz?')) {
-        return;
-    }
-    
-    let teachers = Storage.get('teachers') || [];
-    teachers = teachers.filter(t => t.id !== id);
-    Storage.set('teachers', teachers);
-    
-    const editRow = document.querySelector('.teacher-edit-row');
-    if (editRow) editRow.remove();
-    
-    loadTeachers();
-    showNotification('Müəllim silindi!', 'success');
-}
-
-
-// ==================== SYNC TO UPSTASH ====================
-
-async function syncAllData() {
-    if (typeof syncToUpstash === 'undefined') {
-        alert('⚠️ Upstash sinxronlaşdırma mövcud deyil!');
-        return;
-    }
-    
-    const confirmSync = confirm('Bütün məlumatları Upstash-a sinxronlaşdırmaq istəyirsiniz?\n\nBu, digər cihazlarda məlumatların görünməsini təmin edəcək.');
-    
-    if (!confirmSync) return;
-    
+// ════════════════════════════════════════════════════════
+//  Tests
+// ════════════════════════════════════════════════════════
+async function loadTests() {
+    const tbody = document.getElementById('testsTable');
+    if (!tbody) return;
+    showTableLoading(tbody, 7);
     try {
-        // Show loading
-        const loadingMsg = document.createElement('div');
-        loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2);z-index:10000;text-align:center;';
-        loadingMsg.innerHTML = `
-            <div class="spinner" style="margin:0 auto 15px;"></div>
-            <h3 style="margin-bottom:10px;">Sinxronlaşdırılır...</h3>
-            <p style="color:var(--gray);font-size:14px;">Zəhmət olmasa gözləyin</p>
-        `;
-        document.body.appendChild(loadingMsg);
-        
-        // Sync to Upstash
-        await syncToUpstash();
-        
-        // Remove loading
-        loadingMsg.remove();
-        
-        // Show success
-        alert('✅ Məlumatlar uğurla sinxronlaşdırıldı!\n\nİndi digər cihazlarda da görünəcək.');
-        
-    } catch (error) {
-        console.error('Sync error:', error);
-        alert('❌ Sinxronlaşdırma zamanı xəta baş verdi:\n' + error.message);
-    }
-}
-
-
-// ==================== DEVICE SESSIONS ====================
-
-function viewUserSessions() {
-    const sessions = Storage.get('userSessions') || {};
-    const allUsers = Storage.get('allUsers') || [];
-    
-    let sessionInfo = '🔒 Aktiv Cihaz Sessiyaları\n\n';
-    
-    if (Object.keys(sessions).length === 0) {
-        sessionInfo += 'Heç bir aktiv sessiya yoxdur.';
-    } else {
-        Object.entries(sessions).forEach(([userId, session]) => {
-            const user = allUsers.find(u => u.id == userId);
-            const userName = user ? user.name : `User ${userId}`;
-            const loginTime = new Date(session.loginTime).toLocaleString('az-AZ');
-            
-            sessionInfo += `👤 ${userName}\n`;
-            sessionInfo += `📱 Cihaz: ${session.deviceId.substring(0, 20)}...\n`;
-            sessionInfo += `🕐 Giriş: ${loginTime}\n\n`;
-        });
-    }
-    
-    alert(sessionInfo);
-}
-
-// Clear all sessions (force logout all users)
-function clearAllSessions() {
-    if (!confirm('Bütün istifadəçiləri çıxış etdirmək istədiyinizə əminsiniz?')) {
-        return;
-    }
-    
-    Storage.set('userSessions', {});
-    showNotification('Bütün sessiyalar təmizləndi!', 'success');
-}
-
-
-// ==================== ACTIVITY TRACKING ====================
-
-function logActivity(user, action, status = 'success') {
-    const activities = Storage.get('activities') || [];
-    
-    const activity = {
-        id: Date.now(),
-        user: user,
-        action: action,
-        date: new Date().toLocaleDateString('az-AZ'),
-        timestamp: new Date().toISOString(),
-        status: status,
-        icon: getActivityIcon(action)
-    };
-    
-    activities.unshift(activity); // Add to beginning
-    
-    // Keep only last 100 activities
-    if (activities.length > 100) {
-        activities.length = 100;
-    }
-    
-    Storage.set('activities', activities);
-}
-
-function getActivityIcon(action) {
-    if (action.includes('qeydiyyat')) return 'user-plus';
-    if (action.includes('Video')) return 'video';
-    if (action.includes('Sınaq') || action.includes('Test')) return 'clipboard-list';
-    if (action.includes('Müəllim')) return 'chalkboard-teacher';
-    if (action.includes('Xəbər')) return 'newspaper';
-    if (action.includes('Balans')) return 'wallet';
-    if (action.includes('Giriş')) return 'sign-in-alt';
-    if (action.includes('Çıxış')) return 'sign-out-alt';
-    return 'info-circle';
-}
-
-// Update existing functions to log activities
-const originalSaveNewUser = saveNewUser;
-saveNewUser = function() {
-    const result = originalSaveNewUser.apply(this, arguments);
-    const name = document.getElementById('newUserName').value;
-    logActivity('Admin', `Yeni istifadəçi əlavə edildi: ${name}`);
-    return result;
-};
-
-const originalSaveNewTeacher = saveNewTeacher;
-saveNewTeacher = function() {
-    const result = originalSaveNewTeacher.apply(this, arguments);
-    const name = document.getElementById('newTeacherName').value;
-    logActivity('Admin', `Yeni müəllim əlavə edildi: ${name}`);
-    return result;
-};
-
-
-// ==================== DEVICE MANAGEMENT ====================
-
-async function loadDevicesSection() {
-    const container = document.getElementById('devicesContainer');
-    if (!container) return;
-    container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin"></i> Yüklənir...</div>';
-
-    // Load allUsers and userSessions from Upstash
-    let allUsers = Storage.get('allUsers') || [];
-    let sessions = Storage.get('userSessions') || {};
-
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const [cloudUsers, cloudSessions] = await Promise.all([
-                upstash.get('allUsers'),
-                upstash.get('userSessions')
-            ]);
-            if (cloudUsers)   { allUsers  = cloudUsers;   Storage.set('allUsers', cloudUsers); }
-            if (cloudSessions){ sessions  = cloudSessions; Storage.set('userSessions', cloudSessions); }
-        } catch (e) {}
-    }
-
-    const regularUsers = allUsers.filter(u => u.role !== 'admin');
-
-    if (regularUsers.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">İstifadəçi yoxdur</div>';
-        return;
-    }
-
-    const rows = regularUsers.map(user => {
-        const session = sessions[user.id];
-        const hasDevice = session && session.deviceId;
-        const loginTime = hasDevice && session.loginTime
-            ? new Date(session.loginTime).toLocaleString('az-AZ')
-            : '—';
-        const deviceType = hasDevice ? (session.deviceType || 'Naməlum') : '—';
-        const deviceIcon = hasDevice ? (session.deviceIcon || '💻') : '❌';
-        const browser = hasDevice ? (session.browser || '—') : '—';
-        const os = hasDevice ? (session.os || '—') : '—';
-
-        return `
-            <tr>
-                <td>
-                    <strong>${user.name}</strong><br>
-                    <small style="color:#6b7280;">${user.email}</small>
-                </td>
-                <td style="text-align:center;font-size:20px;">${deviceIcon}</td>
-                <td><strong>${deviceType}</strong></td>
-                <td>${browser}</td>
-                <td>${os}</td>
-                <td style="font-size:13px;">${loginTime}</td>
-                <td>
-                    ${hasDevice ? `
-                        <button class="btn btn-danger btn-sm" onclick="revokeDeviceAccess(${user.id})" title="Cihaz icazəsini ləğv et">
-                            <i class="fas fa-ban"></i> Ləğv Et
-                        </button>
-                    ` : `<span style="color:#9ca3af;font-size:12px;">Aktiv cihaz yoxdur</span>`}
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    const activeCount = regularUsers.filter(u => sessions[u.id]?.deviceId).length;
-
-    container.innerHTML = `
-        <div style="display:flex;gap:15px;margin-bottom:20px;">
-            <div style="background:#f0fdf4;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
-                <div style="font-size:24px;font-weight:800;color:#10b981;">${activeCount}</div>
-                <div style="font-size:12px;color:#6b7280;">Aktiv Cihaz</div>
-            </div>
-            <div style="background:#f1f5f9;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
-                <div style="font-size:24px;font-weight:800;color:#64748b;">${regularUsers.length - activeCount}</div>
-                <div style="font-size:12px;color:#6b7280;">Cihazsız</div>
-            </div>
-            <div style="background:#eef2ff;border-radius:10px;padding:14px 20px;flex:1;text-align:center;">
-                <div style="font-size:24px;font-weight:800;color:#667eea;">${regularUsers.length}</div>
-                <div style="font-size:12px;color:#6b7280;">Ümumi İstifadəçi</div>
-            </div>
-        </div>
-        <div style="background:white;border-radius:12px;box-shadow:var(--shadow);overflow:hidden;">
-            <table class="admin-table" style="width:100%;">
-                <thead>
-                    <tr>
-                        <th>İstifadəçi</th>
-                        <th style="text-align:center;">Tip</th>
-                        <th>Cihaz</th>
-                        <th>Brauzer</th>
-                        <th>OS</th>
-                        <th>Son Giriş</th>
-                        <th>Əməliyyat</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>
-    `;
-}
-
-// ==================== SUSPICIOUS ACTIVITIES ====================
-
-function loadSuspiciousActivities() {
-    const activities = Storage.get('suspiciousActivities') || [];
-    const tbody = document.getElementById('suspiciousActivitiesTable');
-    
-    if (!tbody) return;
-    
-    if (activities.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Şübhəli fəaliyyət yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = activities.map(activity => `
-        <tr style="background: ${activity.status === 'blocked' ? '#fee2e2' : '#fef3c7'};">
-            <td>${activity.id}</td>
-            <td>
-                <strong>${activity.userName}</strong><br>
-                <small style="color:#6b7280;">${activity.email}</small>
-            </td>
-            <td>${activity.activity}</td>
-            <td>
-                <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;
-                    background:${activity.status === 'blocked' ? '#dc2626' : '#f59e0b'};
-                    color:white;">
-                    ${activity.attempts} cəhd
-                </span>
-            </td>
-            <td>
-                <small style="font-family:monospace;">${activity.deviceId ? activity.deviceId.substring(0, 20) + '...' : '-'}</small>
-            </td>
-            <td>
-                ${activity.date}<br>
-                <small style="color:#6b7280;">${activity.time}</small>
-            </td>
-            <td>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                    ${activity.status === 'blocked' ? 
-                        `<button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${activity.userId})">
-                            <i class="fas fa-unlock"></i> Hesabı Aç
-                        </button>` :
-                        `<span style="color:#f59e0b;font-size:12px;"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq</span>`
-                    }
-                    <button class="btn btn-primary btn-sm" 
-                        onclick="authorizeDeviceFromActivity(${activity.userId}, '${activity.deviceId}')"
-                        title="Bu cihaza giriş icazəsi ver">
-                        <i class="fas fa-mobile-alt"></i> Cihaza İcazə Ver
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-async function authorizeDeviceFromActivity(userId, deviceId) {
-    showConfirm(
-        `Bu cihaza (${deviceId.substring(0, 20)}...) giriş icazəsi vermək istədiyinizə əminsiniz?\n\nİstifadəçi bu cihazdan serbestce giriş edə biləcək.`,
-        async () => {
-            // Update session with new authorized device
-            const sessions = Storage.get('userSessions') || {};
-            sessions[userId] = {
-                deviceId: deviceId,
-                loginTime: new Date().toISOString(),
-                lastActivity: new Date().toISOString(),
-                loginAttempts: 0,
-                authorizedBy: getCurrentUser()?.name || 'Admin',
-                authorizedAt: new Date().toISOString()
-            };
-            Storage.set('userSessions', sessions);
-
-            // Sync to Upstash
-            if (typeof upstash !== 'undefined' && upstash) {
-                try {
-                    await upstash.set(`user_session:${userId}`, sessions[userId], 86400 * 30);
-                    await upstash.set('userSessions', sessions, 86400 * 30);
-                } catch (e) {
-                    console.error('Upstash device auth sync error:', e);
-                }
-            }
-
-            // If account was frozen, unfreeze it too
-            const allUsers = Storage.get('allUsers') || [];
-            const user = allUsers.find(u => u.id === userId);
-            if (user && user.frozen) {
-                await unfreezeAccount(userId);
-            }
-
-            showNotification(`✅ Cihaza icazə verildi — istifadəçi artıq bu cihazdan giriş edə bilər`, 'success');
-            loadSuspiciousActivities();
-            loadUsers();
-        }
-    );
-}
-
-function unfreezeUserAccount(userId) {
-    showConfirm('Bu istifadəçinin hesabını açmaq istədiyinizə əminsiniz?', async () => {
-        const result = await unfreezeAccount(userId);
-        if (result) {
-            showNotification('Hesab uğurla açıldı', 'success');
-            loadSuspiciousActivities();
-            loadUsers();
-        } else {
-            showNotification('Xəta baş verdi', 'error');
-        }
-    });
-}
-
-function clearSuspiciousActivities() {
-    showConfirm('Bütün şübhəli fəaliyyət qeydlərini silmək istədiyinizə əminsiniz?', () => {
-        Storage.set('suspiciousActivities', []);
-        showNotification('Qeydlər təmizləndi', 'success');
-        loadSuspiciousActivities();
-    });
-}
-
-// ==================== FROZEN ACCOUNTS MANAGEMENT ====================
-
-function loadFrozenAccounts() {
-    const allUsers = Storage.get('allUsers') || [];
-    const frozenUsers = allUsers.filter(u => u.frozen);
-    const tbody = document.getElementById('frozenAccountsTable');
-    
-    if (!tbody) return;
-    
-    if (frozenUsers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">Dondurulmuş hesab yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = frozenUsers.map(user => `
-        <tr style="background:#fee2e2;">
-            <td>${user.id}</td>
-            <td>
-                <strong>${user.name}</strong><br>
-                <small style="color:#6b7280;">${user.email}</small>
-            </td>
-            <td>${user.frozenReason || 'Məlum deyil'}</td>
-            <td>
-                <span style="color:#dc2626;font-weight:600;">
-                    ${user.balanceBeforeFreeze || 0} AZN
-                </span>
-            </td>
-            <td>
-                ${new Date(user.frozenAt).toLocaleDateString('az-AZ')}<br>
-                <small style="color:#6b7280;">${new Date(user.frozenAt).toLocaleTimeString('az-AZ')}</small>
-            </td>
-            <td>
-                <button class="btn btn-success btn-sm" onclick="unfreezeUserAccount(${user.id})">
-                    <i class="fas fa-unlock"></i> Hesabı Aç
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="restoreBalance(${user.id})">
-                    <i class="fas fa-coins"></i> Balansı Bərpa Et
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function restoreBalance(userId) {
-    showConfirm('Bu istifadəçinin balansını bərpa etmək istəyirsiniz?', () => {
-        const allUsers = Storage.get('allUsers') || [];
-        const user = allUsers.find(u => u.id === userId);
-        
-        if (user && user.balanceBeforeFreeze) {
-            user.balance = user.balanceBeforeFreeze;
-            user.balanceRestored = true;
-            user.balanceRestoredAt = new Date().toISOString();
-            
-            Storage.set('allUsers', allUsers);
-            
-            showNotification(`${user.balanceBeforeFreeze} AZN bərpa edildi`, 'success');
-            loadFrozenAccounts();
-            loadUsers();
-        }
-    });
-}
-
-
-// ==================== PREMIUM MANAGEMENT ====================
-
-function loadPremiumRequests() {
-    const requests = Storage.get('premiumRequests') || [];
-    const tbody = document.getElementById('premiumRequestsTable');
-    
-    if (!tbody) return;
-    
-    if (requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Premium müraciət yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = requests.map(req => `
-        <tr style="background: ${req.status === 'approved' ? '#d1fae5' : req.status === 'rejected' ? '#fee2e2' : '#fff'};">
-            <td>${req.id}</td>
-            <td>
-                <strong>${req.userName}</strong><br>
-                <small style="color:#6b7280;">${req.userEmail}</small>
-            </td>
-            <td>
-                <strong style="color:#667eea;">${req.packageName || 'Premium'}</strong><br>
-                <small style="color:#6b7280;">${req.duration} gün - ${req.price} AZN</small>
-            </td>
-            <td>
-                ${req.date}<br>
-                <small style="color:#6b7280;">${req.time}</small>
-            </td>
-            <td>
-                <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;
-                    background:${req.status === 'approved' ? '#10b981' : req.status === 'rejected' ? '#ef4444' : '#f59e0b'};
-                    color:white;">
-                    ${req.status === 'approved' ? 'Təsdiqləndi' : req.status === 'rejected' ? 'Rədd edildi' : 'Gözləyir'}
-                </span>
-            </td>
-            <td>
-                ${req.status === 'pending' ? `
-                    <button class="btn btn-success btn-sm" onclick="approvePremiumRequest(${req.userId}, ${req.id}, ${req.duration})">
-                        <i class="fas fa-check"></i> Təsdiqlə
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
-                        <i class="fas fa-times"></i> Rədd Et
-                    </button>
-                ` : req.status === 'approved' ? `
-                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
-                        <i class="fas fa-ban"></i> Ləğv Et
-                    </button>
-                ` : '-'}
-            </td>
-        </tr>
-    `).join('');
-}
-
-function approvePremiumRequest(userId, requestId, duration) {
-    showConfirm(`Bu istifadəçiyə ${duration} günlük premium vermək istəyirsiniz?`, async () => {
-        const allUsers = Storage.get('allUsers') || [];
-        const user = allUsers.find(u => u.id === userId);
-        
-        if (user) {
-            user.premium = true;
-            user.premiumActivatedAt = new Date().toISOString();
-            
-            // Set expiry date based on package duration
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + duration);
-            user.premiumExpiresAt = expiryDate.toISOString();
-            
-            Storage.set('allUsers', allUsers);
-            
-            // Update request status
-            const requests = Storage.get('premiumRequests') || [];
-            const request = requests.find(r => r.id === requestId);
-            if (request) {
-                request.status = 'approved';
-                request.approvedAt = new Date().toISOString();
-                request.approvedBy = getCurrentUser()?.name || 'Admin';
-                Storage.set('premiumRequests', requests);
-            }
-            
-            // Log activity
-            logActivity(user.name, `Premium aktivləşdirildi (${duration} gün)`, 'success');
-            
-            showNotification(`${duration} günlük premium verildi`, 'success');
-            loadPremiumRequests();
-            loadPremiumUsers();
-            loadUsers();
-        }
-    });
-}
-
-function rejectPremium(requestId) {
-    showConfirm('Bu müraciəti rədd etmək istəyirsiniz?', () => {
-        const requests = Storage.get('premiumRequests') || [];
-        const request = requests.find(r => r.id === requestId);
-        
-        if (request) {
-            request.status = 'rejected';
-            request.rejectedAt = new Date().toISOString();
-            request.rejectedBy = getCurrentUser()?.name || 'Admin';
-            Storage.set('premiumRequests', requests);
-            
-            showNotification('Müraciət rədd edildi', 'info');
-            loadPremiumRequests();
-        }
-    });
-}
-
-function revokePremium(userId) {
-    showConfirm('Bu istifadəçinin premium-unu ləğv etmək istəyirsiniz?', async () => {
-        const allUsers = Storage.get('allUsers') || [];
-        const user = allUsers.find(u => u.id === userId);
-        
-        if (user) {
-            const plan = user.premiumPlan || 'premium1';
-            const price = user.premiumPrice || 0;
-            
-            user.premium = false;
-            user.premiumRevokedAt = new Date().toISOString();
-            Storage.set('allUsers', allUsers);
-            
-            // Record revenue reversal
-            if (price > 0) {
-                recordRevenue({
-                    type: 'premium_revoked',
-                    userId: user.id,
-                    userName: user.name,
-                    userEmail: user.email,
-                    plan: plan,
-                    planName: user.premiumPlan || '-',
-                    amount: -price,
-                    revokedBy: getCurrentUser()?.name || 'Admin',
-                    date: new Date().toLocaleDateString('az-AZ'),
-                    time: new Date().toLocaleTimeString('az-AZ'),
-                    timestamp: Date.now()
-                });
-            }
-            
-            // Sync to Upstash
-            if (typeof upstash !== 'undefined' && upstash) {
-                upstash.set('allUsers', allUsers, 86400 * 30).catch(() => {});
-            }
-            
-            logActivity(user.name, 'Premium ləğv edildi', 'warning');
-            showNotification('Premium ləğv edildi', 'warning');
-            loadPremiumRequestsEnhanced();
-            loadPremiumUsers();
-            loadRevenueStats();
-        }
-    });
-}
-
-async function loadPremiumUsers() {
-    // Fetch fresh from Upstash
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloud = await upstash.get('allUsers');
-            if (cloud) Storage.set('allUsers', cloud);
-        } catch (e) {}
-    }
-    const allUsers = Storage.get('allUsers') || [];
-    const premiumUsers = allUsers.filter(u => u.premium);
-    const tbody = document.getElementById('premiumUsersTable');
-    
-    if (!tbody) return;
-    
-    if (premiumUsers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;">Premium istifadəçi yoxdur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = premiumUsers.map(user => {
-        const expiryDate = user.premiumExpiresAt ? new Date(user.premiumExpiresAt) : null;
-        const daysLeft = expiryDate ? Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
-        const isExpired = expiryDate && expiryDate < new Date();
-        
-        return `
-            <tr style="background:${isExpired ? '#fee2e2' : '#d1fae5'};">
-                <td>${user.id}</td>
-                <td>
-                    <strong>${user.name}</strong><br>
-                    <small style="color:#6b7280;">${user.email}</small>
-                </td>
-                <td>
-                    ${new Date(user.premiumActivatedAt).toLocaleDateString('az-AZ')}
-                </td>
-                <td>
-                    ${expiryDate ? `
-                        ${expiryDate.toLocaleDateString('az-AZ')}<br>
-                        <small style="color:${isExpired ? '#dc2626' : daysLeft <= 7 ? '#f59e0b' : '#10b981'};">
-                            ${isExpired ? 'Bitib' : `${daysLeft} gün qalıb`}
-                        </small>
-                    ` : '<span style="color:#10b981;font-weight:600;">Ömürlük</span>'}
-                </td>
-                <td>
-                    <button class="btn btn-warning btn-sm" onclick="revokePremium(${user.id})">
-                        <i class="fas fa-ban"></i> Ləğv Et
-                    </button>
-                    ${expiryDate ? `
-                        <button class="btn btn-primary btn-sm" onclick="extendPremium(${user.id})">
-                            <i class="fas fa-plus"></i> Uzat
-                        </button>
-                    ` : ''}
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function extendPremium(userId) {
-    const days = prompt('Neçə gün uzatmaq istəyirsiniz?', '30');
-    if (!days || isNaN(days)) return;
-    
-    const allUsers = Storage.get('allUsers') || [];
-    const user = allUsers.find(u => u.id === userId);
-    
-    if (user && user.premiumExpiresAt) {
-        const currentExpiry = new Date(user.premiumExpiresAt);
-        const newExpiry = new Date(currentExpiry);
-        newExpiry.setDate(newExpiry.getDate() + parseInt(days));
-        
-        user.premiumExpiresAt = newExpiry.toISOString();
-        Storage.set('allUsers', allUsers);
-        
-        showNotification(`Premium ${days} gün uzadıldı`, 'success');
-        loadPremiumUsers();
-    }
-}
-
-
-// ==================== ACTIVE USERS (REAL-TIME) ====================
-
-let activeUsersInterval = null;
-
-async function loadActiveUsers() {
-    // Load from Upstash first for real-time data
-    let activeUsers = {};
-    
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloudData = await upstash.get('activeUsers');
-            if (cloudData) {
-                activeUsers = cloudData;
-                // Sync to local
-                localStorage.setItem('activeUsers', JSON.stringify(activeUsers));
-            } else {
-                activeUsers = Storage.get('activeUsers') || {};
-            }
-        } catch (e) {
-            activeUsers = Storage.get('activeUsers') || {};
-        }
-    } else {
-        activeUsers = Storage.get('activeUsers') || {};
-    }
-    
-    const now = Date.now();
-    const fiveMin = 5 * 60 * 1000;
-    
-    // Filter only truly active (last 5 min)
-    const active = Object.values(activeUsers).filter(u => now - u.lastSeen < fiveMin);
-    
-    const container = document.getElementById('activeUsersContainer');
-    const countEl = document.getElementById('activeUsersCount');
-    
-    if (countEl) countEl.textContent = active.length;
-    
-    // Update stats
-    const totalEl = document.getElementById('activeCountTotal');
-    const premiumEl = document.getElementById('activePremiumCount');
-    const freeEl = document.getElementById('activeFreeCount');
-    const updateEl = document.getElementById('activeLastUpdate');
-    
-    if (totalEl) totalEl.textContent = active.length;
-    if (premiumEl) premiumEl.textContent = active.filter(u => u.premium).length;
-    if (freeEl) freeEl.textContent = active.filter(u => !u.premium && u.role !== 'admin').length;
-    if (updateEl) updateEl.textContent = new Date().toLocaleTimeString('az-AZ');
-    
-    if (!container) return;
-    
-    if (active.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-users" style="font-size:40px;opacity:0.3;margin-bottom:10px;display:block;"></i><p>Aktiv istifadəçi yoxdur</p></div>';
-        return;
-    }
-    
-    const pageNames = {
-        'index.html': '🏠 Ana Səhifə', 'videos.html': '📹 Videolar',
-        'tests.html': '📝 Sınaqlar', 'dashboard.html': '📊 Kabinet',
-        'teachers.html': '👨‍🏫 Müəllimlər', 'news.html': '📰 Xəbərlər',
-        'faq.html': '❓ FAQ', 'admin.html': '⚙️ Admin Panel',
-        'login.html': '🔑 Giriş', 'register.html': '📋 Qeydiyyat'
-    };
-    
-    container.innerHTML = active.map(u => {
-        const lastSeenMin = Math.floor((now - u.lastSeen) / 60000);
-        const lastSeenText = lastSeenMin === 0 ? 'İndi aktiv' : `${lastSeenMin} dəq əvvəl`;
-        const pageName = pageNames[u.page] || u.page;
-        const initial = (u.userName || '?').charAt(0).toUpperCase();
-        const bgColor = u.role === 'admin' ? '#ef4444' : u.premium ? '#fbbf24' : '#667eea';
-        
-        return `
-            <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:#f9fafb;margin-bottom:8px;border-left:3px solid ${bgColor};">
-                <div style="width:40px;height:40px;border-radius:50%;background:${bgColor};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">
-                    ${initial}
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        ${u.userName || 'Naməlum'}
-                        ${u.role === 'admin' ? '<span style="background:#ef4444;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">Admin</span>' : ''}
-                        ${u.premium ? '<span style="background:#fbbf24;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">👑 Premium</span>' : ''}
-                    </div>
-                    <div style="font-size:12px;color:#6b7280;">${u.userEmail || ''}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:12px;color:#667eea;font-weight:500;">${pageName}</div>
-                    <div style="font-size:11px;color:#9ca3af;">${lastSeenText}</div>
-                </div>
-                <div style="width:8px;height:8px;border-radius:50%;background:${lastSeenMin === 0 ? '#10b981' : '#f59e0b'};flex-shrink:0;"></div>
-            </div>
-        `;
-    }).join('');
-}
-
-function startActiveUsersTracking() {
-    loadActiveUsers();
-    if (activeUsersInterval) clearInterval(activeUsersInterval);
-    activeUsersInterval = setInterval(loadActiveUsers, 30000); // Every 30 seconds
-}
-
-function stopActiveUsersTracking() {
-    if (activeUsersInterval) {
-        clearInterval(activeUsersInterval);
-        activeUsersInterval = null;
-    }
-}
-
-// ==================== ENHANCED PREMIUM MANAGEMENT ====================
-
-function loadPremiumRequestsEnhanced() {
-    // Load from Upstash for real-time sync
-    const loadData = async () => {
-        let requests = [];
-        
-        if (typeof upstash !== 'undefined' && upstash) {
-            try {
-                const cloudData = await upstash.get('premiumRequests');
-                if (cloudData) {
-                    requests = cloudData;
-                    localStorage.setItem('premiumRequests', JSON.stringify(requests));
-                } else {
-                    requests = Storage.get('premiumRequests') || [];
-                }
-            } catch (e) {
-                requests = Storage.get('premiumRequests') || [];
-            }
-        } else {
-            requests = Storage.get('premiumRequests') || [];
-        }
-        
-        const tbody = document.getElementById('premiumRequestsTable');
-        if (!tbody) return;
-        
-        const pending = requests.filter(r => r.status === 'pending');
-        const others = requests.filter(r => r.status !== 'pending');
-        const sorted = [...pending, ...others];
-        
-        // Update badge
-        const badge = document.getElementById('premiumPendingBadge');
-        if (badge) {
-            badge.textContent = pending.length;
-            badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
-        }
-        
-        if (sorted.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-inbox" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>Premium müraciət yoxdur</td></tr>';
+        const { data: tests } = await API.tests.list({ limit: 100 });
+        if (!tests.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">Sınaq yoxdur</td></tr>';
             return;
         }
-        
-        const planLabels = {
-            premium1: { label: '⭐ Premium 1', color: '#667eea', duration: '1 ay', price: '15₼' },
-            premium6: { label: '💎 Premium 6', color: '#8b5cf6', duration: '6 ay', price: '75₼' },
-            premium12: { label: '🏆 Premium 12', color: '#f59e0b', duration: '1 il', price: '120₼' }
-        };
-        
-        tbody.innerHTML = sorted.map(req => {
-            const plan = planLabels[req.plan] || { label: 'Naməlum', color: '#6b7280', duration: '-', price: '-' };
-            const isPending = req.status === 'pending';
-            
-            return `
-            <tr style="background:${req.status === 'approved' ? '#f0fdf4' : req.status === 'rejected' ? '#fef2f2' : '#fffbeb'};">
+        tbody.innerHTML = tests.map(t => `
+            <tr>
+                <td>${t.emoji||'📝'}</td>
+                <td><strong>${escapeHtml(t.title)}</strong></td>
+                <td>${escapeHtml(t.category||'Ümumi')}</td>
+                <td>${t.questionCount||0}</td>
+                <td>${t.duration} dəq</td>
+                <td>${t.isPremium?'<span class="badge badge-warning">Premium</span>':'<span class="badge badge-success">Pulsuz</span>'}</td>
                 <td>
-                    <div style="font-weight:600;">${req.userName || ''}</div>
-                    <div style="font-size:12px;color:#6b7280;">${req.userEmail || ''}</div>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-edit"   onclick="editTestRedirect('${t.id}')" title="Redaktə"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteTest('${t.id}')" title="Sil"><i class="fas fa-trash"></i></button>
+                    </div>
                 </td>
-                <td>
-                    <span style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${plan.color}22;color:${plan.color};">
-                        ${plan.label}
-                    </span>
-                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">${plan.duration} · ${plan.price}</div>
-                </td>
-                <td>
-                    <div style="font-size:13px;">${req.date || ''}</div>
-                    <div style="font-size:11px;color:#9ca3af;">${req.time || ''}</div>
-                </td>
-                <td>
-                    <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
-                        background:${req.status === 'approved' ? '#dcfce7' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7'};
-                        color:${req.status === 'approved' ? '#16a34a' : req.status === 'rejected' ? '#dc2626' : '#d97706'};">
-                        ${req.status === 'approved' ? '✅ Təsdiqləndi' : req.status === 'rejected' ? '❌ Rədd edildi' : '⏳ Gözləyir'}
-                    </span>
-                </td>
-                <td>
-                    ${isPending ? `
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            <button class="btn btn-success btn-sm" onclick="approvePremiumWithDuration(${req.userId}, ${req.id}, '${req.plan}')">
-                                <i class="fas fa-check"></i> Təsdiqlə
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="rejectPremium(${req.id})">
-                                <i class="fas fa-times"></i> Rədd Et
-                            </button>
-                        </div>
-                    ` : req.status === 'approved' ? `
-                        <button class="btn btn-warning btn-sm" onclick="revokePremium(${req.userId})">
-                            <i class="fas fa-ban"></i> Ləğv Et
-                        </button>
-                    ` : `<span style="color:#9ca3af;font-size:12px;">-</span>`}
-                </td>
-            </tr>`;
-        }).join('');
-    };
-    
-    loadData();
+            </tr>`).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+    }
 }
 
-function approvePremiumWithDuration(userId, requestId, planId) {
-    const planDurations = { premium1: 30, premium6: 180, premium12: 365 };
-    const planPrices = { premium1: 15, premium6: 75, premium12: 120 };
-    const duration = planDurations[planId] || 30;
-    const price = planPrices[planId] || 15;
-    
-    const planNames = { premium1: '1 Aylıq (30 gün)', premium6: '6 Aylıq (180 gün)', premium12: '1 İllik (365 gün)' };
-    const planName = planNames[planId] || `${duration} gün`;
-    
-    showConfirm(`Bu istifadəçiyə <strong>${planName}</strong> premium vermək istəyirsiniz?`, async () => {
-        const allUsers = Storage.get('allUsers') || [];
-        const user = allUsers.find(u => u.id === userId);
-        
-        if (user) {
-            user.premium = true;
-            user.premiumActivatedAt = new Date().toISOString();
-            user.premiumPlan = planId;
-            user.premiumPrice = price;
-            
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + duration);
-            user.premiumExpiresAt = expiryDate.toISOString();
-            
-            Storage.set('allUsers', allUsers);
-            
-            // Update request
-            const requests = Storage.get('premiumRequests') || [];
-            const req = requests.find(r => r.id === requestId);
-            if (req) {
-                req.status = 'approved';
-                req.approvedAt = new Date().toISOString();
-                req.approvedBy = getCurrentUser()?.name || 'Admin';
-                req.duration = duration;
-                Storage.set('premiumRequests', requests);
-            }
-            
-            // Record revenue
-            recordRevenue({
-                type: 'premium_activated',
-                userId: user.id,
-                userName: user.name,
-                userEmail: user.email,
-                plan: planId,
-                planName: planName,
-                amount: price,
-                duration: duration,
-                approvedBy: getCurrentUser()?.name || 'Admin',
-                date: new Date().toLocaleDateString('az-AZ'),
-                time: new Date().toLocaleTimeString('az-AZ'),
-                timestamp: Date.now()
-            });
-            
-            // Sync to Upstash
-            if (typeof upstash !== 'undefined' && upstash) {
-                try {
-                    await upstash.set('allUsers', allUsers, 86400 * 30);
-                    await upstash.set('premiumRequests', requests, 86400 * 30);
-                } catch(e) { console.error('Upstash sync error:', e); }
-            }
-            
-            logActivity(user.name, `Premium aktivləşdirildi (${planName}) - ${price}₼`, 'success');
-            showNotification(`✅ ${user.name} üçün premium aktivləşdirildi (${planName}) - +${price}₼`, 'success');
-            loadPremiumRequestsEnhanced();
-            loadPremiumUsers();
-            loadRevenueStats();
-        }
+function showAddTestModal() { window.location.href = 'test-editor.html'; }
+function editTestRedirect(id) { window.location.href = `test-editor.html?id=${id}`; }
+
+function deleteTest(id) {
+    showConfirm('Bu sınağı silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.tests.remove(id);
+            showNotification('Sınaq silindi!', 'success');
+            loadTests();
+            loadDashboardStats();
+        } catch(e) { showNotification(e.message, 'error'); }
     });
 }
 
-
-// ==================== POINTS LEADERBOARD ====================
-
-async function loadPointsLeaderboard() {
-    const container = document.getElementById('leaderboardTable');
-    if (!container) return;
-
-    container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Yüklənir...</td></tr>';
-
-    // Always load fresh from Upstash — bypass session cache
-    let allPoints = {};
-    let allUsers  = [];
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const [cloudPts, cloudUsers] = await Promise.all([
-                upstash.get('userPoints'),
-                upstash.get('allUsers')
-            ]);
-            if (cloudPts)   { allPoints = cloudPts;  localStorage.setItem('userPoints', JSON.stringify(cloudPts)); }
-            if (cloudUsers) { allUsers  = cloudUsers; localStorage.setItem('allUsers',   JSON.stringify(cloudUsers)); }
-        } catch (e) { console.warn('Upstash leaderboard load:', e); }
-    }
-    // Fallback to localStorage
-    if (!Object.keys(allPoints).length) {
-        try { allPoints = JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch {}
-    }
-    if (!allUsers.length) {
-        try { allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]'); } catch {}
-    }
-
-    // Build: all non-admin users + their points data
-    const entries = allUsers
-        .filter(u => u.role !== 'admin')
-        .map(u => {
-            // Try both number and string key
-            const p = allPoints[u.id] || allPoints[String(u.id)] || {};
-            return {
-                userId:       u.id,
-                userName:     u.name || '—',
-                userEmail:    u.email || '—',
-                userType:     u.userType || 'student',
-                premium:      u.premium || false,
-                total:        p.total || 0,
-                watchedCount: Array.isArray(p.watchedVideos)  ? p.watchedVideos.length  : 0,
-                testCount:    Array.isArray(p.completedTests) ? p.completedTests.length : 0,
-            };
-        })
-        .sort((a, b) => b.total - a.total);
-
-    if (!entries.length) {
-        container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">İstifadəçi yoxdur</td></tr>';
-        return;
-    }
-
-    const MEDAL = { 0:'🥇', 1:'🥈', 2:'🥉' };
-    const withPts    = entries.filter(e => e.total > 0);
-    const withoutPts = entries.filter(e => e.total === 0);
-
-    const rows = [...withPts, ...withoutPts].map((e) => {
-        const rankInPts = withPts.indexOf(e);
-        const rankCell  = rankInPts >= 0
-            ? (MEDAL[rankInPts] || `<strong style="color:#374151;">#${rankInPts + 1}</strong>`)
-            : '<span style="color:#d1d5db;">—</span>';
-        const typeIcon  = e.userType === 'teacher' ? '👨‍🏫' : '👨‍🎓';
-        const rowBg     = rankInPts === 0 ? '#fffbeb' : rankInPts === 1 ? '#f8fafc' : rankInPts === 2 ? '#fdf4ff' : 'white';
-        return `
-        <tr style="background:${rowBg};">
-            <td style="font-size:18px;text-align:center;padding:12px 8px;">${rankCell}</td>
-            <td style="padding:12px 8px;">
-                <strong>${typeIcon} ${e.userName}</strong><br>
-                <small style="color:#6b7280;">${e.userEmail}</small>
-            </td>
-            <td style="text-align:center;padding:12px 8px;">
-                ${e.premium
-                    ? '<span style="background:#fbbf24;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">👑 Premium</span>'
-                    : '<span style="color:#9ca3af;font-size:12px;">Pulsuz</span>'}
-            </td>
-            <td style="text-align:center;padding:12px 8px;">
-                <span style="font-size:14px;font-weight:600;color:#374151;">${e.watchedCount}</span>
-                <span style="font-size:11px;color:#9ca3af;"> video</span>
-            </td>
-            <td style="text-align:center;padding:12px 8px;">
-                <span style="font-size:14px;font-weight:600;color:#374151;">${e.testCount}</span>
-                <span style="font-size:11px;color:#9ca3af;"> sınaq</span>
-            </td>
-            <td style="padding:12px 8px;">
-                <span style="font-size:20px;font-weight:900;color:${e.total > 0 ? '#667eea' : '#d1d5db'};">${e.total}</span>
-                <span style="color:#9ca3af;font-size:12px;"> xal</span>
-            </td>
-        </tr>`;
-    }).join('');
-
-    container.innerHTML = rows;
-}
-
-
-// ==================== REVENUE SYSTEM ====================
-
-function recordRevenue(entry) {
-    const revenue = Storage.get('revenue') || { total: 0, entries: [] };
-    
-    revenue.total = (revenue.total || 0) + entry.amount;
-    revenue.entries = revenue.entries || [];
-    revenue.entries.unshift(entry);
-    
-    // Keep last 200 entries
-    if (revenue.entries.length > 200) revenue.entries.length = 200;
-    
-    Storage.set('revenue', revenue);
-    
-    // Sync to Upstash immediately
-    if (typeof upstash !== 'undefined' && upstash) {
-        upstash.set('revenue', revenue, 86400 * 365).catch(() => {});
-    }
-    
-    console.log(`💰 Gəlir qeydə alındı: ${entry.amount > 0 ? '+' : ''}${entry.amount}₼ (${entry.planName})`);
-}
-
-async function loadRevenueStats() {
-    // Load from Upstash
-    let revenue = { total: 0, entries: [] };
-    
-    if (typeof upstash !== 'undefined' && upstash) {
-        try {
-            const cloud = await upstash.get('revenue');
-            if (cloud) {
-                revenue = cloud;
-                localStorage.setItem('revenue', JSON.stringify(revenue));
-            } else {
-                revenue = Storage.get('revenue') || { total: 0, entries: [] };
-            }
-        } catch (e) {
-            revenue = Storage.get('revenue') || { total: 0, entries: [] };
-        }
-    } else {
-        revenue = Storage.get('revenue') || { total: 0, entries: [] };
-    }
-    
-    const allUsers = Storage.get('allUsers') || [];
-    const premiumUsers = allUsers.filter(u => u.premium);
-    
-    // Calculate stats
-    const entries = revenue.entries || [];
-    const activations = entries.filter(e => e.type === 'premium_activated');
-    const revocations = entries.filter(e => e.type === 'premium_revoked');
-    
-    // Monthly revenue
-    const now = new Date();
-    const thisMonth = entries.filter(e => {
-        const d = new Date(e.timestamp);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    const monthlyRevenue = thisMonth.reduce((sum, e) => sum + (e.amount || 0), 0);
-    
-    // Plan breakdown
-    const planStats = {
-        premium1: activations.filter(e => e.plan === 'premium1').length,
-        premium6: activations.filter(e => e.plan === 'premium6').length,
-        premium12: activations.filter(e => e.plan === 'premium12').length
-    };
-    
-    // Update UI
-    const totalEl = document.getElementById('revenueTotalAmount');
-    const monthEl = document.getElementById('revenueMonthAmount');
-    const premiumCountEl = document.getElementById('revenuePremiumCount');
-    const activationsEl = document.getElementById('revenueActivations');
-    const revocationsEl = document.getElementById('revenueRevocations');
-    
-    if (totalEl) totalEl.textContent = (revenue.total || 0).toFixed(2) + ' ₼';
-    if (monthEl) monthEl.textContent = monthlyRevenue.toFixed(2) + ' ₼';
-    if (premiumCountEl) premiumCountEl.textContent = premiumUsers.length;
-    if (activationsEl) activationsEl.textContent = activations.length;
-    if (revocationsEl) revocationsEl.textContent = revocations.length;
-    
-    // Plan breakdown
-    const p1El = document.getElementById('plan1Count');
-    const p6El = document.getElementById('plan6Count');
-    const p12El = document.getElementById('plan12Count');
-    if (p1El) p1El.textContent = planStats.premium1;
-    if (p6El) p6El.textContent = planStats.premium6;
-    if (p12El) p12El.textContent = planStats.premium12;
-    
-    // Load entries table
-    const tbody = document.getElementById('revenueEntriesTable');
+// ════════════════════════════════════════════════════════
+//  News
+// ════════════════════════════════════════════════════════
+async function loadNews() {
+    const tbody = document.getElementById('newsTable');
     if (!tbody) return;
-    
-    if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-coins" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>Gəlir qeydi yoxdur</td></tr>';
-        return;
-    }
-    
-    const planLabels = {
-        premium1: '⭐ Premium 1',
-        premium6: '💎 Premium 6',
-        premium12: '🏆 Premium 12'
-    };
-    
-    tbody.innerHTML = entries.slice(0, 50).map(e => `
-        <tr style="background:${e.amount > 0 ? '#f0fdf4' : '#fef2f2'};">
-            <td>
-                <span style="font-size:18px;font-weight:800;color:${e.amount > 0 ? '#16a34a' : '#dc2626'};">
-                    ${e.amount > 0 ? '+' : ''}${e.amount} ₼
-                </span>
-            </td>
-            <td>
-                <div style="font-weight:600;">${e.userName || ''}</div>
-                <div style="font-size:12px;color:#6b7280;">${e.userEmail || ''}</div>
-            </td>
-            <td>
-                <span style="padding:4px 10px;border-radius:10px;font-size:12px;font-weight:600;
-                    background:${e.amount > 0 ? '#dcfce7' : '#fee2e2'};
-                    color:${e.amount > 0 ? '#16a34a' : '#dc2626'};">
-                    ${e.type === 'premium_activated' ? '✅ Aktivləşdirildi' : '❌ Ləğv edildi'}
-                </span>
-            </td>
-            <td>
-                <span style="font-size:13px;">${planLabels[e.plan] || e.planName || '-'}</span>
-            </td>
-            <td>
-                <div style="font-size:13px;">${e.date || ''}</div>
-                <div style="font-size:11px;color:#9ca3af;">${e.time || ''}</div>
-            </td>
-            <td style="font-size:12px;color:#6b7280;">
-                ${e.approvedBy || e.revokedBy || 'Admin'}
-            </td>
-        </tr>
-    `).join('');
-}
-
-
-// ══════════════════════════════════════════════════════════════════════════════
-// MÜƏLLIM SINAQ MÜRACİƏTLƏRİ
-// ══════════════════════════════════════════════════════════════════════════════
-
-function loadTeacherTestsSection() {
-    _loadAccessRequests();
-    _loadSubmittedTests();
-    _updateTeacherTestsBadge();
-}
-
-// Badge — neçə pending müraciət var
-function _updateTeacherTestsBadge() {
-    const reqs     = Storage.get('teacherTestRequests') || [];
-    const tests    = Storage.get('teacherTests')        || [];
-    const pending  = reqs.filter(r => r.status === 'pending').length
-                   + tests.filter(t => t.status === 'pending').length;
-    const badge = document.getElementById('teacherTestsBadge');
-    if (!badge) return;
-    if (pending > 0) {
-        badge.textContent    = pending;
-        badge.style.display  = 'inline-flex';
-    } else {
-        badge.style.display  = 'none';
-    }
-}
-
-// ── İcazə müraciətləri ────────────────────────────────────────────────────────
-function _loadAccessRequests() {
-    const container = document.getElementById('teacherAccessRequestsList');
-    if (!container) return;
-    const reqs = Storage.get('teacherTestRequests') || [];
-    if (!reqs.length) {
-        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:30px;">Heç bir müraciət yoxdur</p>';
-        return;
-    }
-    container.innerHTML = reqs.map(r => {
-        const d   = new Date(r.requestedAt);
-        const dt  = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
-        const cls = r.status === 'approved' ? 'background:#ecfdf5;color:#065f46'
-                  : r.status === 'rejected' ? 'background:#fef2f2;color:#991b1b'
-                  : 'background:#fef3c7;color:#92400e';
-        const lbl = r.status === 'approved' ? '✅ Təsdiqləndi'
-                  : r.status === 'rejected' ? '❌ Rədd Edildi'
-                  : '⏳ Gözləyir';
-        return `
-        <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;">
-            <div style="width:42px;height:42px;border-radius:50%;background:#667eea;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:18px;flex-shrink:0;">
-                ${(r.userName||'?')[0].toUpperCase()}
-            </div>
-            <div style="flex:1;">
-                <div style="font-weight:700;font-size:14px;">👨‍🏫 ${r.userName}</div>
-                <div style="font-size:12px;color:#6b7280;">${r.userEmail} · ${dt}</div>
-            </div>
-            <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;${cls};">${lbl}</span>
-            ${r.status === 'pending' ? `
-            <div style="display:flex;gap:8px;">
-                <button onclick="grantTestAccess(${r.id},'${r.userId}')" class="btn btn-sm btn-success">
-                    <i class="fas fa-check"></i> İcazə Ver
-                </button>
-                <button onclick="rejectTestAccess(${r.id},'${r.userId}')" class="btn btn-sm btn-danger">
-                    <i class="fas fa-times"></i> Rədd Et
-                </button>
-            </div>` : ''}
-        </div>`;
-    }).join('');
-}
-
-function grantTestAccess(reqId, userId) {
-    // Update request status
-    const reqs = Storage.get('teacherTestRequests') || [];
-    const ri = reqs.findIndex(r => r.id === reqId);
-    if (ri !== -1) { reqs[ri].status = 'approved'; reqs[ri].approvedAt = new Date().toISOString(); }
-    Storage.set('teacherTestRequests', reqs);
-
-    // Update user canAddTests flag
-    const allUsers = Storage.get('allUsers') || [];
-    const ui = allUsers.findIndex(u => String(u.id) === String(userId));
-    if (ui !== -1) {
-        allUsers[ui].canAddTests = true;
-        allUsers[ui].canAddTestsAt = new Date().toISOString();
-    }
-    Storage.set('allUsers', allUsers);
-
-    if (typeof showNotification === 'function') showNotification('✅ İcazə verildi!', 'success');
-    loadTeacherTestsSection();
-}
-
-function rejectTestAccess(reqId, userId) {
-    const reqs = Storage.get('teacherTestRequests') || [];
-    const ri = reqs.findIndex(r => r.id === reqId);
-    if (ri !== -1) { reqs[ri].status = 'rejected'; reqs[ri].rejectedAt = new Date().toISOString(); }
-    Storage.set('teacherTestRequests', reqs);
-
-    const allUsers = Storage.get('allUsers') || [];
-    const ui = allUsers.findIndex(u => String(u.id) === String(userId));
-    if (ui !== -1) { allUsers[ui].canAddTests = false; allUsers[ui].testAccessRequested = false; }
-    Storage.set('allUsers', allUsers);
-
-    if (typeof showNotification === 'function') showNotification('Müraciət rədd edildi', 'warning');
-    loadTeacherTestsSection();
-}
-
-// ── Göndərilmiş sınaqlar ──────────────────────────────────────────────────────
-function _loadSubmittedTests() {
-    const container = document.getElementById('teacherSubmittedTestsList');
-    if (!container) return;
-    const tests = Storage.get('teacherTests') || [];
-    if (!tests.length) {
-        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:30px;">Heç bir sınaq göndərilməyib</p>';
-        return;
-    }
-    container.innerHTML = tests.map(t => {
-        const d   = new Date(t.submittedAt);
-        const dt  = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
-        const cls = t.status === 'approved' ? 'background:#ecfdf5;color:#065f46'
-                  : t.status === 'rejected' ? 'background:#fef2f2;color:#991b1b'
-                  : 'background:#fef3c7;color:#92400e';
-        const lbl = t.status === 'approved' ? '✅ Təsdiqləndi'
-                  : t.status === 'rejected' ? '❌ Rədd Edildi'
-                  : '⏳ Gözləyir';
-        return `
-        <div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:12px;">
-            <div style="display:flex;align-items:flex-start;gap:14px;">
-                <div style="font-size:36px;width:50px;text-align:center;">${t.emoji || '📝'}</div>
-                <div style="flex:1;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <div style="font-weight:700;font-size:15px;">${t.title}</div>
-                        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;${cls};">${lbl}</span>
+    showTableLoading(tbody, 6);
+    try {
+        const { data: news } = await API.news.list({ limit: 100 });
+        if (!news.length) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">Xəbər yoxdur. <a href="news-add.html">İlk xəbəri əlavə edin</a></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = news.map(n => `
+            <tr>
+                <td><strong>${n.emoji||'📰'} ${escapeHtml(n.title)}</strong></td>
+                <td>${escapeHtml(n.author||'Admin')}</td>
+                <td>${formatDate(n.createdAt)}</td>
+                <td>${n.views||0}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-view"   onclick="viewNews('${n.id}')"   title="Bax"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon btn-edit"   onclick="editNewsInline('${n.id}')" title="Redaktə"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteNews('${n.id}')" title="Sil"><i class="fas fa-trash"></i></button>
                     </div>
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
-                        👨‍🏫 ${t.teacherName} · ${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dt}
-                        ${t.isPremium ? ' · <span style="color:#f59e0b;">👑 Premium</span>' : ' · <span style="color:#10b981;">✅ Pulsuz</span>'}
-                    </div>
-                    ${t.description ? `<div style="font-size:13px;color:#374151;margin-bottom:10px;">${t.description}</div>` : ''}
-                    ${t.adminNote ? `<div style="font-size:12px;color:#ef4444;margin-bottom:8px;"><i class="fas fa-comment"></i> ${t.adminNote}</div>` : ''}
-                    ${t.status === 'pending' ? `
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                        <button onclick="previewTeacherTest(${t.id})" class="btn btn-sm btn-secondary">
-                            <i class="fas fa-eye"></i> Bax
-                        </button>
-                        <button onclick="approveTeacherTest(${t.id})" class="btn btn-sm btn-success">
-                            <i class="fas fa-check"></i> Təsdiqlə
-                        </button>
-                        <button onclick="rejectTeacherTest(${t.id})" class="btn btn-sm btn-danger">
-                            <i class="fas fa-times"></i> Rədd Et
-                        </button>
-                    </div>` : t.status === 'approved' ? `
-                    <div style="font-size:12px;color:#10b981;"><i class="fas fa-check-circle"></i> Sayta əlavə edilib</div>
-                    ` : ''}
-                </div>
-            </div>
-        </div>`;
-    }).join('');
+                </td>
+            </tr>`).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+    }
 }
 
-function previewTeacherTest(testId) {
-    const tests = Storage.get('teacherTests') || [];
-    const t = tests.find(x => x.id === testId);
-    if (!t) return;
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
-    overlay.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:28px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                <h3 style="margin:0;font-size:18px;">${t.emoji} ${t.title}</h3>
-                <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;">✕</button>
-            </div>
-            <div style="font-size:13px;color:#6b7280;margin-bottom:18px;">
-                👨‍🏫 ${t.teacherName} · ${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty}
-            </div>
-            ${t.questions.map((q, i) => `
-                <div style="margin-bottom:16px;padding:14px;background:#f8fafc;border-radius:10px;">
-                    <div style="font-weight:700;margin-bottom:10px;">${i+1}. ${q.question}</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                        ${q.options.map((opt, oi) => `
-                            <div style="padding:6px 10px;border-radius:6px;font-size:13px;
-                                background:${oi === q.correctAnswer ? '#ecfdf5' : '#fff'};
-                                border:1px solid ${oi === q.correctAnswer ? '#10b981' : '#e5e7eb'};
-                                color:${oi === q.correctAnswer ? '#065f46' : '#374151'};">
-                                ${String.fromCharCode(65+oi)}. ${opt}
-                                ${oi === q.correctAnswer ? ' ✓' : ''}
-                            </div>`).join('')}
-                    </div>
-                </div>`).join('')}
-            <div style="display:flex;gap:10px;margin-top:18px;">
-                <button onclick="approveTeacherTest(${t.id});this.closest('[style*=fixed]').remove();" class="btn btn-success" style="flex:1;">
-                    <i class="fas fa-check"></i> Təsdiqlə
-                </button>
-                <button onclick="rejectTeacherTest(${t.id});this.closest('[style*=fixed]').remove();" class="btn btn-danger" style="flex:1;">
-                    <i class="fas fa-times"></i> Rədd Et
-                </button>
-            </div>
-        </div>`;
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-    document.body.appendChild(overlay);
+async function viewNews(id) {
+    try {
+        const n = await API.news.get(id);
+        showNotification(`${n.emoji} ${n.title} · ${n.views||0} baxış`, 'info', 5000);
+    } catch(e) { showNotification(e.message, 'error'); }
 }
 
-function approveTeacherTest(testId) {
-    const teacherTests = Storage.get('teacherTests') || [];
-    const idx = teacherTests.findIndex(t => t.id === testId);
-    if (idx === -1) return;
+async function editNewsInline(id) {
+    try {
+        const n = await API.news.get(id);
+        const newTitle = prompt('Başlıq:', n.title);
+        if (!newTitle) return;
+        await API.news.update(id, { title: newTitle.trim() });
+        showNotification('Xəbər yeniləndi!', 'success');
+        loadNews();
+    } catch(e) { showNotification(e.message, 'error'); }
+}
 
-    teacherTests[idx].status     = 'approved';
-    teacherTests[idx].approvedAt = new Date().toISOString();
-    teacherTests[idx].approvedBy = getCurrentUser()?.name || 'Admin';
-    Storage.set('teacherTests', teacherTests);
-
-    // Publish to main tests list
-    const t = teacherTests[idx];
-    const tests = Storage.get('tests') || [];
-    tests.unshift({
-        id:          Date.now(),
-        title:       t.title,
-        emoji:       t.emoji || '📝',
-        difficulty:  t.difficulty,
-        duration:    t.duration,
-        isPremium:   t.isPremium,
-        description: t.description,
-        questions:   t.questions,
-        teacherId:   t.teacherId,
-        teacherName: t.teacherName,
-        addedAt:     new Date().toISOString(),
-        source:      'teacher'
+function deleteNews(id) {
+    showConfirm('Bu xəbəri silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.news.remove(id);
+            showNotification('Xəbər silindi!', 'success');
+            loadNews();
+            loadDashboardStats();
+        } catch(e) { showNotification(e.message, 'error'); }
     });
-    Storage.set('tests', tests);
-
-    if (typeof showNotification === 'function') showNotification('✅ Sınaq təsdiqləndi və sayta əlavə edildi!', 'success');
-    loadTeacherTestsSection();
 }
 
-function rejectTeacherTest(testId) {
-    const note = prompt('Rədd səbəbini yazın (istəyə bağlı):') || '';
-    const teacherTests = Storage.get('teacherTests') || [];
-    const idx = teacherTests.findIndex(t => t.id === testId);
-    if (idx === -1) return;
-    teacherTests[idx].status     = 'rejected';
-    teacherTests[idx].rejectedAt = new Date().toISOString();
-    teacherTests[idx].rejectedBy = getCurrentUser()?.name || 'Admin';
-    if (note) teacherTests[idx].adminNote = note;
-    Storage.set('teacherTests', teacherTests);
-
-    if (typeof showNotification === 'function') showNotification('Sınaq rədd edildi', 'warning');
-    loadTeacherTestsSection();
+// ════════════════════════════════════════════════════════
+//  Teachers (read from /api/users with userType=teacher)
+// ════════════════════════════════════════════════════════
+async function loadTeachers() {
+    const tbody = document.getElementById('teachersTable');
+    if (!tbody) return;
+    showTableLoading(tbody, 6);
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const teachers = users.filter(u => u.userType === 'teacher');
+        if (!teachers.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">Müəllim yoxdur</td></tr>';
+            return;
+        }
+        tbody.innerHTML = teachers.map(t => `
+            <tr>
+                <td><strong>${escapeHtml(t.name)}</strong></td>
+                <td>${escapeHtml(t.email)}</td>
+                <td>${t.canAddTests?'<span class="badge badge-success">İcazəli</span>':'<span class="badge badge-warning">İcazəsiz</span>'}</td>
+                <td>${formatDate(t.registeredAt)}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-edit" onclick="toggleTeacherAccess('${t.id}',${!t.canAddTests})" title="${t.canAddTests?'İcazəni Geri Al':'İcazə Ver'}">
+                            <i class="fas fa-${t.canAddTests?'ban':'check'}"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="deleteUser('${t.id}')" title="Sil"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+    }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  PDF MATERIALLAR — Admin Functions
-// ════════════════════════════════════════════════════════════════════════════
+async function toggleTeacherAccess(id, grant) {
+    try {
+        await API.users.update(id, { canAddTests: grant });
+        showNotification(grant ? 'Test əlavəetmə icazəsi verildi!' : 'İcazə geri alındı!', 'success');
+        loadTeachers();
+    } catch(e) { showNotification(e.message, 'error'); }
+}
 
-let _pdfFileData = null; // { name, size, base64, mimeType }
+// ════════════════════════════════════════════════════════
+//  Payments (stored via /api/users balance changes)
+// ════════════════════════════════════════════════════════
+async function loadPayments() {
+    const tbody = document.getElementById('paymentsTable');
+    if (!tbody) return;
+    showTableLoading(tbody, 6);
+    try {
+        // Payments are stored as a Redis key 'payments' (written by payment.html)
+        // We fetch via stats for now; for full history use a dedicated key
+        const { data: users } = await API.users.list({ limit: 200 });
+        const paying = users.filter(u => u.balance > 0);
+        if (!paying.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">Ödəniş yoxdur</td></tr>';
+            return;
+        }
+        tbody.innerHTML = paying.map(u => `
+            <tr>
+                <td><strong>${escapeHtml(u.name)}</strong></td>
+                <td>${escapeHtml(u.email)}</td>
+                <td style="font-weight:700;">${u.balance} ₼</td>
+                <td>${u.premium?'<span class="badge badge-warning">Premium</span>':'Pulsuz'}</td>
+                <td>${formatDate(u.registeredAt)}</td>
+                <td>
+                    <button class="btn-icon btn-edit" onclick="editUserModal('${u.id}')" title="Balansı dəyiş"><i class="fas fa-edit"></i></button>
+                </td>
+            </tr>`).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+    }
+}
 
-// ── Toggle upload form ───────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  Premium Requests
+// ════════════════════════════════════════════════════════
+async function loadPremiumRequests() {
+    const container = document.getElementById('premiumRequestsList');
+    if (!container) return;
+    showSpinner(container);
+    try {
+        const reqs = await API.premium.list();
+        const pending = reqs.filter(r => r.status === 'pending');
+        const badge = document.getElementById('premiumPendingBadge');
+        if (badge) { badge.textContent = pending.length; badge.style.display = pending.length ? 'inline-flex' : 'none'; }
+
+        if (!reqs.length) { showEmpty(container, 'Premium müraciət yoxdur'); return; }
+        container.innerHTML = reqs.map(r => `
+            <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
+                <div style="flex:1;">
+                    <strong>${escapeHtml(r.userName)}</strong> — ${escapeHtml(r.packageName)}
+                    <br><span style="font-size:12px;color:#6b7280;">${r.userEmail} · ${r.price} ₼ · ${formatDate(r.requestedAt)}</span>
+                </div>
+                ${r.status === 'pending' ? `
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-sm btn-success" onclick="approvePremium('${r.id}')"><i class="fas fa-check"></i> Təsdiqlə</button>
+                    <button class="btn btn-sm btn-danger"  onclick="rejectPremium('${r.id}')"><i class="fas fa-times"></i> Rədd Et</button>
+                </div>` : `<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:${r.status==='approved'?'#ecfdf5':'#fef2f2'};color:${r.status==='approved'?'#065f46':'#991b1b'};">${r.status==='approved'?'✅ Təsdiqləndi':'❌ Rədd Edildi'}</span>`}
+            </div>`).join('');
+    } catch(e) { showError(container, e.message); }
+}
+
+async function approvePremium(id) {
+    try { await API.premium.approve(id); showNotification('Premium aktivləşdirildi!', 'success'); loadPremiumRequests(); }
+    catch(e) { showNotification(e.message, 'error'); }
+}
+async function rejectPremium(id) {
+    try { await API.premium.reject(id); showNotification('Müraciət rədd edildi', 'warning'); loadPremiumRequests(); }
+    catch(e) { showNotification(e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════
+//  Teacher Test Requests
+// ════════════════════════════════════════════════════════
+async function _updateTeacherTestsBadge() {
+    try {
+        const all = await API.teacherTests.list({ status: 'pending' });
+        const cnt = all.length;
+        const badge = document.getElementById('teacherTestsBadge');
+        if (badge) { badge.textContent = cnt; badge.style.display = cnt ? 'inline-flex' : 'none'; }
+    } catch {}
+}
+
+async function loadTeacherTestsSection() {
+    const container = document.getElementById('teacherTestsList');
+    if (!container) return;
+    showSpinner(container);
+    try {
+        const tests = await API.teacherTests.list();
+        if (!tests.length) { showEmpty(container, 'Müraciət yoxdur'); return; }
+        const statusMap = { pending: ['#fef3c7','#92400e','⏳ Gözləyir'], approved: ['#ecfdf5','#065f46','✅ Təsdiqləndi'], rejected: ['#fef2f2','#991b1b','❌ Rədd Edildi'] };
+        container.innerHTML = tests.map(t => {
+            const [bg, color, label] = statusMap[t.status] || statusMap.pending;
+            return `
+            <div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="font-size:32px;">${t.emoji||'📝'}</div>
+                    <div style="flex:1;">
+                        <strong>${escapeHtml(t.title)}</strong>
+                        <div style="font-size:12px;color:#6b7280;">👨‍🏫 ${escapeHtml(t.teacherName)} · ${t.questions?.length||0} sual · ${t.duration} dəq · ${t.difficulty}</div>
+                        ${t.adminNote?`<div style="font-size:12px;color:#ef4444;margin-top:4px;"><i class="fas fa-comment"></i> ${escapeHtml(t.adminNote)}</div>`:''}
+                    </div>
+                    <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${bg};color:${color};">${label}</span>
+                    ${t.status==='pending'?`
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-sm btn-success" onclick="approveTeacherTest('${t.id}')"><i class="fas fa-check"></i></button>
+                        <button class="btn btn-sm btn-danger"  onclick="rejectTeacherTest('${t.id}')"><i class="fas fa-times"></i></button>
+                    </div>`:''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) { showError(container, e.message); }
+}
+
+async function approveTeacherTest(id) {
+    try { await API.teacherTests.approve(id); showNotification('Sınaq təsdiqləndi!', 'success'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
+    catch(e) { showNotification(e.message, 'error'); }
+}
+async function rejectTeacherTest(id) {
+    const note = prompt('Rədd səbəbi (istəyə bağlı):') || '';
+    try { await API.teacherTests.reject(id, note); showNotification('Sınaq rədd edildi', 'warning'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
+    catch(e) { showNotification(e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════
+//  PDF Management
+// ════════════════════════════════════════════════════════
+let _pdfFileData = null;
+
+async function _updatePdfBadge() {
+    try {
+        const reqs = await API.pdfRequests.list({ status: 'pending' });
+        const cnt  = reqs.length;
+        const badge = document.getElementById('pdfPendingBadge');
+        if (badge) { badge.textContent = cnt; badge.style.display = cnt ? 'inline-flex' : 'none'; }
+    } catch {}
+}
+
 function togglePdfUploadForm() {
     const form = document.getElementById('pdfUploadForm');
     if (!form) return;
-    const isOpen = form.style.display !== 'none';
-    form.style.display = isOpen ? 'none' : 'block';
-    if (!isOpen) {
-        // Reset form when opening
-        document.getElementById('pdfTitle').value = '';
-        document.getElementById('pdfDescription').value = '';
-        document.getElementById('pdfPages').value = '';
-        document.getElementById('pdfPrice').value = '5';
-        document.getElementById('pdfType').value = 'free';
-        document.getElementById('pdfCategory').value = 'Cəbr';
-        document.getElementById('pdfFileInfo').style.display = 'none';
-        document.getElementById('pdfFileInfo').textContent = '';
-        document.getElementById('pdfPriceGroup').style.display = 'none';
+    const open = form.style.display !== 'none';
+    form.style.display = open ? 'none' : 'block';
+    if (!open) {
+        ['pdfTitle','pdfDescription','pdfPages'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+        const pi = document.getElementById('pdfFileInfo');
+        if (pi) { pi.style.display = 'none'; pi.textContent = ''; }
         _pdfFileData = null;
+        document.getElementById('pdfType').value = 'free';
+        const pg = document.getElementById('pdfPriceGroup');
+        if (pg) pg.style.display = 'none';
     }
 }
 
-// ── Show/hide price field based on type ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const typeEl = document.getElementById('pdfType');
-    if (typeEl) {
-        typeEl.addEventListener('change', () => {
-            const pg = document.getElementById('pdfPriceGroup');
-            if (pg) pg.style.display = typeEl.value === 'paid' ? 'block' : 'none';
-        });
-    }
-    // Update badge on load
-    _updatePdfBadge();
+    if (typeEl) typeEl.addEventListener('change', () => {
+        const pg = document.getElementById('pdfPriceGroup');
+        if (pg) pg.style.display = typeEl.value === 'paid' ? 'block' : 'none';
+    });
 });
 
-function _updatePdfBadge() {
-    const reqs = Storage.get('pdfDownloadRequests') || [];
-    const pending = reqs.filter(r => r.status === 'pending').length;
-    const badge = document.getElementById('pdfPendingBadge');
-    if (!badge) return;
-    if (pending > 0) {
-        badge.textContent = pending;
-        badge.style.display = 'inline-flex';
-    } else {
-        badge.style.display = 'none';
-    }
-}
-
-// ── File selected ────────────────────────────────────────────────────────────
 function onPdfFileSelected(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.type !== 'application/pdf') {
-        showNotification('Yalnız PDF faylı yükləyə bilərsiniz!', 'error');
-        input.value = '';
-        return;
-    }
-    const maxMB = 20;
-    if (file.size > maxMB * 1024 * 1024) {
-        showNotification(`PDF ölçüsü maksimum ${maxMB} MB ola bilər!`, 'error');
-        input.value = '';
-        return;
-    }
-
+    if (file.type !== 'application/pdf') { showNotification('Yalnız PDF fayl yükləyə bilərsiniz!', 'error'); input.value=''; return; }
+    if (file.size > 20 * 1024 * 1024)   { showNotification('PDF maksimum 20 MB ola bilər!', 'error'); input.value=''; return; }
     const reader = new FileReader();
-    reader.onload = (e) => {
-        _pdfFileData = {
-            name: file.name,
-            size: file.size,
-            sizeLabel: _formatBytes(file.size),
-            base64: e.target.result, // data:application/pdf;base64,...
-            mimeType: file.type
-        };
-        const infoEl = document.getElementById('pdfFileInfo');
-        if (infoEl) {
-            infoEl.style.display = 'block';
-            infoEl.innerHTML = `<i class="fas fa-check-circle"></i> ${file.name} (${_formatBytes(file.size)})`;
-        }
+    reader.onload = e => {
+        _pdfFileData = { name: file.name, size: file.size, sizeLabel: _fmtBytes(file.size), base64: e.target.result };
+        const info = document.getElementById('pdfFileInfo');
+        if (info) { info.style.display='block'; info.innerHTML=`<i class="fas fa-check-circle"></i> ${file.name} (${_pdfFileData.sizeLabel})`; }
         const dz = document.getElementById('pdfDropZone');
         if (dz) dz.style.borderColor = '#10b981';
     };
     reader.readAsDataURL(file);
 }
+function _fmtBytes(b) { if(b<1024) return b+'B'; if(b<1024*1024) return (b/1024).toFixed(1)+'KB'; return (b/1024/1024).toFixed(1)+'MB'; }
 
-function _formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-// ── Save PDF ─────────────────────────────────────────────────────────────────
-function savePdf() {
+async function savePdf() {
     const title = document.getElementById('pdfTitle').value.trim();
-    const category = document.getElementById('pdfCategory').value;
-    const type = document.getElementById('pdfType').value;
-    const price = parseFloat(document.getElementById('pdfPrice').value) || 0;
-    const pages = parseInt(document.getElementById('pdfPages').value) || null;
-    const description = document.getElementById('pdfDescription').value.trim();
-
     if (!title) { showNotification('Başlıq daxil edin!', 'error'); return; }
     if (!_pdfFileData) { showNotification('PDF faylı seçin!', 'error'); return; }
 
-    const pdfs = Storage.get('pdfs') || [];
-    const newPdf = {
-        id: Date.now(),
-        title,
-        category,
-        type,            // 'free' | 'paid'
-        price: type === 'paid' ? price : 0,
-        pages,
-        description,
-        fileName: _pdfFileData.name,
-        fileSize: _pdfFileData.size,
-        fileSizeLabel: _pdfFileData.sizeLabel,
-        fileData: _pdfFileData.base64, // stored as base64 in localStorage
-        downloads: 0,
-        createdAt: new Date().toISOString(),
-        addedBy: (getCurrentUser() || {}).name || 'Admin'
-    };
-    pdfs.unshift(newPdf);
-    Storage.set('pdfs', pdfs);
+    const btn = document.querySelector('#pdfUploadForm .btn-primary');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Yüklənir...'; }
 
-    _pdfFileData = null;
-    togglePdfUploadForm();
-    loadPdfs();
-    showNotification(`"${title}" PDF-i əlavə edildi!`, 'success');
+    try {
+        await API.pdfs.create({
+            title,
+            category:     document.getElementById('pdfCategory').value,
+            type:         document.getElementById('pdfType').value,
+            price:        parseFloat(document.getElementById('pdfPrice')?.value) || 0,
+            pages:        parseInt(document.getElementById('pdfPages')?.value) || null,
+            description:  document.getElementById('pdfDescription')?.value.trim() || '',
+            fileName:     _pdfFileData.name,
+            fileSizeLabel:_pdfFileData.sizeLabel,
+            fileData:     _pdfFileData.base64,
+        });
+        _pdfFileData = null;
+        togglePdfUploadForm();
+        loadPdfs();
+        loadDashboardStats();
+        showNotification(`"${title}" PDF-i əlavə edildi!`, 'success');
+    } catch(e) {
+        showNotification(e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> PDF-i Əlavə Et'; }
+    }
 }
 
-// ── Load PDF table ───────────────────────────────────────────────────────────
-function loadPdfs() {
-    const typeFilter = document.getElementById('pdfFilterType')?.value || '';
-    const catFilter  = document.getElementById('pdfFilterCat')?.value || '';
-    let pdfs = Storage.get('pdfs') || [];
-
-    if (typeFilter) pdfs = pdfs.filter(p => p.type === typeFilter);
-    if (catFilter)  pdfs = pdfs.filter(p => p.category === catFilter);
-
+async function loadPdfs() {
+    const typeF = document.getElementById('pdfFilterType')?.value || '';
+    const catF  = document.getElementById('pdfFilterCat')?.value  || '';
     const tbody = document.getElementById('pdfsTable');
     if (!tbody) return;
-
-    if (pdfs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">PDF tapılmadı</td></tr>';
-        return;
+    showTableLoading(tbody, 8);
+    try {
+        const params = {};
+        if (typeF) params.type     = typeF;
+        if (catF)  params.category = catF;
+        const { data: pdfs } = await API.pdfs.list(params);
+        if (!pdfs.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">PDF tapılmadı</td></tr>';
+            return;
+        }
+        tbody.innerHTML = pdfs.map(p => `
+            <tr>
+                <td><strong><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:6px;"></i>${escapeHtml(p.title)}</strong></td>
+                <td>${p.category}</td>
+                <td>${p.type==='paid'?'<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">💎 Ödənişli</span>':'<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">🆓 Pulsuz</span>'}</td>
+                <td>${p.type==='paid'?p.price+' ₼':'—'}</td>
+                <td>${p.fileSizeLabel||'—'}</td>
+                <td>${p.downloads||0}</td>
+                <td style="font-size:12px;color:#6b7280;">${formatDate(p.createdAt)}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-delete" onclick="deletePdf('${p.id}')" title="Sil"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`).join('');
+        _updatePdfBadge();
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444;padding:20px;">${e.message}</td></tr>`;
     }
-
-    tbody.innerHTML = pdfs.map(p => {
-        const d = new Date(p.createdAt);
-        const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-        const typeBadge = p.type === 'paid'
-            ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">💎 Ödənişli</span>'
-            : '<span style="background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">🆓 Pulsuz</span>';
-        return `<tr>
-            <td><strong><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:6px;"></i>${p.title}</strong>
-                ${p.description ? `<br><span style="font-size:11px;color:#6b7280;">${p.description.substring(0,60)}${p.description.length>60?'…':''}</span>` : ''}
-            </td>
-            <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:10px;font-size:12px;">${p.category}</span></td>
-            <td>${typeBadge}</td>
-            <td>${p.type === 'paid' ? p.price + ' ₼' : '—'}</td>
-            <td>${p.fileSizeLabel || '—'}</td>
-            <td><span style="font-weight:700;">${p.downloads || 0}</span></td>
-            <td style="font-size:12px;color:#6b7280;">${date}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-icon btn-view" onclick="previewPdf(${p.id})" title="Önizlə"><i class="fas fa-eye"></i></button>
-                    <button class="btn-icon btn-delete" onclick="deletePdf(${p.id})" title="Sil"><i class="fas fa-trash"></i></button>
-                </div>
-            </td>
-        </tr>`;
-    }).join('');
-
-    _updatePdfBadge();
 }
 
-// ── Preview PDF ──────────────────────────────────────────────────────────────
-function previewPdf(id) {
-    const pdfs = Storage.get('pdfs') || [];
-    const p = pdfs.find(x => x.id === id);
-    if (!p || !p.fileData) { showNotification('PDF tapılmadı!', 'error'); return; }
-
-    // Open in new tab
-    const w = window.open();
-    w.document.write(`
-        <html><head><title>${p.title}</title></head>
-        <body style="margin:0;padding:0;">
-        <embed src="${p.fileData}" type="application/pdf" width="100%" height="100%" style="position:fixed;inset:0;border:none;">
-        </body></html>
-    `);
-}
-
-// ── Delete PDF ───────────────────────────────────────────────────────────────
 function deletePdf(id) {
-    const pdfs = Storage.get('pdfs') || [];
-    const p = pdfs.find(x => x.id === id);
-    if (!p) return;
-    showConfirm(`"${p.title}" PDF-ini silmək istədiyinizdən əminsiniz?`, () => {
-        const filtered = pdfs.filter(x => x.id !== id);
-        Storage.set('pdfs', filtered);
-        loadPdfs();
-        showNotification('PDF silindi!', 'success');
+    showConfirm('Bu PDF-i silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.pdfs.remove(id);
+            showNotification('PDF silindi!', 'success');
+            loadPdfs();
+            loadDashboardStats();
+        } catch(e) { showNotification(e.message, 'error'); }
     });
 }
 
-// ── Load pending download requests ──────────────────────────────────────────
-function loadPdfDownloadRequests() {
-    const reqs = Storage.get('pdfDownloadRequests') || [];
-    const pending = reqs.filter(r => r.status === 'pending');
-    const container = document.getElementById('pdfDownloadRequests');
-    const listEl    = document.getElementById('pdfRequestsList');
+async function loadPdfDownloadRequests() {
+    const container = document.getElementById('pdfRequestsList');
+    const wrapper   = document.getElementById('pdfDownloadRequests');
     const countEl   = document.getElementById('pendingPdfRequestCount');
-    if (!container || !listEl) return;
-
-    if (countEl) countEl.textContent = pending.length;
-    container.style.display = pending.length > 0 ? 'block' : 'none';
-    _updatePdfBadge();
-
-    if (pending.length === 0) { listEl.innerHTML = ''; return; }
-
-    listEl.innerHTML = pending.map(r => {
-        const d = new Date(r.requestedAt);
-        const dt = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        return `
-        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:white;border-radius:10px;margin-bottom:8px;border:1px solid #fde68a;">
-            <div style="width:38px;height:38px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:16px;flex-shrink:0;">
-                ${(r.userName||'?')[0].toUpperCase()}
-            </div>
-            <div style="flex:1;">
-                <div style="font-weight:700;font-size:13px;">${r.userName}</div>
-                <div style="font-size:12px;color:#6b7280;">${r.userEmail}</div>
-                <div style="font-size:12px;color:#374151;margin-top:2px;">
-                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> ${r.pdfTitle}
-                    <span style="margin-left:8px;color:#92400e;font-weight:600;">${r.amount} ₼</span>
-                    <span style="margin-left:8px;color:#94a3b8;">${dt}</span>
+    if (!container) return;
+    try {
+        const reqs    = await API.pdfRequests.list({ status: 'pending' });
+        if (countEl)  countEl.textContent = reqs.length;
+        if (wrapper)  wrapper.style.display = reqs.length ? 'block' : 'none';
+        _updatePdfBadge();
+        if (!reqs.length) { container.innerHTML = ''; return; }
+        container.innerHTML = reqs.map(r => `
+            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:white;border-radius:10px;margin-bottom:8px;border:1px solid #fde68a;">
+                <div style="flex:1;">
+                    <strong>${escapeHtml(r.userName)}</strong> — <i class="fas fa-file-pdf" style="color:#ef4444;"></i> ${escapeHtml(r.pdfTitle)}
+                    <br><span style="font-size:12px;color:#6b7280;">${r.userEmail} · ${r.amount} ₼ · ${formatDate(r.requestedAt)}</span>
                 </div>
-            </div>
-            <div style="display:flex;gap:8px;">
-                <button class="btn btn-sm btn-success" onclick="approvePdfRequest(${r.id})">
-                    <i class="fas fa-check"></i> Təsdiqlə
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="rejectPdfRequest(${r.id})">
-                    <i class="fas fa-times"></i> Rədd Et
-                </button>
-            </div>
-        </div>`;
-    }).join('');
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-sm btn-success" onclick="approvePdfRequest('${r.id}')"><i class="fas fa-check"></i> Təsdiqlə</button>
+                    <button class="btn btn-sm btn-danger"  onclick="rejectPdfRequest('${r.id}')"><i class="fas fa-times"></i> Rədd Et</button>
+                </div>
+            </div>`).join('');
+    } catch(e) { if (wrapper) wrapper.style.display = 'none'; }
 }
 
-// ── Approve download request ─────────────────────────────────────────────────
-function approvePdfRequest(reqId) {
-    const reqs = Storage.get('pdfDownloadRequests') || [];
-    const idx  = reqs.findIndex(r => r.id === reqId);
-    if (idx === -1) return;
-
-    reqs[idx].status = 'approved';
-    reqs[idx].approvedAt = new Date().toISOString();
-    Storage.set('pdfDownloadRequests', reqs);
-
-    showNotification('Yükləmə müraciəti təsdiqləndi. İstifadəçi indi yükləyə bilər.', 'success');
-    loadPdfDownloadRequests();
+async function approvePdfRequest(id) {
+    try { await API.pdfRequests.approve(id); showNotification('PDF yükləmə təsdiqləndi!', 'success'); loadPdfDownloadRequests(); }
+    catch(e) { showNotification(e.message, 'error'); }
+}
+async function rejectPdfRequest(id) {
+    try { await API.pdfRequests.reject(id); showNotification('Müraciət rədd edildi, balans qaytarıldı', 'warning'); loadPdfDownloadRequests(); }
+    catch(e) { showNotification(e.message, 'error'); }
 }
 
-// ── Reject download request ──────────────────────────────────────────────────
-function rejectPdfRequest(reqId) {
-    const reqs = Storage.get('pdfDownloadRequests') || [];
-    const idx  = reqs.findIndex(r => r.id === reqId);
-    if (idx === -1) return;
+// ════════════════════════════════════════════════════════
+//  Leaderboard
+// ════════════════════════════════════════════════════════
+async function loadLeaderboard() {
+    const container = document.getElementById('leaderboardList');
+    if (!container) return;
+    showSpinner(container);
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const sorted = [...users].sort((a,b) => (b.points||0)-(a.points||0)).slice(0,20);
+        if (!sorted.length) { showEmpty(container, 'Xal məlumatı yoxdur'); return; }
+        container.innerHTML = sorted.map((u,i) => `
+            <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);">
+                <div style="width:32px;text-align:center;font-weight:800;font-size:16px;color:${i===0?'#fbbf24':i===1?'#9ca3af':i===2?'#f59e0b':'#94a3b8'};">${i+1}</div>
+                <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">${u.name[0].toUpperCase()}</div>
+                <div style="flex:1;"><strong>${escapeHtml(u.name)}</strong><br><span style="font-size:12px;color:#6b7280;">${u.email}</span></div>
+                <div style="font-weight:800;font-size:18px;color:var(--primary);">${u.points||0} xal</div>
+            </div>`).join('');
+    } catch(e) { showError(container, e.message); }
+}
 
-    reqs[idx].status = 'rejected';
-    reqs[idx].rejectedAt = new Date().toISOString();
-    Storage.set('pdfDownloadRequests', reqs);
+// ════════════════════════════════════════════════════════
+//  Settings
+// ════════════════════════════════════════════════════════
+function saveSettings() {
+    showNotification('Tənzimləmələr yadda saxlanıldı!', 'success');
+}
 
-    showNotification('Müraciət rədd edildi.', 'warning');
-    loadPdfDownloadRequests();
+// ════════════════════════════════════════════════════════
+//  Helpers
+// ════════════════════════════════════════════════════════
+function showTableLoading(tbody, cols) {
+    tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:30px;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin" style="margin-right:8px;"></i>Yüklənir...</td></tr>`;
+}
+
+// Re-export helpers from app.js for templates that call them
+function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }

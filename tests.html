@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="az">
 <head>
     <meta charset="UTF-8">
@@ -62,100 +62,46 @@
     </div>
 </footer>
 
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
-<script src="js/navbar.js"></script>
-<script src="js/mobile-menu.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/security.js"></script>
+
+
+
+
+
+
+
 <script src="js/notifications.js"></script>
-<script src="js/points.js"></script>
+
 <script>
-const MOCK_TESTS = [
-    {
-        id: 'mock_free_1',
-        title: 'Ədədi İfadələr - Nümunə',
-        emoji: '🔢',
-        difficulty: 'Asan',
-        questions: 5,
-        time: 5,
-        free: true,
-        desc: 'Tam ədədlər, toplama və çıxma əməlləri üzrə pulsuz nümunə sınaq.',
-        attempts: 128,
-        users: 74,
-        data: [
-            { q: '15 + 27 = ?', opts: ['40', '42', '43', '41'], ans: 1 },
-            { q: '100 - 63 = ?', opts: ['47', '37', '27', '57'], ans: 1 },
-            { q: '8 × 7 = ?', opts: ['54', '56', '58', '52'], ans: 1 },
-            { q: '144 ÷ 12 = ?', opts: ['10', '11', '12', '13'], ans: 2 },
-            { q: 'Ən kiçik üç rəqəmli ədəd hansıdır?', opts: ['100', '99', '101', '109'], ans: 0 }
-        ]
-    },
-    {
-        id: 'mock_premium_1',
-        title: 'Cəbr - Tənliklər (Premium)',
-        emoji: '👑',
-        difficulty: 'Orta',
-        questions: 10,
-        time: 15,
-        free: false,
-        desc: 'Birməchullu və ikimechullu tənliklər üzrə dərin bilik yoxlaması.',
-        attempts: 56,
-        users: 31,
-        data: [
-            { q: '2x + 5 = 13 → x = ?', opts: ['3', '4', '5', '6'], ans: 1 },
-            { q: '3x - 7 = 11 → x = ?', opts: ['4', '5', '6', '7'], ans: 2 },
-            { q: 'x² = 81 → x = ?', opts: ['7', '8', '9', '10'], ans: 2 },
-            { q: '5x = 45 → x = ?', opts: ['7', '8', '9', '10'], ans: 2 },
-            { q: 'x/4 = 6 → x = ?', opts: ['18', '20', '22', '24'], ans: 3 },
-            { q: '2x + 3y = 12, x=3 olduqda y = ?', opts: ['1', '2', '3', '4'], ans: 1 },
-            { q: '(x+3)(x-3) = ?', opts: ['x²-6', 'x²-9', 'x²+9', 'x²-6x'], ans: 1 },
-            { q: 'x² - 5x + 6 = 0 tənliyinin kökləri?', opts: ['2 və 3', '1 və 6', '2 və 4', '3 və 4'], ans: 0 },
-            { q: '|x - 2| = 5 → x = ?', opts: ['3 və -7', '7 və -3', '7 və 3', '-7 və 3'], ans: 1 },
-            { q: 'log₂(8) = ?', opts: ['2', '3', '4', '8'], ans: 1 }
-        ]
-    }
-];
+// Load tests from API — replaces MOCK_TESTS + localStorage approach
+let _testsCache = [];
 
-// Yüklənmiş sınaqları əlavə et
-function getAllTests() {
-    const uploadedTests = Storage.get('tests') || [];
-    const stats = Storage.get('testStats') || {};
-
-    const uploaded = uploadedTests.map(t => {
-        const testStats = stats[t.id] || stats['uploaded_' + t.id] || { totalAttempts: 0, uniqueUsers: [] };
-        return {
-            id: 'uploaded_' + t.id,
-            title: t.title,
-            emoji: t.emoji || '📝',
+async function initTestsPage() {
+    const grid = document.getElementById('testsGrid');
+    if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin" style="font-size:32px;"></i></div>';
+    try {
+        const { data } = await API.tests.list({ limit: 100 });
+        _testsCache = data.map(t => ({
+            id:         t.id,
+            title:      t.title,
+            emoji:      t.emoji || '📝',
             difficulty: t.difficulty || 'Orta',
-            questions: t.questions?.length || 0,
-            time: t.duration || 10,
-            free: !t.isPremium,
-            desc: t.description || '',
-            attempts: testStats.totalAttempts || 0,
-            users: (testStats.uniqueUsers || []).length,
-            data: (t.questions || []).map(q => ({
-                q: q.question,
-                opts: q.options,
-                ans: q.correctAnswer
-            }))
-        };
-    });
-
-    // MOCK_TESTS-i əvvəldə göstər (nümunə olaraq)
-    const mockWithStats = MOCK_TESTS.map(t => {
-        const s = stats[t.id] || { totalAttempts: 0, uniqueUsers: [] };
-        return {
-            ...t,
-            attempts: s.totalAttempts || t.attempts || 0,
-            users: (s.uniqueUsers || []).length || t.users || 0
-        };
-    });
-
-    return [...mockWithStats, ...uploaded];
+            questions:  t.questionCount || (t.questions ? t.questions.length : 0),
+            time:       t.duration || 30,
+            free:       !t.isPremium,
+            desc:       t.description || '',
+            attempts:   0,
+            users:      0,
+            data:       (t.questions || []).map(q => ({ q: q.question, opts: q.options, ans: q.correctAnswer })),
+        }));
+        renderTests();
+    } catch(e) {
+        if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:#ef4444;">${e.message}</div>`;
+    }
 }
+// Keep legacy getAllTests() for quiz engine
+function getAllTests() { return _testsCache; }
+
+document.addEventListener('DOMContentLoaded', () => { initTestsPage(); updateNavbar(); });
 
 function renderTests() {
     const allTests = getAllTests();
@@ -228,9 +174,10 @@ function renderTests() {
 
 let currentTest, currentQ = 0, score = 0;
 
-function startTest(id) {
-    if (!isLoggedIn()) {
-        window.location.href = 'login.html';
+async function startTest(id) {
+    const user = await API.getCurrentUser();
+    if (!user) {
+        window.location.href = 'login.html?redirect=tests.html';
         return;
     }
     
@@ -238,20 +185,14 @@ function startTest(id) {
     currentTest = allTests.find(t => t.id == id);
     
     if (!currentTest) {
-        alert('Sınaq tapılmadı!');
+        showNotification('Sınaq tapılmadı!', 'error');
         return;
     }
     
-    const user = getCurrentUser();
-    
     // Premium check
     if (!currentTest.free) {
-        if (!user.premium) {
+        if (!isPremiumActive(user)) {
             showPremiumPromptTest();
-            return;
-        }
-        if (user.premiumExpiresAt && new Date(user.premiumExpiresAt) < new Date()) {
-            showPremiumPromptTest(true);
             return;
         }
     }
@@ -654,5 +595,8 @@ renderTests();
 // Re-render after Upstash loads fresh data
 window.addEventListener('upstash:loaded', renderTests);
 </script>
+<script src="js/notifications.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

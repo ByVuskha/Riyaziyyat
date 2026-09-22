@@ -1,0 +1,14 @@
+{
+  "name": "bizim-riyaziyyat",
+  "version": "2.0.0",
+  "description": "Bizim Riyaziyyat — Riyaziyyat Öyrənmə Platforması",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.28.4",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

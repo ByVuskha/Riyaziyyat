@@ -1,77 +1,43 @@
 <!DOCTYPE html>
-<html lang="az">
+<html lang="az" data-theme="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş - Bizim Riyaziyyat</title>
+    <title>Giriş — Bizim Riyaziyyat</title>
+    <meta name="description" content="Bizim Riyaziyyat hesabınıza daxil olun. Riyaziyyat dərslərini, sınaqları və materialları əldə edin.">
+    <meta property="og:title"       content="Giriş — Bizim Riyaziyyat">
+    <meta property="og:description" content="Hesabınıza daxil olun">
+    <meta property="og:url"         content="https://bizimriyaziyyat.vercel.app/login.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .auth-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);
-            padding: 20px;
-        }
+        body { background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%); min-height: 100vh; }
+        .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card {
-            background: white;
-            border-radius: 20px;
-            padding: 45px 40px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: white; border-radius: 20px; padding: 44px 40px;
+            width: 100%; max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
         }
-        .auth-logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .auth-logo a {
-            font-size: 26px;
-            font-weight: 800;
-            color: var(--primary);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .auth-logo span {
-            background: var(--primary);
-            color: white;
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .auth-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-        .auth-subtitle { color: var(--gray); font-size: 14px; margin-bottom: 30px; }
+        [data-theme=dark] .auth-card { background: #1e293b; color: #f1f5f9; }
+        [data-theme=dark] .auth-card .form-control { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+        [data-theme=dark] .auth-card .auth-subtitle,
+        [data-theme=dark] .auth-card .auth-footer { color: #94a3b8; }
+        .auth-logo { text-align: center; margin-bottom: 28px; }
+        .auth-logo a { font-size: 24px; font-weight: 800; color: var(--primary); display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+        .auth-logo span { background: var(--primary); color: white; width: 40px; height: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; }
+        .auth-title    { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .auth-subtitle { color: var(--gray); font-size: 14px; margin-bottom: 26px; }
         .input-icon { position: relative; }
-        .input-icon i {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray);
-        }
+        .input-icon i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: 15px; }
         .input-icon .form-control { padding-left: 42px; }
         .auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--gray); }
         .auth-footer a { color: var(--primary); font-weight: 600; }
-        .device-warning { display: none; margin-top: 20px; padding: 16px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; }
-        .device-warning.active { display: block; animation: slideDown 0.3s ease; }
-        .device-warning-content { display: flex; align-items: start; gap: 12px; margin-bottom: 16px; }
-        .device-warning-content i { color: #f59e0b; font-size: 24px; margin-top: 2px; }
-        .device-warning-text { flex: 1; color: #92400e; font-size: 14px; line-height: 1.6; }
-        .device-warning-buttons { display: flex; gap: 10px; }
-        .device-warning-buttons button { flex: 1; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; }
-        .btn-cancel { background: white; border: 2px solid #d97706; color: #d97706; }
-        .btn-cancel:hover { background: #fef3c7; }
-        .btn-force { background: #f59e0b; border: none; color: white; }
-        .btn-force:hover { background: #d97706; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .alert-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+        @media(max-width:480px){ .auth-card { padding: 32px 24px; } }
     </style>
 </head>
 <body>
@@ -80,68 +46,28 @@
         <div class="auth-logo">
             <a href="index.html"><span>BR</span> Bizim Riyaziyyat</a>
         </div>
-        <h2 class="auth-title">Xoş gəldiniz!</h2>
+        <h1 class="auth-title">Xoş gəldiniz!</h1>
         <p class="auth-subtitle">Hesabınıza daxil olun</p>
 
         <div id="alertBox"></div>
 
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
             <div class="form-group">
-                <label>Email</label>
+                <label for="email">Email</label>
                 <div class="input-icon">
                     <i class="fas fa-envelope"></i>
-                    <input type="email" class="form-control" id="email" placeholder="email@example.com" required>
+                    <input type="email" class="form-control" id="email"
+                           placeholder="email@example.com" autocomplete="email" required>
                 </div>
             </div>
             <div class="form-group">
-                <label>Şifrə</label>
+                <label for="password">Şifrə</label>
                 <div class="input-icon">
                     <i class="fas fa-lock"></i>
-                    <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+                    <input type="password" class="form-control" id="password"
+                           placeholder="••••••••" autocomplete="current-password" required>
                 </div>
             </div>
-            
-            <!-- Device Warning -->
-            <div class="device-warning" id="deviceWarning">
-                <div class="device-warning-content">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div class="device-warning-text">
-                        <strong>⚠️ CİDDİ XƏBƏRDARLIQ!</strong><br><br>
-                        Bu hesab başqa bir cihazda aktivdir.<br><br>
-                        <strong style="color: #dc2626;">Yenidən cəhd etsəniz:</strong><br>
-                        🚫 Hesabınız DONDURULACAQ<br>
-                        💰 Balansınız SİLİNƏCƏK<br>
-                        🔒 Admin icazəsi tələb olunacaq
-                    </div>
-                </div>
-                <div class="device-warning-buttons">
-                    <button type="button" class="btn-cancel" id="cancelLogin" style="width: 100%;">
-                        <i class="fas fa-times"></i> Anladım, Geri Qayıt
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Frozen Account Warning -->
-            <div class="device-warning" id="frozenWarning" style="background: #fee2e2; border-color: #dc2626;">
-                <div class="device-warning-content">
-                    <i class="fas fa-ban" style="color: #dc2626;"></i>
-                    <div class="device-warning-text" style="color: #7f1d1d;">
-                        <strong>🚫 HESAB DONDURULDU!</strong><br><br>
-                        Təkrar yetkisiz giriş cəhdi aşkar edildi.<br><br>
-                        <strong>Nəticələr:</strong><br>
-                        • Hesabınız donduruldu<br>
-                        • Balansınız təmizləndi<br>
-                        • Yalnız admin açabilər<br><br>
-                        <small>Admin ilə əlaqə: info@bizimriyaziyyat.az</small>
-                    </div>
-                </div>
-                <div class="device-warning-buttons">
-                    <button type="button" class="btn-cancel" onclick="window.location.href='index.html'" style="width: 100%; background: #dc2626; color: white; border: none;">
-                        <i class="fas fa-home"></i> Ana Səhifəyə Qayıt
-                    </button>
-                </div>
-            </div>
-            
             <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
                 <i class="fas fa-sign-in-alt"></i> Daxil Ol
             </button>
@@ -153,80 +79,56 @@
     </div>
 </div>
 
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/security.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app.js"></script>
 <script>
+(async () => {
     // Redirect if already logged in
-    if (isLoggedIn()) window.location.href = 'dashboard.html';
+    await redirectIfLoggedIn('dashboard.html');
 
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    const form    = document.getElementById('loginForm');
+    const btn     = document.getElementById('submitBtn');
+    const alertBox = document.getElementById('alertBox');
+
+    function showAlert(msg, type = 'error') {
+        alertBox.innerHTML = `<div class="alert alert-${type}"><i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}</div>`;
+    }
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = sanitizeInput(document.getElementById('email').value);
+        const email    = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
-        const btn = document.getElementById('submitBtn');
-        const alertBox = document.getElementById('alertBox');
-        const deviceWarning = document.getElementById('deviceWarning');
-        const frozenWarning = document.getElementById('frozenWarning');
 
-        // Input validation
-        if (!validateEmail(email)) {
-            alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Düzgün email daxil edin</div>';
+        if (!email || !password) {
+            showAlert('Email və şifrə daxil edin');
             return;
         }
-        
-        // Rate limiting - max 5 attempts per 15 min
-        const rateCheck = rateLimiter.check(`login_${email}`, 5, 15 * 60 * 1000);
-        if (!rateCheck.allowed) {
-            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-ban"></i> Çox sayda cəhd. ${rateCheck.waitMinutes} dəqiqə gözləyin.</div>`;
-            btn.disabled = true;
-            return;
-        }
-
-        // Hide warnings
-        deviceWarning.classList.remove('active');
-        frozenWarning.classList.remove('active');
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yüklənir...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Yüklənir...';
+        alertBox.innerHTML = '';
 
-        console.log('🔍 Login attempt:', email);
-        console.log('🔍 Upstash available:', typeof upstash !== 'undefined');
-        console.log('🔍 UPSTASH_CONFIG:', typeof UPSTASH_CONFIG !== 'undefined' ? UPSTASH_CONFIG : 'NOT FOUND');
+        try {
+            const { user } = await API.auth.login(email, password);
+            showAlert('Uğurla daxil oldunuz!', 'success');
 
-        const result = await loginAsync(email, password, true);
-        
-        console.log('🔍 Login result:', result);
-        
-        if (result.frozen) {
-            frozenWarning.classList.add('active');
-            alertBox.innerHTML = '<div class="alert alert-error"><i class="fas fa-ban"></i> Hesab dondurulub!</div>';
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-ban"></i> Hesab Dondurulub';
-        } else if (result.deviceConflict) {
-            deviceWarning.classList.add('active');
-            alertBox.innerHTML = `<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Xəbərdarlıq! Cəhd ${result.attempts}/2</div>`;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
-        } else if (result.success) {
-            rateLimiter.reset(`login_${email}`);
-            alertBox.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Uğurla daxil oldunuz!</div>';
-            setTimeout(() => window.location.href = 'dashboard.html', 800);
-        } else {
-            alertBox.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${sanitizeHTML(result.message)}</div>`;
+            // Read redirect param if present
+            const params   = new URLSearchParams(window.location.search);
+            const redirect = params.get('redirect') || 'dashboard.html';
+            setTimeout(() => window.location.href = redirect, 700);
+        } catch (err) {
+            const msg = err.data?.error || err.message || 'Giriş mümkün olmadı';
+            if (err.status === 403) {
+                showAlert('Hesabınız bloklanıb. Dəstək xidməti ilə əlaqə saxlayın.', 'error');
+            } else {
+                showAlert(msg);
+            }
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
         }
     });
-
-    // Cancel login
-    document.getElementById('cancelLogin').addEventListener('click', function() {
-        document.getElementById('deviceWarning').classList.remove('active');
-        document.getElementById('alertBox').innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle"></i> Giriş ləğv edildi</div>';
-    });
+})();
 </script>
-<script src="js/mobile-menu.js"></script>
 </body>
 </html>

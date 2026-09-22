@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="az">
 <head>
     <meta charset="UTF-8">
@@ -100,109 +100,58 @@
 </footer>
 
 <!-- Load config first -->
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
-<script src="js/auth.js"></script>
+
+
+
+
 
 <!-- Then run page code -->
 <script>
-// Default news
-const DEFAULT_NEWS = [
-    { id:1, emoji:'🎉', color:'#eef2ff', uploadedAt:'2024-05-01', author:'BR Komandası', views:342,
-      title:'Yeni 50 Analiz Videosu Əlavə Edildi!',
-      text:'Limit, törəmə və inteqral mövzularını əhatə edən 50 yeni video platformamıza əlavə edildi. Hər video detallı izah və nümunə məsələlərlə zəngindir. Premium abunəçilər dərhal izləyə bilər.' },
-    { id:2, emoji:'🏆', color:'#fffbeb', uploadedAt:'2024-04-25', author:'BR Komandası', views:218,
-      title:'Aprel Ayının Ən Yaxşı Tələbələri Açıqlandı',
-      text:'Bu ay ən çox sınaq həll edən və ən yüksək bal toplayan tələbələrimiz müəyyənləşdi. Uğurlar səhifəsindən tam siyahıya baxa bilərsiniz. Qalib tələbələrə 1 aylıq pulsuz premium hədiyyə edildi.' },
-    { id:3, emoji:'💳', color:'#ecfdf5', uploadedAt:'2024-04-20', author:'BR Komandası', views:189,
-      title:'Yeni Ödəniş Sistemi İstifadəyə Verildi',
-      text:'Artıq kart ilə balans yükləmək daha asan! Visa, Mastercard və yerli kartlarla ödəniş edə bilərsiniz. Minimum yükləmə məbləği 5 ₼-dən başlayır. Balansınızı istənilən vaxt yoxlaya bilərsiniz.' },
-    { id:4, emoji:'📱', color:'#fdf4ff', uploadedAt:'2024-04-15', author:'BR Komandası', views:156,
-      title:'Mobil Versiya Yaxında!',
-      text:'Bizim Riyaziyyat mobil tətbiqi hazırlanır. iOS və Android üçün tətbiq tezliklə App Store və Google Play-də yayımlanacaq. Bildiriş almaq üçün email-inizi qeydiyyatdan keçirin.' },
-    { id:5, emoji:'🎓', color:'#fef2f2', uploadedAt:'2024-04-10', author:'BR Komandası', views:134,
-      title:'Sertifikat Sistemi Tezliklə',
-      text:'İllik abunəçilər üçün kurs tamamlama sertifikatı sistemi hazırlanır. Hər mövzu üzrə sınaqları uğurla keçən tələbələr rəsmi sertifikat ala biləcək.' },
-];
-
-// dd/mm/yy formatında tarix
-function formatNewsDate(dateStr) {
-    if (!dateStr) return '';
-    // Accept ISO string or YYYY-MM-DD
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const yy = String(d.getFullYear()).slice(-2);
-    return `${dd}/${mm}/${yy}`;
+function formatNewsDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
 
-// Load news from localStorage and merge with defaults
-function getAllNews() {
-    const customNews = Storage.get('news') || [];
-    return [...customNews, ...DEFAULT_NEWS];
+async function loadNews() {
+    const list    = document.getElementById('newsList');
+    const sidebar = document.getElementById('sidebarNews');
+    if (list) list.innerHTML = '<div style="padding:60px;text-align:center;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+    try {
+        const { data: news } = await API.news.list({ limit: 50 });
+        if (!news.length && list) { list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px;">Xəbər tapılmadı</p>'; return; }
+        if (list) list.innerHTML = news.map(n => `
+            <div class="news-card">
+                <div class="news-img" style="background:#eef2ff;">${n.emoji||'📰'}</div>
+                <div class="news-body">
+                    <h3>${n.title}</h3>
+                    <p>${n.text||''}</p>
+                    <div class="news-meta">
+                        <span><i class="fas fa-calendar"></i> ${formatNewsDate(n.createdAt||n.date)}</span>
+                        <span><i class="fas fa-user"></i> ${n.author||'Admin'}</span>
+                        <span><i class="fas fa-eye"></i> ${n.views||0} baxış</span>
+                    </div>
+                </div>
+            </div>`).join('');
+        if (sidebar) sidebar.innerHTML = news.slice(0,4).map(n => `
+            <div class="sidebar-news">
+                <div class="sidebar-news-emoji">${n.emoji||'📰'}</div>
+                <div><h5>${n.title}</h5><span>${formatNewsDate(n.createdAt||n.date)}</span></div>
+            </div>`).join('');
+        // Increment view for specific news if ?id= param
+        const id = new URLSearchParams(window.location.search).get('id');
+        if (id) API.news.view(id).catch(()=>{});
+    } catch(e) {
+        if (list) list.innerHTML = `<p style="text-align:center;color:#ef4444;padding:40px;">${e.message}</p>`;
+    }
 }
-
-// Increment news view count
-function incrementNewsViews(newsId) {
-    const allNews = Storage.get('news') || [];
-    const newsIndex = allNews.findIndex(n => n.id === newsId);
-    
-    if (newsIndex !== -1) {
-        allNews[newsIndex].views = (allNews[newsIndex].views || 0) + 1;
-        Storage.set('news', allNews);
-    }
-    
-    // Also update in DEFAULT_NEWS for display
-    const defaultIndex = DEFAULT_NEWS.findIndex(n => n.id === newsId);
-    if (defaultIndex !== -1) {
-        DEFAULT_NEWS[defaultIndex].views = (DEFAULT_NEWS[defaultIndex].views || 0) + 1;
-    }
-}
-
-// Track page view
-window.addEventListener('load', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const newsId = urlParams.get('id');
-    if (newsId) {
-        incrementNewsViews(parseInt(newsId));
-    }
-});
-
-const NEWS = getAllNews();
-
-document.getElementById('newsList').innerHTML = NEWS.map(n => {
-    // Use uploadedAt (ISO) if available, fall back to legacy date string
-    const displayDate = n.uploadedAt ? formatNewsDate(n.uploadedAt) : (n.date || '');
-    return `
-    <div class="news-card">
-        <div class="news-img" style="background:${n.color}">${n.emoji}</div>
-        <div class="news-body">
-            <h3>${n.title}</h3>
-            <p>${n.text}</p>
-            <div class="news-meta">
-                <span><i class="fas fa-calendar"></i> ${displayDate}</span>
-                <span><i class="fas fa-user"></i> ${n.author}</span>
-                <span><i class="fas fa-eye"></i> ${n.views} baxış</span>
-            </div>
-        </div>
-    </div>
-`}).join('');
-
-document.getElementById('sidebarNews').innerHTML = NEWS.slice(0,4).map(n => {
-    const displayDate = n.uploadedAt ? formatNewsDate(n.uploadedAt) : (n.date || '');
-    return `
-    <div class="sidebar-news">
-        <div class="sidebar-news-emoji">${n.emoji}</div>
-        <div>
-            <h5>${n.title}</h5>
-            <span>${displayDate}</span>
-        </div>
-    </div>
-`}).join('');
+document.addEventListener('DOMContentLoaded', () => { loadNews(); updateNavbar(); });
 </script>
-<script src="js/navbar.js"></script>
-<script src="js/mobile-menu.js"></script>
+
+
+<script src="js/notifications.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

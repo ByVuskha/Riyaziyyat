@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="az">
 <head>
     <meta charset="UTF-8">
@@ -474,18 +474,21 @@
 </div>
 </div>
 
-<script src="js/config.js"></script>
-<script src="js/upstash.js"></script>
-<script src="js/storage-wrapper.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/security.js"></script>
-<script src="js/points.js"></script>
-<script>
-if (!isLoggedIn()) { window.location.href = 'login.html'; }
-const user = getCurrentUser();
 
-/* ── Avatar & name ───────────────────────────────────────────────────── */
+
+
+
+
+
+<script>
+// ── API-based auth guard ──────────────────────────────────────────────
+(async () => {
+const user = await requireLogin(); // from app.js — redirects if not logged in
+if (!user) return;
+
+/* ── Avatar & name ─────────────────────────────────────────────────── */
 document.getElementById('welcomeName').textContent = user.name;
+updateNavbar();
 
 const av = document.getElementById('profileAvatar');
 if (user.profilePicture) {
@@ -497,18 +500,19 @@ if (user.profilePicture) {
     av.style.color = 'white';
 }
 
-/* ── Premium banner ──────────────────────────────────────────────────── */
+/* ── Premium banner ─────────────────────────────────────────────────── */
 function updatePremiumBanner() {
     const banner = document.getElementById('premiumBanner');
     const statP  = document.getElementById('statPremium');
-    if (user.premium) {
-        statP.textContent = typeof getPremiumStatusText === 'function' ? getPremiumStatusText() : 'Premium';
+    if (!banner || !statP) return;
+    if (isPremiumActive(user)) {
+        statP.textContent = 'Premium';
         banner.style.display = 'none';
     } else if (user.premiumRequestedAt) {
         statP.textContent = 'Gözlənilir';
         banner.innerHTML = `
             <div style="font-size:28px;">⏳</div>
-            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır. Tezliklə aktivləşəcək.</p></div>`;
+            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır.</p></div>`;
         banner.style.display = 'flex';
     } else {
         statP.textContent = 'Pulsuz';
@@ -516,21 +520,20 @@ function updatePremiumBanner() {
     }
 }
 updatePremiumBanner();
-document.getElementById('statDemo').textContent = user.demoTests ?? 3;
+const sdEl = document.getElementById('statDemo');
+if (sdEl) sdEl.textContent = user.demoTests ?? 3;
 
 /* ── Main dashboard render (points-based) ────────────────────────────── */
 function renderDashboard() {
-    // Re-read fresh user to catch updates
-    const freshUser = getCurrentUser() || user;
-    document.getElementById('welcomeName').textContent = freshUser.name;
-    document.getElementById('navUserName').textContent  = freshUser.name;
+    document.getElementById('welcomeName').textContent = user.name;
+    const navName = document.getElementById('navUserName');
+    if (navName) navName.textContent = user.name;
 
     const allPoints  = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const myData     = allPoints[freshUser.id] || allPoints[String(freshUser.id)] || {
+        total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
+    const myData     = allPoints[user.id] || allPoints[String(user.id)] || {
         total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
     };
-
-    const videosArr  = myData.watchedVideos  || [];
     const testsArr   = myData.completedTests || [];
     const total      = myData.total || 0;
     const history    = Array.isArray(myData.history) ? myData.history : [];
@@ -544,7 +547,7 @@ function renderDashboard() {
     const sorted = Object.values(allPoints)
         .filter(p => (p.total || 0) > 0)
         .sort((a, b) => b.total - a.total);
-    const rank = sorted.findIndex(p => String(p.userId) === String(freshUser.id)) + 1;
+    const rank = sorted.findIndex(p => String(p.userId) === String(user.id)) + 1;
     document.getElementById('statRank').textContent = rank > 0 ? `#${rank}` : '-';
 
     /* Welcome subtitle */
@@ -621,8 +624,8 @@ function renderDashboard() {
     if (streak > 0) document.getElementById('streakBadge').style.display = 'inline-flex';
 
     /* Teacher section */
-    if (freshUser.userType === 'teacher' || freshUser.role === 'admin') {
-        renderTeacherSection(freshUser);
+    if (user.userType === 'teacher' || user.role === 'admin') {
+        renderTeacherSection(user);
     }
 }
 
@@ -855,7 +858,10 @@ function sendPremiumRequest() {
 }
 </script>
 <script src="js/notifications.js"></script>
-<script src="js/popup-replacer.js"></script>
-<script src="js/mobile-menu.js"></script>
+
+
+<script src="js/notifications.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
