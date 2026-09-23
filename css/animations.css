@@ -838,3 +838,245 @@ body > *:not(#mathCanvas) {
     font-size: 16px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   25. PDF PAGE — MATH-THEMED ANIMATIONS & INTERACTIONS
+   ─ Hero floating symbols
+   ─ PDF card entrance & hover
+   ─ Colored accent bar animation
+   ─ Category chip hover
+   ─ Modal slide-up
+   ─ Filter bar focus glow
+   ─ Download button shimmer
+   ─ Upload drop-zone pulse
+   ─ PDF type-toggle animation
+   ─ Pending request badge pulse
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero floating symbols (enhanced for pdfs.html) ────────────────────────── */
+.pdf-hero-sym {
+  will-change: transform, opacity;
+}
+
+/* ── PDF card scroll-reveal override (stagger by nth-child) ─────────────────── */
+.pdf-grid .pdf-card {
+  animation: pdfCardIn 0.5s var(--transition-smooth) both;
+}
+.pdf-grid .pdf-card:nth-child(1)  { animation-delay: 0.04s; }
+.pdf-grid .pdf-card:nth-child(2)  { animation-delay: 0.09s; }
+.pdf-grid .pdf-card:nth-child(3)  { animation-delay: 0.14s; }
+.pdf-grid .pdf-card:nth-child(4)  { animation-delay: 0.19s; }
+.pdf-grid .pdf-card:nth-child(5)  { animation-delay: 0.24s; }
+.pdf-grid .pdf-card:nth-child(6)  { animation-delay: 0.29s; }
+.pdf-grid .pdf-card:nth-child(7)  { animation-delay: 0.34s; }
+.pdf-grid .pdf-card:nth-child(8)  { animation-delay: 0.39s; }
+.pdf-grid .pdf-card:nth-child(9)  { animation-delay: 0.44s; }
+.pdf-grid .pdf-card:nth-child(n+10) { animation-delay: 0.49s; }
+
+@keyframes pdfCardIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Accent bar animated width on hover ─────────────────────────────────────── */
+.pdf-card-accent {
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+.pdf-card:hover .pdf-card-accent {
+  opacity: 1;
+}
+
+/* ── PDF thumb icon glow on hover ────────────────────────────────────────────── */
+.pdf-card:hover .pdf-thumb {
+  background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
+}
+.pdf-card:hover .pdf-thumb i {
+  filter: drop-shadow(0 6px 18px rgba(239,68,68,0.35));
+}
+
+/* ── Category chip animation ─────────────────────────────────────────────────── */
+.cat-chip {
+  transition: all 0.18s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1));
+  will-change: transform;
+}
+.cat-chip:hover  { transform: translateY(-2px); }
+.cat-chip:active { transform: scale(0.95); }
+.cat-chip.active {
+  animation: chipPop 0.3s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1));
+}
+@keyframes chipPop {
+  0%   { transform: scale(0.9); }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* ── Filter bar animated focus glow ─────────────────────────────────────────── */
+.filter-search-wrap input:focus {
+  animation: filterGlow 0.4s ease forwards;
+}
+@keyframes filterGlow {
+  from { box-shadow: 0 0 0 0 rgba(67,56,202,0); }
+  to   { box-shadow: 0 0 0 4px rgba(67,56,202,0.1); }
+}
+
+/* ── Download button shimmer ─────────────────────────────────────────────────── */
+.btn-download-pulse {
+  background-size: 200% 100%;
+  animation: shimmerBtn 2.5s ease infinite;
+}
+@keyframes shimmerBtn {
+  0%   { background-position: 100% 0; }
+  50%  { background-position: -100% 0; }
+  100% { background-position: 100% 0; }
+}
+
+/* ── Modal entrance ──────────────────────────────────────────────────────────── */
+.modal-overlay.active .modal-box {
+  animation: modalSlideUp 0.3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Modal balance box pulse when insufficient ───────────────────────────────── */
+.modal-balance-box.insufficient {
+  animation: insufficientShake 0.5s ease;
+}
+@keyframes insufficientShake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+/* ── Hero icon pulse ring ────────────────────────────────────────────────────── */
+.pdf-hero-icon {
+  animation: heroIconPulse 3s ease-in-out infinite;
+}
+@keyframes heroIconPulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(255,255,255,0.15),
+                         0 0 0 0   rgba(255,255,255,0.08); }
+  50%       { box-shadow: 0 0 0 12px rgba(255,255,255,0),
+                         0 0 0 22px rgba(255,255,255,0); }
+}
+
+/* ── Hero stat badges entrance ───────────────────────────────────────────────── */
+.pdf-hero-stat {
+  animation: statBadgeIn 0.6s var(--transition-smooth) both;
+}
+.pdf-hero-stat:nth-child(1) { animation-delay: 0.1s; }
+.pdf-hero-stat:nth-child(2) { animation-delay: 0.2s; }
+.pdf-hero-stat:nth-child(3) { animation-delay: 0.3s; }
+@keyframes statBadgeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   26. ADMIN PDF PANEL ANIMATIONS
+   ─ Upload panel slide-down
+   ─ Drop-zone breathing pulse
+   ─ Drag-over bounce
+   ─ Quick stat pill hover pop
+   ─ Request row entrance
+   ─ Type toggle button transition
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── PDF upload panel slide-down ─────────────────────────────────────────────── */
+.pdf-upload-panel {
+  animation: panelSlideDown 0.25s var(--transition-smooth) both;
+}
+@keyframes panelSlideDown {
+  from { opacity: 0; transform: translateY(-12px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0);     max-height: 2000px; }
+}
+
+/* ── Drop zone breathing animation when idle ─────────────────────────────────── */
+.pdf-drop-zone {
+  animation: dropBreath 3s ease-in-out infinite;
+}
+.pdf-drop-zone:hover,
+.pdf-drop-zone.drag-over {
+  animation: none;
+  transform: scale(1.015);
+  border-color: #4338ca !important;
+  background: #eef2ff !important;
+}
+@keyframes dropBreath {
+  0%, 100% { border-color: #c7d2fe; }
+  50%       { border-color: #a5b4fc; }
+}
+
+/* ── Drag-over animation ──────────────────────────────────────────────────────── */
+.pdf-drop-zone.drag-over {
+  animation: dragBounce 0.2s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1));
+}
+@keyframes dragBounce {
+  from { transform: scale(0.98); }
+  to   { transform: scale(1.02); }
+}
+
+/* ── Quick stat pill pop ─────────────────────────────────────────────────────── */
+.pdf-stat-pill {
+  transition: transform 0.2s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1)),
+              box-shadow 0.2s ease;
+}
+.pdf-stat-pill:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+
+/* ── PDF type toggle button ──────────────────────────────────────────────────── */
+.pdf-type-btn {
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.pdf-type-btn.active {
+  animation: typeTogglePop 0.25s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1));
+}
+@keyframes typeTogglePop {
+  from { transform: scale(0.93); }
+  to   { transform: scale(1); }
+}
+
+/* ── PDF request row entrance ────────────────────────────────────────────────── */
+.pdf-request-row {
+  animation: requestRowIn 0.3s var(--transition-smooth) both;
+}
+.pdf-requests-list .pdf-request-row:nth-child(1) { animation-delay: 0.05s; }
+.pdf-requests-list .pdf-request-row:nth-child(2) { animation-delay: 0.10s; }
+.pdf-requests-list .pdf-request-row:nth-child(3) { animation-delay: 0.15s; }
+@keyframes requestRowIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Pending badge pulse ─────────────────────────────────────────────────────── */
+#pdfPendingBadge,
+.pdf-pending-count {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(239,68,68,0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+}
+
+/* ── File info success bar animation ─────────────────────────────────────────── */
+.pdf-file-progress-bar {
+  animation: progressLoad 1.2s var(--transition-smooth) forwards;
+}
+@keyframes progressLoad {
+  from { width: 0%; opacity: 0.6; }
+  to   { width: 100%; opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   27. MOBILE PDF ADJUSTMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .pdf-grid .pdf-card { animation-duration: 0.35s; }
+  .pdf-hero-sym:nth-child(n+4) { display: none; }
+  .pdf-form-grid { grid-template-columns: 1fr !important; }
+  .pdf-drop-zone { min-height: 140px !important; padding: 20px !important; }
+}

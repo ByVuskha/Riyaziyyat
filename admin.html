@@ -258,7 +258,324 @@
             .admin-logo span { margin: 0; }
             .admin-logo div { display: none; }
             .admin-menu-item span { display: none; }
+            .admin-menu-group-label { display: none; }
         }
+
+        /* ── Sidebar group labels ── */
+        .admin-menu-group-label {
+            padding: 16px 20px 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            user-select: none;
+        }
+        .admin-menu-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.07);
+            margin: 8px 16px;
+        }
+
+        /* ════════════════════════════════
+           PDF ADMIN STYLES
+        ════════════════════════════════ */
+        .pdf-admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 22px;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Quick stats pills */
+        .pdf-quick-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .pdf-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #fef2f2;
+            color: #991b1b;
+            border-radius: 20px;
+            padding: 7px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            transition: transform .15s;
+        }
+        .pdf-stat-pill:hover { transform: translateY(-2px); }
+        .pdf-stat-pill i { font-size: 12px; }
+
+        /* Upload panel */
+        .pdf-upload-panel {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+            animation: slideDown .25s ease;
+        }
+        @keyframes slideDown {
+            from { opacity:0; transform:translateY(-10px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .pdf-upload-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, #4338ca, #6d28d9);
+            color: white;
+        }
+        .pdf-upload-panel-header h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pdf-panel-close {
+            background: rgba(255,255,255,.15);
+            border: none;
+            color: white;
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+        }
+        .pdf-panel-close:hover { background: rgba(255,255,255,.3); }
+
+        .pdf-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 24px;
+            padding: 24px;
+        }
+        @media(max-width:900px) { .pdf-form-grid { grid-template-columns: 1fr; } }
+
+        .pdf-form-left .form-group {
+            margin-bottom: 16px;
+        }
+        .pdf-form-left .form-group label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 6px;
+        }
+        .pdf-form-row.two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .pdf-form-row.three-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+        @media(max-width:600px) {
+            .pdf-form-row.two-col,
+            .pdf-form-row.three-col { grid-template-columns: 1fr; }
+        }
+
+        /* Type toggle buttons */
+        .pdf-type-toggle {
+            display: flex;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pdf-type-btn {
+            flex: 1;
+            padding: 8px 10px;
+            border: none;
+            background: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s, color .2s;
+            color: #6b7280;
+        }
+        .pdf-type-btn.active {
+            background: linear-gradient(135deg, #4338ca, #6d28d9);
+            color: white;
+        }
+
+        .pdf-form-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        /* Drop zone */
+        .pdf-drop-zone {
+            border: 2.5px dashed #c7d2fe;
+            border-radius: 14px;
+            padding: 32px 20px;
+            text-align: center;
+            background: white;
+            cursor: pointer;
+            transition: border-color .2s, background .2s, transform .15s;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+        }
+        .pdf-drop-zone:hover,
+        .pdf-drop-zone.drag-over {
+            border-color: #4338ca;
+            background: #eef2ff;
+            transform: scale(1.01);
+        }
+        .pdf-drop-icon i {
+            font-size: 52px;
+            color: #ef4444;
+            display: block;
+            transition: transform .2s;
+        }
+        .pdf-drop-zone:hover .pdf-drop-icon i { transform: scale(1.1); }
+        .pdf-drop-icon .drop-math {
+            font-size: 11px;
+            color: #a5b4fc;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .pdf-drop-text strong {
+            display: block;
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .pdf-drop-text span {
+            font-size: 13px;
+            color: #6b7280;
+            display: block;
+        }
+        .pdf-drop-text small {
+            font-size: 11px;
+            color: #9ca3af;
+            display: block;
+            margin-top: 6px;
+        }
+        .pdf-file-info {
+            background: #ecfdf5;
+            border-radius: 10px;
+            padding: 10px 16px;
+            color: #065f46;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+        .pdf-file-progress {
+            height: 4px;
+            background: #d1fae5;
+            border-radius: 10px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .pdf-file-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 10px;
+            animation: progressLoad 1.5s ease forwards;
+        }
+        @keyframes progressLoad {
+            from { width: 0%; }
+            to   { width: 100%; }
+        }
+
+        /* Pending requests */
+        .pdf-pending-requests {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 1.5px solid #fde68a;
+            border-radius: 14px;
+            padding: 0;
+            margin-bottom: 22px;
+            overflow: hidden;
+        }
+        .pdf-pending-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            background: rgba(251,191,36,0.15);
+            font-size: 14px;
+            color: #92400e;
+        }
+        .pdf-pending-header i { color: #f59e0b; font-size: 16px; }
+        .pdf-pending-count {
+            background: #ef4444;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 9px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .pdf-requests-list {
+            padding: 12px 16px;
+        }
+        .pdf-request-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #fde68a;
+            transition: box-shadow .2s;
+        }
+        .pdf-request-row:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+        .pdf-request-info { flex: 1; }
+        .pdf-request-info strong { font-size: 14px; color: #1e293b; }
+        .pdf-request-info span { font-size: 12px; color: #6b7280; display: block; margin-top: 2px; }
+        .pdf-request-actions { display: flex; gap: 8px; }
+
+        /* Table toolbar */
+        .pdf-table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pdf-table-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1.5px solid #e2e8f0;
+        }
+        .pdf-data-table thead th {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 13px 14px;
+        }
+        .pdf-data-table td { padding: 14px; }
+        .pdf-empty-row {
+            text-align: center;
+            padding: 50px !important;
+            color: #9ca3af;
+        }
+        .pdf-empty-row i { font-size: 36px; opacity: .2; display: block; margin-bottom: 10px; }
+        .pdf-empty-row span { display: block; font-size: 14px; }
     </style>
 </head>
 <body id="adminPage">
@@ -271,6 +588,7 @@
             <div>Bizim Riyaziyyat Admin</div>
         </div>
         <nav class="admin-menu">
+            <div class="admin-menu-group-label">Əsas</div>
             <div class="admin-menu-item active" onclick="showSection('dashboard')">
                 <i class="fas fa-chart-line"></i>
                 <span>Dashboard</span>
@@ -279,14 +597,13 @@
                 <i class="fas fa-users"></i>
                 <span>İstifadəçilər</span>
             </div>
-            <div class="admin-menu-item" onclick="showSection('teacherTests')">
-                <i class="fas fa-chalkboard-teacher" style="color:#10b981;"></i>
-                <span>Müəllim Sınaqları <span id="teacherTestsBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
+            <div class="admin-menu-item" onclick="showSection('activeUsers')">
+                <i class="fas fa-circle" style="color:#10b981;font-size:10px;"></i>
+                <span>Aktiv İstifadəçilər <span id="activeUsersCount" style="background:#10b981;color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></span>
             </div>
-            <div class="admin-menu-item" onclick="showSection('teachers')">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span>Müəllimlər</span>
-            </div>
+
+            <div class="admin-menu-divider"></div>
+            <div class="admin-menu-group-label">Məzmun</div>
             <div class="admin-menu-item" onclick="showSection('videos')">
                 <i class="fas fa-video"></i>
                 <span>Video Dərslər</span>
@@ -299,17 +616,46 @@
                 <i class="fas fa-chart-bar"></i>
                 <span>Sınaq Nəticələri</span>
             </div>
-            <div class="admin-menu-item" onclick="showSection('siteEditor')">
-                <i class="fas fa-paint-brush"></i>
-                <span>Sayt Redaktoru</span>
-            </div>
             <div class="admin-menu-item" onclick="showSection('news')">
                 <i class="fas fa-newspaper"></i>
                 <span>Xəbərlər</span>
             </div>
+            <div class="admin-menu-item" onclick="showSection('pdfs')">
+                <i class="fas fa-file-pdf" style="color:#ef4444;"></i>
+                <span>PDF Materiallar <span id="pdfPendingBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
+            </div>
+
+            <div class="admin-menu-divider"></div>
+            <div class="admin-menu-group-label">Müəllimlər</div>
+            <div class="admin-menu-item" onclick="showSection('teachers')">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span>Müəllimlər</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('teacherTests')">
+                <i class="fas fa-chalkboard-teacher" style="color:#10b981;"></i>
+                <span>Müəllim Sınaqları <span id="teacherTestsBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
+            </div>
+
+            <div class="admin-menu-divider"></div>
+            <div class="admin-menu-group-label">Maliyyə</div>
             <div class="admin-menu-item" onclick="showSection('payments')">
                 <i class="fas fa-credit-card"></i>
                 <span>Ödənişlər</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('premium')">
+                <i class="fas fa-crown" style="color:#fbbf24;"></i>
+                <span>Premium <span id="premiumPendingBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
+            </div>
+
+            <div class="admin-menu-divider"></div>
+            <div class="admin-menu-group-label">İdarəetmə</div>
+            <div class="admin-menu-item" onclick="showSection('leaderboard')">
+                <i class="fas fa-trophy" style="color:#fbbf24;"></i>
+                <span>Xal Liderliyi</span>
+            </div>
+            <div class="admin-menu-item" onclick="showSection('achievements')">
+                <i class="fas fa-medal" style="color:#f59e0b;"></i>
+                <span>Uğurlar</span>
             </div>
             <div class="admin-menu-item" onclick="showSection('suspicious')">
                 <i class="fas fa-shield-alt" style="color:#f59e0b;"></i>
@@ -319,36 +665,22 @@
                 <i class="fas fa-mobile-alt" style="color:#8b5cf6;"></i>
                 <span>Cihaz İdarəetməsi</span>
             </div>
-            <div class="admin-menu-item" onclick="showSection('premium')">
-                <i class="fas fa-crown" style="color:#fbbf24;"></i>
-                <span>Premium İdarəetməsi <span id="premiumPendingBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
-            </div>
-            <div class="admin-menu-item" onclick="showSection('activeUsers')">
-                <i class="fas fa-circle" style="color:#10b981;font-size:10px;"></i>
-                <span>Aktiv İstifadəçilər <span id="activeUsersCount" style="background:#10b981;color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></span>
-            </div>
-            <div class="admin-menu-item" onclick="showSection('achievements')">
-                <i class="fas fa-medal" style="color:#f59e0b;"></i>
-                <span>Uğurlar</span>
-            </div>
-            <div class="admin-menu-item" onclick="showSection('leaderboard')">
-                <i class="fas fa-trophy" style="color:#fbbf24;"></i>
-                <span>Xal Liderliyi</span>
+            <div class="admin-menu-item" onclick="showSection('siteEditor')">
+                <i class="fas fa-paint-brush"></i>
+                <span>Sayt Redaktoru</span>
             </div>
             <div class="admin-menu-item" onclick="showSection('settings')">
                 <i class="fas fa-cog"></i>
                 <span>Tənzimləmələr</span>
             </div>
-            <div class="admin-menu-item" onclick="showSection('pdfs')">
-                <i class="fas fa-file-pdf" style="color:#ef4444;"></i>
-                <span>PDF Materiallar <span id="pdfPendingBadge" style="display:none;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;align-items:center;justify-content:center;margin-left:4px;">0</span></span>
-            </div>
+
+            <div class="admin-menu-divider"></div>
             <div class="admin-menu-item" onclick="window.location.href='index.html'">
                 <i class="fas fa-home"></i>
                 <span>Sayta Qayıt</span>
             </div>
-            <div class="admin-menu-item" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i>
+            <div class="admin-menu-item" onclick="logout()" style="color:rgba(239,68,68,0.8);">
+                <i class="fas fa-sign-out-alt" style="color:#ef4444;"></i>
                 <span>Çıxış</span>
             </div>
         </nav>
@@ -360,10 +692,10 @@
             <h1 id="pageTitle">Dashboard</h1>
             <div class="admin-user">
                 <div>
-                    <div style="font-weight:600;font-size:14px;">Admin</div>
-                    <div style="font-size:12px;color:var(--gray);">admin@riyazmath.az</div>
+                    <div style="font-weight:600;font-size:14px;" id="adminUserName">Admin</div>
+                    <div style="font-size:12px;color:var(--gray);" id="adminUserEmail">admin@riyazmath.az</div>
                 </div>
-                <div class="admin-avatar">A</div>
+                <div class="admin-avatar" id="adminAvatar">A</div>
             </div>
         </div>
 
@@ -1295,125 +1627,192 @@
             </div>
         </div>
 
-    </main>
-</div>
-
-
-        <!-- ══════════════════════════════════════════════════ -->
-        <!-- PDF Materiallar Section                           -->
-        <!-- ══════════════════════════════════════════════════ -->
+        <!-- ══════════════════════════════════════════════════════════
+             PDF MATERİALLAR BÖLMƏSİ — admin.main içindədir
+        ══════════════════════════════════════════════════════════ -->
         <div id="pdfs" class="admin-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                <h2 style="margin:0;border:none;padding:0;"><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:8px;"></i>PDF Materiallar</h2>
-                <button class="btn btn-primary btn-sm" onclick="togglePdfUploadForm()">
-                    <i class="fas fa-plus"></i> PDF Yüklə
+            <div class="pdf-admin-header">
+                <div>
+                    <h2 style="margin:0;border:none;padding:0;font-size:22px;display:flex;align-items:center;gap:10px;">
+                        <span style="width:40px;height:40px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-file-pdf" style="color:white;font-size:18px;"></i>
+                        </span>
+                        PDF Materiallar
+                    </h2>
+                    <p style="margin:6px 0 0 50px;font-size:13px;color:var(--gray);">PDF yüklə, idarə et, müraciətləri cavablandır</p>
+                </div>
+                <button class="btn btn-primary" onclick="togglePdfUploadForm()" id="pdfUploadToggleBtn">
+                    <i class="fas fa-plus"></i> Yeni PDF Yüklə
                 </button>
             </div>
 
-            <!-- Upload Form -->
-            <div id="pdfUploadForm" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px;">
-                <h4 style="margin-bottom:18px;font-size:15px;font-weight:700;"><i class="fas fa-upload" style="color:#4f46e5;margin-right:6px;"></i>Yeni PDF Əlavə Et</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
-                    <div class="form-group" style="margin:0;">
-                        <label>Başlıq *</label>
-                        <input type="text" class="form-control" id="pdfTitle" placeholder="Məs: Cəbr — Tənliklər Toplusu">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label>Kateqoriya</label>
-                        <select class="form-control" id="pdfCategory">
-                            <option value="Cəbr">Cəbr</option>
-                            <option value="Həndəsə">Həndəsə</option>
-                            <option value="Analiz">Analiz</option>
-                            <option value="Ehtimal">Ehtimal və Statistika</option>
-                            <option value="Arifmetika">Arifmetika</option>
-                            <option value="Olimpiada">Olimpiada</option>
-                            <option value="Digər">Digər</option>
-                        </select>
-                    </div>
+            <!-- ── Quick stats ── -->
+            <div class="pdf-quick-stats" id="pdfQuickStats">
+                <div class="pdf-stat-pill">
+                    <i class="fas fa-file-pdf"></i>
+                    <span id="pdfStatTotal">0</span> PDF
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;">
-                    <div class="form-group" style="margin:0;">
-                        <label>Növ</label>
-                        <select class="form-control" id="pdfType">
-                            <option value="free">Pulsuz 🆓</option>
-                            <option value="paid">Ödənişli 💎</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin:0;" id="pdfPriceGroup">
-                        <label>Qiymət (₼)</label>
-                        <input type="number" class="form-control" id="pdfPrice" value="5" min="1" max="500">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label>Səhifə Sayı</label>
-                        <input type="number" class="form-control" id="pdfPages" placeholder="Məs: 24" min="1">
-                    </div>
+                <div class="pdf-stat-pill" style="background:#ecfdf5;color:#065f46;">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="pdfStatFree">0</span> Pulsuz
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>Açıqlama</label>
-                    <textarea class="form-control" id="pdfDescription" rows="2" placeholder="PDF haqqında qısa məlumat..."></textarea>
+                <div class="pdf-stat-pill" style="background:#fef3c7;color:#92400e;">
+                    <i class="fas fa-gem"></i>
+                    <span id="pdfStatPaid">0</span> Ödənişli
                 </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label>PDF Faylı *</label>
-                    <div style="border:2px dashed #cbd5e1;border-radius:10px;padding:24px;text-align:center;background:white;cursor:pointer;"
-                         onclick="document.getElementById('pdfFileInput').click()"
-                         id="pdfDropZone">
-                        <i class="fas fa-file-pdf" style="font-size:36px;color:#ef4444;margin-bottom:10px;display:block;"></i>
-                        <p style="font-weight:600;color:#374151;margin-bottom:4px;">PDF faylını seçin</p>
-                        <p style="font-size:12px;color:#94a3b8;">Maksimum ölçü: 20 MB</p>
-                        <div id="pdfFileInfo" style="display:none;margin-top:10px;padding:8px 14px;background:#ecfdf5;border-radius:8px;color:#065f46;font-size:13px;font-weight:600;"></div>
-                    </div>
-                    <input type="file" id="pdfFileInput" accept=".pdf" style="display:none;" onchange="onPdfFileSelected(this)">
-                </div>
-                <div style="display:flex;gap:10px;">
-                    <button class="btn btn-primary" onclick="savePdf()">
-                        <i class="fas fa-save"></i> PDF-i Əlavə Et
-                    </button>
-                    <button class="btn btn-secondary" onclick="togglePdfUploadForm()">
-                        <i class="fas fa-times"></i> Ləğv Et
-                    </button>
+                <div class="pdf-stat-pill" style="background:#fef2f2;color:#991b1b;">
+                    <i class="fas fa-clock"></i>
+                    <span id="pdfStatPending">0</span> Gözləyir
                 </div>
             </div>
 
-            <!-- Pending Download Requests -->
-            <div id="pdfDownloadRequests" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:20px;margin-bottom:20px;">
-                <h4 style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:14px;">
-                    <i class="fas fa-clock"></i> Gözləyən Yükləmə Müraciətləri
-                    (<span id="pendingPdfRequestCount">0</span>)
-                </h4>
-                <div id="pdfRequestsList"></div>
+            <!-- ── Upload Form (collapsible) ── -->
+            <div id="pdfUploadForm" class="pdf-upload-panel" style="display:none;">
+                <div class="pdf-upload-panel-header">
+                    <h4><i class="fas fa-cloud-upload-alt"></i> Yeni PDF Əlavə Et</h4>
+                    <button class="pdf-panel-close" onclick="togglePdfUploadForm()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="pdf-form-grid">
+                    <!-- Left: metadata -->
+                    <div class="pdf-form-left">
+                        <div class="pdf-form-row two-col">
+                            <div class="form-group">
+                                <label><i class="fas fa-heading"></i> Başlıq *</label>
+                                <input type="text" class="form-control" id="pdfTitle" placeholder="Məs: Cəbr — Tənliklər Toplusu">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-tag"></i> Kateqoriya</label>
+                                <select class="form-control" id="pdfCategory">
+                                    <option value="Cəbr">📐 Cəbr</option>
+                                    <option value="Həndəsə">📏 Həndəsə</option>
+                                    <option value="Analiz">∫ Analiz</option>
+                                    <option value="Ehtimal">🎲 Ehtimal və Statistika</option>
+                                    <option value="Arifmetika">🔢 Arifmetika</option>
+                                    <option value="Olimpiada">🏆 Olimpiada</option>
+                                    <option value="Digər">📁 Digər</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="pdf-form-row three-col">
+                            <div class="form-group">
+                                <label><i class="fas fa-toggle-on"></i> Növ</label>
+                                <div class="pdf-type-toggle">
+                                    <button type="button" class="pdf-type-btn active" id="typeBtnFree" onclick="setPdfType('free')">
+                                        🆓 Pulsuz
+                                    </button>
+                                    <button type="button" class="pdf-type-btn" id="typeBtnPaid" onclick="setPdfType('paid')">
+                                        💎 Ödənişli
+                                    </button>
+                                </div>
+                                <input type="hidden" id="pdfType" value="free">
+                            </div>
+                            <div class="form-group" id="pdfPriceGroup" style="display:none;">
+                                <label><i class="fas fa-manat-sign"></i> Qiymət (₼)</label>
+                                <input type="number" class="form-control" id="pdfPrice" value="5" min="1" max="500" placeholder="5.00">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-file-alt"></i> Səhifə Sayı</label>
+                                <input type="number" class="form-control" id="pdfPages" placeholder="Məs: 24" min="1">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-align-left"></i> Açıqlama</label>
+                            <textarea class="form-control" id="pdfDescription" rows="3"
+                                placeholder="Bu PDF hansı mövzuları əhatə edir? Kim üçün uyğundur?..."></textarea>
+                        </div>
+
+                        <div class="pdf-form-actions">
+                            <button class="btn btn-primary" onclick="savePdf()" id="savePdfBtn">
+                                <i class="fas fa-cloud-upload-alt"></i> PDF-i Yüklə
+                            </button>
+                            <button class="btn btn-secondary" onclick="togglePdfUploadForm()">
+                                <i class="fas fa-times"></i> Ləğv Et
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: file drop zone -->
+                    <div class="pdf-form-right">
+                        <div class="pdf-drop-zone" id="pdfDropZone"
+                             onclick="document.getElementById('pdfFileInput').click()"
+                             ondragover="event.preventDefault();this.classList.add('drag-over')"
+                             ondragleave="this.classList.remove('drag-over')"
+                             ondrop="handlePdfDrop(event)">
+                            <div class="pdf-drop-icon" id="pdfDropIcon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="pdf-drop-text" id="pdfDropText">
+                                <strong>PDF faylını buraya sürükləyin</strong>
+                                <span>və ya klikləyin seçin</span>
+                                <small>Maksimum ölçü: 20 MB · Yalnız .pdf</small>
+                            </div>
+                            <div id="pdfFileInfo" class="pdf-file-info" style="display:none;"></div>
+                        </div>
+                        <input type="file" id="pdfFileInput" accept=".pdf" style="display:none;" onchange="onPdfFileSelected(this)">
+                    </div>
+                </div>
             </div>
 
-            <!-- PDF Table -->
-            <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;">
-                <select class="form-control" id="pdfFilterType" style="width:160px;" onchange="loadPdfs()">
-                    <option value="">Hamısı</option>
-                    <option value="free">Pulsuz</option>
-                    <option value="paid">Ödənişli</option>
-                </select>
-                <select class="form-control" id="pdfFilterCat" style="width:180px;" onchange="loadPdfs()">
-                    <option value="">Bütün Kateqoriyalar</option>
-                    <option>Cəbr</option><option>Həndəsə</option><option>Analiz</option>
-                    <option>Ehtimal</option><option>Arifmetika</option><option>Olimpiada</option><option>Digər</option>
-                </select>
+            <!-- ── Pending Download Requests ── -->
+            <div id="pdfDownloadRequests" style="display:none;" class="pdf-pending-requests">
+                <div class="pdf-pending-header">
+                    <i class="fas fa-bell"></i>
+                    <strong>Gözləyən Yükləmə Müraciətləri</strong>
+                    <span class="pdf-pending-count" id="pendingPdfRequestCount">0</span>
+                </div>
+                <div id="pdfRequestsList" class="pdf-requests-list"></div>
             </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Başlıq</th>
-                        <th>Kateqoriya</th>
-                        <th>Növ</th>
-                        <th>Qiymət</th>
-                        <th>Ölçü</th>
-                        <th>Yükləmə</th>
-                        <th>Tarix</th>
-                        <th>Əməliyyat</th>
-                    </tr>
-                </thead>
-                <tbody id="pdfsTable">
-                    <tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">PDF yoxdur</td></tr>
-                </tbody>
-            </table>
+
+            <!-- ── Filters + Table ── -->
+            <div class="pdf-table-toolbar">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <select class="form-control" id="pdfFilterType" style="width:140px;" onchange="loadPdfs()">
+                        <option value="">Bütün Növlər</option>
+                        <option value="free">🆓 Pulsuz</option>
+                        <option value="paid">💎 Ödənişli</option>
+                    </select>
+                    <select class="form-control" id="pdfFilterCat" style="width:180px;" onchange="loadPdfs()">
+                        <option value="">Bütün Kateqoriyalar</option>
+                        <option>📐 Cəbr</option><option>📏 Həndəsə</option><option>∫ Analiz</option>
+                        <option>🎲 Ehtimal</option><option>🔢 Arifmetika</option><option>🏆 Olimpiada</option><option>📁 Digər</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="loadPdfs()">
+                    <i class="fas fa-sync"></i> Yenilə
+                </button>
+            </div>
+
+            <div class="pdf-table-wrap">
+                <table class="data-table pdf-data-table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:5px;"></i>Başlıq</th>
+                            <th>Kateqoriya</th>
+                            <th>Növ</th>
+                            <th>Qiymət</th>
+                            <th>Ölçü</th>
+                            <th><i class="fas fa-download" style="margin-right:4px;"></i>Yükləmə</th>
+                            <th>Tarix</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfsTable">
+                        <tr><td colspan="8" class="pdf-empty-row">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>PDF tapılmadı</span>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+    </main>
+</div>
 
     <canvas id="mathCanvas"></canvas>
     <script src="js/confetti.js"></script>

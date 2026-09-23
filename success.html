@@ -878,7 +878,26 @@ window.addEventListener('storage', (e) => {
 });
 
 window.addEventListener('upstash:loaded', renderAll);
-document.addEventListener('DOMContentLoaded', renderAll);
+document.addEventListener('DOMContentLoaded', () => {
+    renderAll();
+
+    /* ── Confetti: celebrate when arriving from a completed test ── */
+    const params = new URLSearchParams(window.location.search);
+    const score  = parseInt(params.get('score') || '0', 10);
+    const fromTest = params.get('celebrate') === '1' || score >= 60;
+
+    if (fromTest && typeof Confetti !== 'undefined') {
+        const pct = score || 80; // default to celebratory if no score given
+        setTimeout(() => {
+            Confetti.burst({
+                count   : pct === 100 ? 200 : pct >= 80 ? 140 : 90,
+                math    : pct < 80,
+                duration: pct === 100 ? 6000 : 4000,
+                origin  : { x: window.innerWidth / 2, y: -10 },
+            });
+        }, 600);
+    }
+});
 </script>
     <canvas id="mathCanvas"></canvas>
     <script src="js/confetti.js"></script>

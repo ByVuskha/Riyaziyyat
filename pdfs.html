@@ -24,101 +24,448 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .page-hero {
-            background: linear-gradient(135deg, #1e1b4b, #4f46e5);
-            color: white; padding: 56px 0 40px; text-align: center;
+        /* ══════════════════════════════════════════════
+           HERO SECTION
+        ══════════════════════════════════════════════ */
+        .pdf-hero {
+            background: linear-gradient(135deg, #0d1b3e 0%, #1e40af 50%, #4338ca 100%);
+            color: white;
+            padding: 70px 0 50px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
         }
-        .page-hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 8px; }
-        .page-hero p  { opacity: .8; font-size: 15px; max-width: 520px; margin: 0 auto; }
+        .pdf-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(124,58,237,0.25) 0%, transparent 60%),
+                radial-gradient(circle at 80% 30%, rgba(6,182,212,0.2) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        /* Floating math symbols in hero */
+        .pdf-hero-symbols {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .pdf-hero-sym {
+            position: absolute;
+            font-size: clamp(18px, 3vw, 32px);
+            color: rgba(255,255,255,0.06);
+            font-weight: 700;
+            animation: floatSym 8s ease-in-out infinite;
+            user-select: none;
+        }
+        @keyframes floatSym {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.06; }
+            50%       { transform: translateY(-18px) rotate(5deg); opacity: 0.12; }
+        }
+        .pdf-hero-sym:nth-child(1) { top:15%; left:5%;  animation-delay:0s;    font-size:28px; }
+        .pdf-hero-sym:nth-child(2) { top:60%; left:10%; animation-delay:1.2s;  font-size:22px; }
+        .pdf-hero-sym:nth-child(3) { top:25%; left:85%; animation-delay:0.6s;  font-size:36px; }
+        .pdf-hero-sym:nth-child(4) { top:70%; left:80%; animation-delay:2s;    font-size:24px; }
+        .pdf-hero-sym:nth-child(5) { top:10%; left:50%; animation-delay:3s;    font-size:20px; }
+        .pdf-hero-sym:nth-child(6) { top:80%; left:45%; animation-delay:1.8s;  font-size:30px; }
 
-        /* Filters */
+        .pdf-hero-content { position: relative; z-index: 1; }
+        .pdf-hero-icon {
+            width: 72px; height: 72px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            animation: iconPulse 3s ease-in-out infinite;
+        }
+        @keyframes iconPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.1); }
+            50%       { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+        }
+        .pdf-hero h1 {
+            font-size: clamp(26px, 5vw, 40px);
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+        .pdf-hero p {
+            opacity: .75;
+            font-size: 15px;
+            max-width: 520px;
+            margin: 0 auto 28px;
+            line-height: 1.6;
+        }
+        /* Hero stat badges */
+        .pdf-hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .pdf-hero-stat {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ══════════════════════════════════════════════
+           FILTER BAR
+        ══════════════════════════════════════════════ */
         .filter-bar {
-            background: white; border-radius: 14px;
-            box-shadow: var(--shadow); padding: 18px 22px;
-            margin: 28px 0 24px; display: flex; gap: 14px;
-            align-items: center; flex-wrap: wrap;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 16px 22px;
+            margin: 28px 0 26px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1.5px solid #f1f5f9;
         }
-        .filter-bar label { font-weight: 600; font-size: 13px; color: #374151; margin: 0; }
-        .filter-bar select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
-        .filter-bar input[type="search"] {
-            flex: 1; min-width: 200px; padding: 8px 14px;
-            border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;
+        .filter-search-wrap {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        .filter-search-wrap i {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        .filter-search-wrap input {
+            width: 100%;
+            padding: 9px 14px 9px 36px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            transition: border-color .2s, box-shadow .2s;
+            outline: none;
+        }
+        .filter-search-wrap input:focus {
+            border-color: #4338ca;
+            box-shadow: 0 0 0 3px rgba(67,56,202,0.08);
+        }
+        .filter-divider { width: 1px; height: 28px; background: #e2e8f0; flex-shrink: 0; }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-group label {
+            font-weight: 600;
+            font-size: 12px;
+            color: #374151;
+            white-space: nowrap;
+        }
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            transition: border-color .2s;
+            outline: none;
+        }
+        .filter-group select:focus { border-color: #4338ca; }
+
+        /* Category chips */
+        .cat-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 0 0 22px;
+        }
+        .cat-chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            cursor: pointer;
+            transition: all .2s;
+            user-select: none;
+        }
+        .cat-chip:hover { border-color: #4338ca; color: #4338ca; }
+        .cat-chip.active {
+            background: linear-gradient(135deg, #4338ca, #6d28d9);
+            color: white;
+            border-color: transparent;
         }
 
-        /* PDF Grid */
+        /* ══════════════════════════════════════════════
+           PDF GRID
+        ══════════════════════════════════════════════ */
         .pdf-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 22px;
-            margin-bottom: 50px;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
         }
 
-        /* PDF Card */
+        /* ══════════════════════════════════════════════
+           PDF CARD — redesigned
+        ══════════════════════════════════════════════ */
         .pdf-card {
-            background: white; border-radius: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,.07);
-            overflow: hidden; transition: transform .2s, box-shadow .2s;
-            display: flex; flex-direction: column;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.06);
+            border: 1.5px solid #f1f5f9;
+            overflow: hidden;
+            transition: transform .25s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1)),
+                        box-shadow .25s ease,
+                        border-color .25s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
-        .pdf-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+        .pdf-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(67,56,202,0.13);
+            border-color: #c7d2fe;
+        }
+
+        /* Colored top bar per category */
+        .pdf-card-accent {
+            height: 4px;
+            background: linear-gradient(90deg, #4338ca, #7c3aed);
+            transition: height .2s;
+        }
+        .pdf-card:hover .pdf-card-accent { height: 5px; }
+        .pdf-card-accent.cat-geometry  { background: linear-gradient(90deg, #2563eb, #06b6d4); }
+        .pdf-card-accent.cat-analysis  { background: linear-gradient(90deg, #7c3aed, #ec4899); }
+        .pdf-card-accent.cat-olympiad  { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+        .pdf-card-accent.cat-prob      { background: linear-gradient(90deg, #10b981, #06b6d4); }
+        .pdf-card-accent.cat-arith     { background: linear-gradient(90deg, #f97316, #f59e0b); }
 
         .pdf-thumb {
-            background: linear-gradient(135deg, #fef2f2, #fee2e2);
-            padding: 28px 0; text-align: center; position: relative;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            padding: 30px 0 24px;
+            text-align: center;
+            position: relative;
         }
-        .pdf-thumb i { font-size: 56px; color: #ef4444; }
+        /* Math symbol watermark */
+        .pdf-thumb::before {
+            content: attr(data-sym);
+            position: absolute;
+            bottom: 6px; right: 14px;
+            font-size: 42px;
+            color: rgba(239,68,68,0.08);
+            font-weight: 900;
+            pointer-events: none;
+            font-style: italic;
+        }
+        .pdf-thumb i {
+            font-size: 58px;
+            color: #ef4444;
+            display: block;
+            filter: drop-shadow(0 4px 12px rgba(239,68,68,0.2));
+            transition: transform .25s var(--transition-bounce, cubic-bezier(.34,1.56,.64,1));
+        }
+        .pdf-card:hover .pdf-thumb i { transform: scale(1.1) rotate(-3deg); }
+
         .pdf-type-badge {
-            position: absolute; top: 12px; right: 12px;
-            padding: 3px 10px; border-radius: 20px;
-            font-size: 11px; font-weight: 700;
+            position: absolute;
+            top: 12px; right: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
         }
-        .type-free { background: #ecfdf5; color: #065f46; }
-        .type-paid { background: #fef3c7; color: #92400e; }
+        .type-free { background: rgba(236,253,245,0.95); color: #065f46; border: 1px solid rgba(16,185,129,.2); }
+        .type-paid { background: rgba(254,243,199,0.95); color: #92400e; border: 1px solid rgba(245,158,11,.2); }
 
         .pdf-body { padding: 18px 20px; flex: 1; display: flex; flex-direction: column; }
-        .pdf-body h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #1e293b; line-height: 1.4; }
-        .pdf-meta { font-size: 12px; color: #6b7280; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
-        .pdf-meta span { display: flex; align-items: center; gap: 4px; }
-        .pdf-desc { font-size: 13px; color: #4b5563; margin-bottom: 14px; flex: 1; line-height: 1.5; }
+        .pdf-body h4 {
+            font-size: 15px; font-weight: 700;
+            margin-bottom: 8px; color: #1e293b; line-height: 1.4;
+        }
+        .pdf-meta {
+            font-size: 12px; color: #6b7280;
+            margin-bottom: 10px;
+            display: flex; flex-wrap: wrap; gap: 10px;
+        }
+        .pdf-meta span {
+            display: flex; align-items: center; gap: 4px;
+            background: #f8fafc; padding: 2px 8px; border-radius: 6px;
+        }
+        .pdf-desc {
+            font-size: 13px; color: #4b5563;
+            margin-bottom: 14px; flex: 1; line-height: 1.55;
+            display: -webkit-box; -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden;
+        }
 
         .pdf-footer {
             padding: 14px 20px;
-            border-top: 1px solid #f1f5f9;
+            border-top: 1.5px solid #f1f5f9;
             display: flex; align-items: center; justify-content: space-between;
             gap: 10px;
+            background: #fafbff;
         }
-        .pdf-price { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .pdf-price { font-size: 19px; font-weight: 800; color: #1e293b; }
         .pdf-price.free { color: #10b981; font-size: 14px; font-weight: 700; }
 
-        /* Status labels shown on card when request pending/approved/rejected */
+        /* Status labels */
         .dl-status {
-            font-size: 11px; font-weight: 700; padding: 3px 10px;
-            border-radius: 20px; margin-right: 6px;
+            font-size: 11px; font-weight: 700; padding: 5px 12px;
+            border-radius: 20px;
         }
         .dl-pending  { background: #fef3c7; color: #92400e; }
         .dl-approved { background: #ecfdf5; color: #065f46; }
         .dl-rejected { background: #fef2f2; color: #991b1b; }
 
-        /* Modal */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,.55);
-            z-index: 9999; display: none; align-items: center;
-            justify-content: center; padding: 20px; backdrop-filter: blur(4px);
+        /* Download button pulse */
+        .btn-download-pulse {
+            position: relative;
+            overflow: hidden;
         }
-        .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: white; border-radius: 18px; padding: 34px;
-            width: 100%; max-width: 480px;
+        .btn-download-pulse::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,.2);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .3s ease;
         }
-        .modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
-        .modal-box p  { color: #6b7280; font-size: 14px; margin-bottom: 22px; }
+        .btn-download-pulse:hover::after { transform: scaleX(1); }
 
-        /* Empty state */
+        /* ══════════════════════════════════════════════
+           MODAL
+        ══════════════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(13,27,62,.6);
+            z-index: 9999;
+            display: none; align-items: center; justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(6px);
+        }
+        .modal-overlay.active { display: flex; animation: modalFadeIn .2s ease; }
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .modal-box {
+            background: white;
+            border-radius: 22px;
+            padding: 0;
+            width: 100%; max-width: 500px;
+            overflow: hidden;
+            animation: modalSlideUp .28s cubic-bezier(.34,1.56,.64,1);
+            box-shadow: 0 24px 60px rgba(0,0,0,.2);
+        }
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(30px) scale(.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #0d1b3e, #4338ca);
+            padding: 24px 28px;
+            color: white;
+            display: flex; align-items: flex-start; gap: 14px;
+        }
+        .modal-header-icon {
+            width: 50px; height: 50px; flex-shrink: 0;
+            background: rgba(255,255,255,.12);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+        }
+        .modal-header h3 { font-size: 18px; font-weight: 800; margin: 0 0 4px; line-height: 1.3; }
+        .modal-header p  { opacity: .75; font-size: 13px; margin: 0; }
+
+        .modal-body { padding: 24px 28px; }
+
+        .modal-balance-box {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1.5px solid #86efac;
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .modal-balance-box.insufficient {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            border-color: #fdba74;
+        }
+        .modal-balance-icon { font-size: 28px; flex-shrink: 0; }
+        .modal-balance-info .label { font-size: 12px; color: #6b7280; margin-bottom: 2px; }
+        .modal-balance-info .value { font-size: 20px; font-weight: 800; color: #1e293b; }
+        .modal-balance-info .note  { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+        .modal-price-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .modal-price-row .price-label { color: #6b7280; }
+        .modal-price-row .price-val   { font-size: 22px; font-weight: 800; color: #1e293b; }
+
+        .modal-actions {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .modal-footer-note {
+            font-size: 11px; color: #9ca3af;
+            text-align: center; margin-top: 14px;
+            line-height: 1.5;
+        }
+
+        /* ══════════════════════════════════════════════
+           EMPTY STATE
+        ══════════════════════════════════════════════ */
         .empty-state {
-            text-align: center; padding: 70px 30px; color: #9ca3af;
+            text-align: center; padding: 80px 30px; color: #9ca3af;
             grid-column: 1 / -1;
         }
-        .empty-state i { font-size: 56px; opacity: .25; display: block; margin-bottom: 16px; }
+        .empty-state .empty-icon {
+            width: 80px; height: 80px;
+            background: #f1f5f9; border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 18px;
+            font-size: 36px;
+        }
+        .empty-state h3 { font-size: 17px; color: #374151; margin-bottom: 6px; }
+        .empty-state p  { font-size: 14px; max-width: 300px; margin: 0 auto; }
+
+        /* ══════════════════════════════════════════════
+           SECTION HEADER
+        ══════════════════════════════════════════════ */
+        .pdf-section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+        }
+        .pdf-section-title {
+            font-size: 17px; font-weight: 800; color: #1e293b;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .pdf-count-badge {
+            background: #eef2ff; color: #4338ca;
+            border-radius: 20px; padding: 2px 10px;
+            font-size: 12px; font-weight: 700;
+        }
+
+        @media (max-width: 480px) {
+            .pdf-grid { grid-template-columns: 1fr; gap: 16px; }
+            .filter-bar { padding: 14px 16px; }
+            .pdf-hero { padding: 50px 0 36px; }
+        }
     </style>
 </head>
 <body>
@@ -155,10 +502,35 @@
 </nav>
 
 <!-- Hero -->
-<div class="page-hero">
-    <div class="container">
-        <h1><i class="fas fa-file-pdf" style="margin-right:12px;"></i>PDF Materiallar</h1>
-        <p>Riyaziyyat üzrə dərs vəsaitləri, sınaq topluları və olimpiada materialları</p>
+<div class="pdf-hero">
+    <div class="pdf-hero-symbols" aria-hidden="true">
+        <span class="pdf-hero-sym">π</span>
+        <span class="pdf-hero-sym">∑</span>
+        <span class="pdf-hero-sym">√</span>
+        <span class="pdf-hero-sym">∫</span>
+        <span class="pdf-hero-sym">∞</span>
+        <span class="pdf-hero-sym">Δ</span>
+    </div>
+    <div class="container pdf-hero-content">
+        <div class="pdf-hero-icon">
+            <i class="fas fa-file-pdf"></i>
+        </div>
+        <h1>PDF Materiallar</h1>
+        <p>Riyaziyyat üzrə dərs vəsaitləri, sınaq topluları<br>və olimpiada materialları</p>
+        <div class="pdf-hero-stats">
+            <div class="pdf-hero-stat">
+                <i class="fas fa-book-open"></i>
+                <span id="heroTotalPdfs">...</span> material
+            </div>
+            <div class="pdf-hero-stat">
+                <i class="fas fa-check-circle"></i>
+                Pulsuz materiallar mövcuddur
+            </div>
+            <div class="pdf-hero-stat">
+                <i class="fas fa-download"></i>
+                Birbaşa yükləmə
+            </div>
+        </div>
     </div>
 </div>
 
@@ -166,46 +538,108 @@
 
     <!-- Filters -->
     <div class="filter-bar">
-        <label><i class="fas fa-search" style="margin-right:5px;"></i></label>
-        <input type="search" id="pdfSearch" placeholder="PDF adı axtar..." oninput="renderPdfs()">
-        <label>Kateqoriya:</label>
-        <select id="catFilter" onchange="renderPdfs()">
-            <option value="">Hamısı</option>
-            <option>Cəbr</option><option>Həndəsə</option><option>Analiz</option>
-            <option>Ehtimal</option><option>Arifmetika</option><option>Olimpiada</option><option>Digər</option>
-        </select>
-        <label>Növ:</label>
-        <select id="typeFilter" onchange="renderPdfs()">
-            <option value="">Hamısı</option>
-            <option value="free">🆓 Pulsuz</option>
-            <option value="paid">💎 Ödənişli</option>
-        </select>
+        <div class="filter-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="search" id="pdfSearch" placeholder="PDF adı, mövzu axtar..." oninput="renderPdfs()">
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group">
+            <label><i class="fas fa-tag" style="color:#4338ca;"></i> Kateqoriya:</label>
+            <select id="catFilter" onchange="renderPdfs()">
+                <option value="">Hamısı</option>
+                <option>Cəbr</option>
+                <option>Həndəsə</option>
+                <option>Analiz</option>
+                <option>Ehtimal</option>
+                <option>Arifmetika</option>
+                <option>Olimpiada</option>
+                <option>Digər</option>
+            </select>
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group">
+            <label><i class="fas fa-filter" style="color:#4338ca;"></i> Növ:</label>
+            <select id="typeFilter" onchange="renderPdfs()">
+                <option value="">Hamısı</option>
+                <option value="free">🆓 Pulsuz</option>
+                <option value="paid">💎 Ödənişli</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Category quick-chips -->
+    <div class="cat-chips" id="catChips">
+        <span class="cat-chip active" onclick="setCat('')">Hamısı</span>
+        <span class="cat-chip" onclick="setCat('Cəbr')">📐 Cəbr</span>
+        <span class="cat-chip" onclick="setCat('Həndəsə')">📏 Həndəsə</span>
+        <span class="cat-chip" onclick="setCat('Analiz')">∫ Analiz</span>
+        <span class="cat-chip" onclick="setCat('Ehtimal')">🎲 Ehtimal</span>
+        <span class="cat-chip" onclick="setCat('Arifmetika')">🔢 Arifmetika</span>
+        <span class="cat-chip" onclick="setCat('Olimpiada')">🏆 Olimpiada</span>
+    </div>
+
+    <!-- Section header with count -->
+    <div class="pdf-section-header">
+        <div class="pdf-section-title">
+            <i class="fas fa-th-large" style="color:#4338ca;"></i>
+            Bütün Materiallar
+            <span class="pdf-count-badge" id="pdfCountBadge">...</span>
+        </div>
     </div>
 
     <!-- PDF Grid -->
     <div class="pdf-grid" id="pdfGrid">
         <div class="empty-state">
-            <i class="fas fa-file-pdf"></i>
-            <p>PDF materiallar yüklənir...</p>
+            <div class="empty-icon"><i class="fas fa-circle-notch fa-spin" style="color:#4338ca;"></i></div>
+            <h3>Yüklənir...</h3>
+            <p>PDF materiallar hazırlanır</p>
         </div>
     </div>
 </div>
 
 <!-- Purchase / Request Modal -->
-<div class="modal-overlay" id="purchaseModal">
+<div class="modal-overlay" id="purchaseModal" aria-modal="true" role="dialog">
     <div class="modal-box">
-        <h3 id="modalPdfTitle"></h3>
-        <p id="modalPdfDesc"></p>
+        <div class="modal-header">
+            <div class="modal-header-icon">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <div>
+                <h3 id="modalPdfTitle">PDF Materialı Əldə Et</h3>
+                <p id="modalPdfDesc">Bu material ödənişlidir</p>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div id="modalBalanceBox" class="modal-balance-box">
+                <span class="modal-balance-icon">💰</span>
+                <div class="modal-balance-info">
+                    <div class="label">Mövcud Balansınız</div>
+                    <div class="value" id="modalBalanceVal">0 ₼</div>
+                    <div class="note" id="modalBalanceNote">Balansınız kifayətdir</div>
+                </div>
+            </div>
 
-        <div id="modalBalanceInfo" style="background:#f8fafc;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:14px;"></div>
+            <div class="modal-price-row">
+                <span class="price-label"><i class="fas fa-tag" style="margin-right:6px;color:#4338ca;"></i>PDF Qiyməti</span>
+                <span class="price-val" id="modalPdfPrice">— ₼</span>
+            </div>
 
-        <div id="modalActions" style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button id="modalConfirmBtn" class="btn btn-primary" onclick="confirmPurchase()">
-                <i class="fas fa-download"></i> Yüklə
-            </button>
-            <button class="btn btn-secondary" onclick="closePurchaseModal()">
-                <i class="fas fa-times"></i> Ləğv Et
-            </button>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.6;">
+                <i class="fas fa-info-circle" style="color:#4338ca;margin-right:4px;"></i>
+                Müraciətiniz admin tərəfindən yoxlanılacaq. Ödəniş təsdiqlənəndən sonra PDF-i yükləyə bilərsiniz.
+            </p>
+
+            <div class="modal-actions" id="modalActions">
+                <button id="modalConfirmBtn" class="btn btn-primary" onclick="confirmPurchase()" style="flex:1;">
+                    <i class="fas fa-paper-plane"></i> Müraciət Göndər
+                </button>
+                <button class="btn btn-secondary" onclick="closePurchaseModal()">
+                    <i class="fas fa-times"></i> Ləğv Et
+                </button>
+            </div>
+            <p class="modal-footer-note">
+                <i class="fas fa-shield-alt"></i> Təhlükəsiz ödəniş · Balansınız admin təsdiqi sonra çıxılacaq
+            </p>
         </div>
     </div>
 </div>
@@ -216,33 +650,65 @@
     </div>
 </footer>
 
-
-
-
-
-
-
-    <canvas id="mathCanvas"></canvas>
-    <script src="js/confetti.js"></script>
-    <script src="js/math-bg.js"></script>
-    <script src="js/animations.js"></script>
-    <script src="js/notifications.js"></script>
+<canvas id="mathCanvas"></canvas>
+<script src="js/confetti.js"></script>
+<script src="js/math-bg.js"></script>
+<script src="js/animations.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app.js"></script>
 <script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _activePdfId   = null;
+let _activePdfData = null;   // full pdf object for the active modal
 
-let _activePdfId = null;
+// ── Math symbol watermark map per category ────────────────────────────────────
+const CAT_SYMBOLS = {
+    'Cəbr'      : '∑',
+    'Həndəsə'   : '△',
+    'Analiz'    : '∫',
+    'Ehtimal'   : 'P',
+    'Arifmetika': '÷',
+    'Olimpiada' : '★',
+    'Digər'     : 'f(x)',
+};
+const CAT_ACCENT = {
+    'Həndəsə'   : 'cat-geometry',
+    'Analiz'    : 'cat-analysis',
+    'Olimpiada' : 'cat-olympiad',
+    'Ehtimal'   : 'cat-prob',
+    'Arifmetika': 'cat-arith',
+};
+
+// ── Category chip helper ──────────────────────────────────────────────────────
+function setCat(val) {
+    document.getElementById('catFilter').value = val;
+    document.querySelectorAll('.cat-chip').forEach(c => {
+        c.classList.toggle('active', c.textContent.includes(val || 'Hamısı') && (val === '' ? c.textContent === 'Hamısı' : true));
+    });
+    renderPdfs();
+}
 
 // ── Initial render ────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => { renderPdfs(); updateNavbar(); });
+document.addEventListener('DOMContentLoaded', () => {
+    renderPdfs();
+    updateNavbar();
+});
 
 // ── Render PDF grid ───────────────────────────────────────────────────────────
 async function renderPdfs() {
-    const search   = (document.getElementById('pdfSearch')?.value || '').toLowerCase();
-    const catF     = document.getElementById('catFilter')?.value || '';
-    const typeF    = document.getElementById('typeFilter')?.value || '';
-    const user     = await API.getCurrentUser();
+    const search = (document.getElementById('pdfSearch')?.value || '').toLowerCase();
+    const catF   = document.getElementById('catFilter')?.value || '';
+    const typeF  = document.getElementById('typeFilter')?.value || '';
+    const user   = await API.getCurrentUser();
 
     const grid = document.getElementById('pdfGrid');
-    if (grid) grid.innerHTML = '<div class="empty-state"><i class="fas fa-circle-notch fa-spin" style="font-size:36px;"></i></div>';
+    if (grid) grid.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-circle-notch fa-spin" style="color:#4338ca;"></i></div>
+            <h3>Yüklənir...</h3>
+            <p>PDF materiallar hazırlanır</p>
+        </div>`;
 
     try {
         const params = {};
@@ -250,16 +716,32 @@ async function renderPdfs() {
         if (typeF) params.type     = typeF;
         const { data: pdfs } = await API.pdfs.list(params);
 
+        // Update hero stat
+        const heroEl = document.getElementById('heroTotalPdfs');
+        if (heroEl) heroEl.textContent = pdfs.length;
+
         const myRequests = user
             ? (await API.pdfRequests.list().catch(() => [])).filter(r => String(r.userId) === String(user.id))
             : [];
 
         const filtered = search
-            ? pdfs.filter(p => p.title.toLowerCase().includes(search) || (p.description||'').toLowerCase().includes(search) || p.category.toLowerCase().includes(search))
+            ? pdfs.filter(p =>
+                p.title.toLowerCase().includes(search) ||
+                (p.description || '').toLowerCase().includes(search) ||
+                p.category.toLowerCase().includes(search))
             : pdfs;
 
+        // Update count badge
+        const badge = document.getElementById('pdfCountBadge');
+        if (badge) badge.textContent = filtered.length;
+
         if (!filtered.length) {
-            grid.innerHTML = `<div class="empty-state"><i class="fas fa-search"></i><p>${search||catF||typeF?'Axtarış nəticəsi tapılmadı':'Hələ PDF material yoxdur'}</p></div>`;
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-search" style="color:#9ca3af;"></i></div>
+                    <h3>${search || catF || typeF ? 'Nəticə tapılmadı' : 'PDF material yoxdur'}</h3>
+                    <p>${search || catF || typeF ? 'Axtarış şərtlərini dəyişib yenidən cəhd edin' : 'Hələ heç bir PDF material əlavə edilməyib'}</p>
+                </div>`;
             return;
         }
 
@@ -270,40 +752,64 @@ async function renderPdfs() {
 
             const myReq    = myRequests.find(r => String(r.pdfId) === String(p.id));
             const hasAccess = p.type === 'free' || (myReq && myReq.status === 'approved');
+            const accentCls = CAT_ACCENT[p.category] || '';
+            const sym       = CAT_SYMBOLS[p.category] || '∑';
 
             let actionBtn = '';
             if (!user) {
-                actionBtn = `<button class="btn btn-primary btn-sm" onclick="requireLoginPrompt()"><i class="fas fa-sign-in-alt"></i> Giriş Et</button>`;
+                actionBtn = `<button class="btn btn-primary btn-sm" onclick="requireLoginPrompt()">
+                    <i class="fas fa-sign-in-alt"></i> Giriş Et</button>`;
             } else if (hasAccess) {
-                actionBtn = `<button class="btn btn-sm" style="background:#ecfdf5;color:#065f46;font-weight:700;" onclick="downloadPdf('${p.id}')"><i class="fas fa-download"></i> Yüklə</button>`;
+                actionBtn = `<button class="btn btn-sm btn-download-pulse" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;font-weight:700;border:none;cursor:pointer;" onclick="downloadPdf('${p.id}')">
+                    <i class="fas fa-download"></i> Yüklə</button>`;
             } else if (myReq && myReq.status === 'pending') {
                 actionBtn = `<span class="dl-status dl-pending"><i class="fas fa-clock"></i> Gözləyir</span>`;
             } else if (myReq && myReq.status === 'rejected') {
                 actionBtn = `<span class="dl-status dl-rejected"><i class="fas fa-times"></i> Rədd edildi</span>`;
             } else {
-                actionBtn = `<button class="btn btn-primary btn-sm" onclick="openPurchaseModal('${p.id}')"><i class="fas fa-shopping-cart"></i> Əldə Et</button>`;
+                actionBtn = `<button class="btn btn-primary btn-sm" onclick="openPurchaseModal('${p.id}')">
+                    <i class="fas fa-shopping-cart"></i> Əldə Et</button>`;
             }
 
             return `
             <div class="pdf-card">
-                <div class="pdf-thumb"><i class="fas fa-file-pdf"></i>${typeBadge}</div>
+                <div class="pdf-card-accent ${accentCls}"></div>
+                <div class="pdf-thumb" data-sym="${sym}">
+                    <i class="fas fa-file-pdf"></i>
+                    ${typeBadge}
+                </div>
                 <div class="pdf-body">
                     <h4>${p.title}</h4>
                     <div class="pdf-meta">
-                        <span><i class="fas fa-tag"></i> ${p.category}</span>
-                        ${p.pages?`<span><i class="fas fa-file"></i> ${p.pages} səh.</span>`:''}
-                        <span><i class="fas fa-download"></i> ${p.downloads||0}</span>
+                        <span><i class="fas fa-tag" style="color:#4338ca;"></i> ${p.category}</span>
+                        ${p.pages ? `<span><i class="fas fa-file-alt" style="color:#6b7280;"></i> ${p.pages} səh.</span>` : ''}
+                        <span><i class="fas fa-download" style="color:#10b981;"></i> ${p.downloads || 0}</span>
                     </div>
-                    ${p.description?`<div class="pdf-desc">${p.description}</div>`:''}
+                    ${p.description ? `<div class="pdf-desc">${p.description}</div>` : ''}
                 </div>
                 <div class="pdf-footer">
-                    <div class="${p.type==='free'?'pdf-price free':'pdf-price'}">${p.type==='free'?'<i class="fas fa-check-circle"></i> Pulsuz':p.price+' ₼'}</div>
+                    <div class="${p.type === 'free' ? 'pdf-price free' : 'pdf-price'}">
+                        ${p.type === 'free'
+                            ? '<i class="fas fa-check-circle"></i> Pulsuz'
+                            : `<strong>${p.price}</strong> <span style="font-size:13px;font-weight:500;">₼</span>`}
+                    </div>
                     ${actionBtn}
                 </div>
             </div>`;
         }).join('');
+
+        // Trigger scroll-reveal on newly rendered cards
+        if (window.initScrollReveal) window.initScrollReveal();
+
     } catch(e) {
-        if (grid) grid.innerHTML = `<div class="empty-state" style="color:#ef4444;">${e.message}</div>`;
+        if (grid) grid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon" style="background:#fef2f2;">
+                    <i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>
+                </div>
+                <h3>Xəta baş verdi</h3>
+                <p>${e.message}</p>
+            </div>`;
     }
 }
 
@@ -312,20 +818,61 @@ function requireLoginPrompt() {
         () => window.location.href = 'login.html?redirect=pdfs.html');
 }
 
-// ── Free download — uses secure API endpoint ─────────────────────────────────
+// ── Free / approved download ──────────────────────────────────────────────────
 function downloadPdf(id) {
     window.open(`/api/pdfs/${id}/download`, '_blank');
     showNotification('PDF yüklənir...', 'success');
 }
 
-// ── Open purchase modal ───────────────────────────────────────────────────────
+// ── Open purchase modal (was missing — CRITICAL BUG FIX) ─────────────────────
+async function openPurchaseModal(pdfId) {
+    _activePdfId = pdfId;
+
+    // Find PDF data
+    let pdf = null;
+    try {
+        const { data: pdfs } = await API.pdfs.list();
+        pdf = pdfs.find(p => String(p.id) === String(pdfId));
+    } catch {}
+    _activePdfData = pdf;
+
+    // Populate modal content
+    document.getElementById('modalPdfTitle').textContent = pdf ? pdf.title : 'PDF Materialı';
+    document.getElementById('modalPdfDesc').textContent  = pdf && pdf.description ? pdf.description : 'Bu material ödənişlidir';
+    document.getElementById('modalPdfPrice').textContent = pdf ? `${pdf.price} ₼` : '— ₼';
+
+    // Show user balance
+    const balBox  = document.getElementById('modalBalanceBox');
+    const balVal  = document.getElementById('modalBalanceVal');
+    const balNote = document.getElementById('modalBalanceNote');
+    try {
+        const user = await API.getCurrentUser();
+        if (user && balVal) {
+            const bal     = user.balance || 0;
+            const price   = pdf ? (pdf.price || 0) : 0;
+            const enough  = bal >= price;
+            balVal.textContent  = `${bal.toFixed(2)} ₼`;
+            balNote.textContent = enough
+                ? '✅ Balansınız müraciət üçün kifayətdir'
+                : `⚠️ Kifayət etmir — ${(price - bal).toFixed(2)} ₼ əskikdir`;
+            if (balBox) balBox.classList.toggle('insufficient', !enough);
+        }
+    } catch {}
+
+    // Reset confirm button
+    const btn = document.getElementById('modalConfirmBtn');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Müraciət Göndər'; }
+
+    document.getElementById('purchaseModal').classList.add('active');
+}
 
 function closePurchaseModal() {
     document.getElementById('purchaseModal').classList.remove('active');
-    _activePdfId = null;
+    _activePdfId   = null;
+    _activePdfData = null;
 }
 
-// ── Confirm purchase — uses API ────────────────────────────────────────────────
+// ── Confirm purchase ──────────────────────────────────────────────────────────
 async function confirmPurchase() {
     const user = await API.getCurrentUser();
     if (!user || !_activePdfId) return;
@@ -334,8 +881,7 @@ async function confirmPurchase() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Göndərilir...'; }
 
     try {
-        const { data: pdfs } = await API.pdfs.list().catch(() => ({ data: [] }));
-        const p = pdfs.find(x => String(x.id) === String(_activePdfId));
+        const p = _activePdfData;
         if (!p) throw new Error('PDF tapılmadı');
 
         await API.pdfRequests.submit({ pdfId: p.id, pdfTitle: p.title, amount: p.price });
@@ -352,9 +898,8 @@ async function confirmPurchase() {
 document.getElementById('purchaseModal').addEventListener('click', function(e) {
     if (e.target === this) closePurchaseModal();
 });
+// Close on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePurchaseModal(); });
 </script>
-<script src="js/notifications.js"></script>
-<script src="js/api-client.js"></script>
-<script src="js/app.js"></script>
 </body>
 </html>
