@@ -57,22 +57,6 @@ const API = (() => {
     async remove(id)            { return req('DELETE', `/api/users/${id}`); },
   };
 
-  // ── PDFs ──────────────────────────────────────────────────────────────────
-  const pdfs = {
-    async list(params = {})     { return req('GET', '/api/pdfs?' + new URLSearchParams(params)); },
-    async create(data)          { return req('POST', '/api/pdfs', data); },
-    async remove(id)            { return req('DELETE', `/api/pdfs/${id}`); },
-    async download(id)          { window.open(`/api/pdfs/${id}/download`, '_blank'); },
-  };
-
-  // ── PDF Requests ──────────────────────────────────────────────────────────
-  const pdfRequests = {
-    async list(params = {})     { return req('GET', '/api/pdf-requests?' + new URLSearchParams(params)); },
-    async submit(data)          { return req('POST', '/api/pdf-requests', data); },
-    async approve(id)           { return req('PUT', '/api/pdf-requests', { id, action: 'approve' }); },
-    async reject(id)            { return req('PUT', '/api/pdf-requests', { id, action: 'reject' }); },
-  };
-
   // ── Teacher Tests ─────────────────────────────────────────────────────────
   const teacherTests = {
     async list(params = {})     { return req('GET', '/api/teacher-tests?' + new URLSearchParams(params)); },
@@ -137,7 +121,7 @@ const API = (() => {
   }
 
   return {
-    auth, tests, news, users, pdfs, pdfRequests, teacherTests, premium, stats, payments,
+    auth, tests, news, users, teacherTests, premium, stats, payments,
     getCurrentUser, clearUserCache, logout, notify,
   };
 })();

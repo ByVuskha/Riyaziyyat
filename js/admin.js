@@ -1,4 +1,4 @@
-/**
+﻿/**
  * admin.js  —  Admin Panel Logic
  * All data operations go through API.* (Vercel serverless → Upstash Redis).
  * No direct Storage/localStorage calls for shared data.
@@ -44,7 +44,7 @@ function showSection(section) {
         dashboard:'Dashboard', users:'İstifadəçilər', teachers:'Müəllimlər',
         teacherTests:'Müəllim Sınaqları', videos:'Video Dərslər', tests:'Sınaqlar',
         testResults:'Sınaq Nəticələri', news:'Xəbərlər', payments:'Ödənişlər',
-        premium:'Premium İdarəetməsi', pdfs:'PDF Materiallar', settings:'Tənzimləmələr',
+        settings:'Tənzimləmələr',
         leaderboard:'Xal Liderliyi', devices:'Cihaz İdarəetməsi',
         suspicious:'Şübhəli Fəaliyyətlər', activeUsers:'Aktiv İstifadəçilər',
     };
@@ -58,7 +58,6 @@ function showSection(section) {
         news:         () => loadNews(),
         payments:     () => loadPayments(),
         teacherTests: () => { loadTeacherTestsSection(); _updateTeacherTestsBadge(); },
-        pdfs:         () => { loadPdfs(); loadPdfDownloadRequests(); },
         premium:      () => loadPremiumRequests(),
         leaderboard:  () => loadLeaderboard(),
     };
@@ -75,7 +74,6 @@ async function loadDashboardStats() {
         _setStat('statTests',    stats.tests);
         _setStat('statNews',     stats.news);
         _setStat('statTeachers', stats.teachers);
-        _setStat('statPdfs',     stats.pdfs);
         _setStat('statPremium',  stats.premium);
     } catch(e) {
         console.warn('Stats load failed', e);
