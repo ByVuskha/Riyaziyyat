@@ -1,144 +1,36 @@
 {
   "version": 2,
-  "buildCommand": "npm install",
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "**/*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "css/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "favicon.svg",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "sitemap.xml",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "robots.txt",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/auth/login",
-      "dest": "/api/auth/login.js"
-    },
-    {
-      "src": "/api/auth/register",
-      "dest": "/api/auth/register.js"
-    },
-    {
-      "src": "/api/auth/logout",
-      "dest": "/api/auth/logout.js"
-    },
-    {
-      "src": "/api/auth/me",
-      "dest": "/api/auth/me.js"
-    },
-    {
-      "src": "/api/tests/([^/]+)",
-      "dest": "/api/tests/[id].js"
-    },
-    {
-      "src": "/api/tests",
-      "dest": "/api/tests/index.js"
-    },
-    {
-      "src": "/api/news/([^/]+)",
-      "dest": "/api/news/[id].js"
-    },
-    {
-      "src": "/api/news",
-      "dest": "/api/news/index.js"
-    },
-    {
-      "src": "/api/users/([^/]+)",
-      "dest": "/api/users/[id].js"
-    },
-    {
-      "src": "/api/users",
-      "dest": "/api/users/index.js"
-    },
-    {
-      "src": "/api/pdfs/([^/]+)/download",
-      "dest": "/api/pdfs/[id]/download.js"
-    },
-    {
-      "src": "/api/pdfs/([^/]+)",
-      "dest": "/api/pdfs/[id].js"
-    },
-    {
-      "src": "/api/pdfs",
-      "dest": "/api/pdfs/index.js"
-    },
-    {
-      "src": "/api/teacher-tests",
-      "dest": "/api/teacher-tests/index.js"
-    },
-    {
-      "src": "/api/pdf-requests",
-      "dest": "/api/pdf-requests/index.js"
-    },
-    {
-      "src": "/api/premium",
-      "dest": "/api/premium/index.js"
-    },
-    {
-      "src": "/api/payments",
-      "dest": "/api/payments/index.js"
-    },
-    {
-      "src": "/api/stats",
-      "dest": "/api/stats/index.js"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/sitemap.xml"
-    },
-    {
-      "src": "/(.*)\\.html",
-      "dest": "/$1.html"
-    },
-    {
-      "src": "/css/(.*)",
-      "dest": "/css/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "/js/$1"
-    },
-    {
-      "src": "/favicon.svg",
-      "dest": "/favicon.svg"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/404.html",
-      "status": 404
-    }
+  "rewrites": [
+    { "source": "/api/auth/login",           "destination": "/api/auth/login.js" },
+    { "source": "/api/auth/register",        "destination": "/api/auth/register.js" },
+    { "source": "/api/auth/logout",          "destination": "/api/auth/logout.js" },
+    { "source": "/api/auth/me",              "destination": "/api/auth/me.js" },
+
+    { "source": "/api/tests/:id",            "destination": "/api/tests/[id].js" },
+    { "source": "/api/tests",                "destination": "/api/tests/index.js" },
+
+    { "source": "/api/news/:id",             "destination": "/api/news/[id].js" },
+    { "source": "/api/news",                 "destination": "/api/news/index.js" },
+
+    { "source": "/api/users/:id",            "destination": "/api/users/[id].js" },
+    { "source": "/api/users",                "destination": "/api/users/index.js" },
+
+    { "source": "/api/pdfs/:id/download",    "destination": "/api/pdfs/[id]/download.js" },
+    { "source": "/api/pdfs/:id",             "destination": "/api/pdfs/[id].js" },
+    { "source": "/api/pdfs",                 "destination": "/api/pdfs/index.js" },
+
+    { "source": "/api/pdf-requests",         "destination": "/api/pdf-requests/index.js" },
+
+    { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },
+    { "source": "/api/premium",              "destination": "/api/premium/index.js" },
+    { "source": "/api/payments",             "destination": "/api/payments/index.js" },
+    { "source": "/api/stats",                "destination": "/api/stats/index.js" }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin",      "value": "https://bizimriyaziyyat.vercel.app" },
+        { "key": "Access-Control-Allow-Origin",      "value": "https://bizimriyaziyyat.work.gd" },
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Methods",     "value": "GET,POST,PUT,DELETE,OPTIONS" },
         { "key": "Access-Control-Allow-Headers",     "value": "Content-Type" },
