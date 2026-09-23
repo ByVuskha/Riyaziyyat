@@ -1,0 +1,840 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   animations.css — Bizim Riyaziyyat
+   Mathematics-themed animation system
+   ─ Math color palette
+   ─ Glassmorphism cards
+   ─ Neon glow & hover effects
+   ─ Ripple on buttons
+   ─ 3D tilt
+   ─ Scroll-reveal helpers
+   ─ Skeleton loaders (math-symbol variant)
+   ─ Circular timer progress
+   ─ Page transitions
+   ─ Confetti container
+   ─ Dark-mode aware
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. MATH COLOR PALETTE ─────────────────────────────────────────────────── */
+:root {
+  /* Core brand */
+  --math-deep:    #0d1b3e;      /* deep navy */
+  --math-blue:    #1e40af;      /* strong blue */
+  --math-indigo:  #4338ca;      /* indigo primary */
+  --math-purple:  #7c3aed;      /* neon violet */
+  --math-gold:    #f59e0b;      /* golden accent */
+  --math-cyan:    #06b6d4;      /* bright cyan */
+  --math-emerald: #10b981;      /* success green */
+
+  /* Neon glow variants */
+  --glow-blue:    0 0 20px rgba(67, 56, 202, 0.5),   0 0 40px rgba(67, 56, 202, 0.25);
+  --glow-purple:  0 0 20px rgba(124, 58, 237, 0.5),  0 0 40px rgba(124, 58, 237, 0.25);
+  --glow-gold:    0 0 20px rgba(245, 158, 11, 0.5),  0 0 40px rgba(245, 158, 11, 0.25);
+  --glow-cyan:    0 0 20px rgba(6, 182, 212, 0.5),   0 0 40px rgba(6, 182, 212, 0.25);
+
+  /* Glassmorphism */
+  --glass-bg:     rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-blur:   blur(14px);
+
+  /* Transitions */
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Override main.css primary with math palette */
+  --primary:      #4338ca;
+  --primary-dark: #3730a3;
+  --secondary:    #06b6d4;
+  --dark:         #0d1b3e;
+}
+
+/* ── 2. MATH BACKGROUND CANVAS ─────────────────────────────────────────────── */
+#mathCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+/* Push all real content above canvas */
+body > *:not(#mathCanvas) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 3. PAGE TRANSITION OVERLAY ─────────────────────────────────────────────── */
+#pageTransition {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--math-deep), var(--math-indigo));
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: opacity 0.35s var(--transition-smooth),
+              transform 0.0s linear 0.35s;
+}
+
+#pageTransition.entering {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s var(--transition-smooth),
+              transform 0s linear;
+}
+
+#pageTransition.leaving {
+  opacity: 0;
+  transform: translateY(0);
+  transition: opacity 0.35s var(--transition-smooth) 0.05s;
+}
+
+/* Math symbols on the overlay */
+#pageTransition::after {
+  content: 'π  ∑  √  ∞  ∫  sin  cos  Δ  θ  λ';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(16px, 3vw, 28px);
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.3em;
+  white-space: nowrap;
+  animation: symbolPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes symbolPulse {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.6;  }
+}
+
+/* ── 4. SCROLL-REVEAL CLASSES ───────────────────────────────────────────────── */
+.sr-hidden {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Directions */
+.sr-up      { transform: translate3d(0,  50px, 0); }
+.sr-down    { transform: translate3d(0, -50px, 0); }
+.sr-left    { transform: translate3d(-60px, 0, 0); }
+.sr-right   { transform: translate3d( 60px, 0, 0); }
+.sr-scale   { transform: scale3d(0.85, 0.85, 1);   }
+.sr-rotate  { transform: rotate3d(0, 0, 1, -8deg) translate3d(0, 30px, 0); }
+
+/* Revealed state */
+.sr-visible {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate3d(0, 0, 1, 0deg) !important;
+  transition: opacity 0.7s var(--transition-smooth),
+              transform 0.7s var(--transition-smooth);
+}
+
+/* Stagger delays */
+.sr-d1 { transition-delay: 0.05s !important; }
+.sr-d2 { transition-delay: 0.12s !important; }
+.sr-d3 { transition-delay: 0.19s !important; }
+.sr-d4 { transition-delay: 0.26s !important; }
+.sr-d5 { transition-delay: 0.33s !important; }
+.sr-d6 { transition-delay: 0.40s !important; }
+
+/* ── 5. GLASSMORPHISM CARDS ─────────────────────────────────────────────────── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s var(--transition-bounce),
+              box-shadow 0.3s var(--transition-smooth);
+}
+
+.glass-card:hover {
+  transform: translate3d(0, -6px, 0);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2), var(--glow-blue);
+}
+
+/* Glassmorphism on dark hero background */
+.hero .glass-card {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Math geometric accent on cards */
+.math-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.math-card::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 100px;
+  height: 100px;
+  border: 2px solid rgba(67, 56, 202, 0.12);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 0.6s var(--transition-smooth),
+              opacity 0.4s;
+}
+
+.math-card::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(124, 58, 237, 0.1);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 0.5s var(--transition-smooth);
+}
+
+.math-card:hover::before {
+  transform: scale(1.3) rotate(30deg);
+  opacity: 0.3;
+}
+
+.math-card:hover::after {
+  transform: scale(1.5) rotate(-20deg);
+}
+
+/* ── 6. NEON GLOW EFFECTS ───────────────────────────────────────────────────── */
+.glow-blue   { box-shadow: var(--glow-blue);   }
+.glow-purple { box-shadow: var(--glow-purple); }
+.glow-gold   { box-shadow: var(--glow-gold);   }
+.glow-cyan   { box-shadow: var(--glow-cyan);   }
+
+/* Animated neon border */
+.neon-border {
+  position: relative;
+}
+
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    var(--math-indigo), var(--math-purple),
+    var(--math-cyan),   var(--math-gold),
+    var(--math-indigo));
+  background-size: 300% 300%;
+  animation: neonRotate 3s linear infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.neon-border:hover::before {
+  opacity: 1;
+}
+
+@keyframes neonRotate {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* ── 7. RIPPLE EFFECT ───────────────────────────────────────────────────────── */
+/* Added programmatically by animations.js */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: rippleAnim 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes rippleAnim {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ── 8. 3D TILT ─────────────────────────────────────────────────────────────── */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.1s linear;
+  will-change: transform;
+}
+
+.tilt-card .tilt-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255,255,255,0.15) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tilt-card:hover .tilt-shine {
+  opacity: 1;
+}
+
+/* ── 9. BUTTON GLOW & MICRO-INTERACTIONS ────────────────────────────────────── */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s var(--transition-bounce),
+              box-shadow 0.25s var(--transition-smooth),
+              background 0.25s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--math-indigo), var(--math-purple));
+  box-shadow: 0 4px 15px rgba(67, 56, 202, 0.35);
+}
+
+.btn-primary:hover {
+  transform: translate3d(0, -3px, 0) scale(1.02);
+  box-shadow: 0 8px 25px rgba(67, 56, 202, 0.5), var(--glow-blue);
+}
+
+.btn-primary:active {
+  transform: translate3d(0, 0, 0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.3);
+}
+
+/* Gold accent button */
+.btn-gold {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.btn-gold:hover {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5), var(--glow-gold);
+}
+
+/* Pulse loading state */
+.btn.loading-state {
+  pointer-events: none;
+  animation: btnPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes btnPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* ── 10. ANIMATED COUNTER ───────────────────────────────────────────────────── */
+.animated-counter {
+  display: inline-block;
+  transition: transform 0.1s;
+}
+
+/* ── 11. HERO UPGRADES ──────────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg,
+    var(--math-deep)   0%,
+    var(--math-blue)   40%,
+    var(--math-indigo) 70%,
+    var(--math-purple) 100%
+  ) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated mesh gradient overlay */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(6, 182, 212, 0.2) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  animation: meshFloat 8s ease-in-out infinite alternate;
+}
+
+@keyframes meshFloat {
+  0%   { opacity: 0.6; transform: scale(1);    }
+  100% { opacity: 1;   transform: scale(1.05); }
+}
+
+.hero h1 span {
+  background: linear-gradient(135deg, #a5f3fc, #c4b5fd, #fde68a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientText 4s ease-in-out infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes gradientText {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* Floating geometric shapes in hero */
+.hero-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hero-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.07;
+  animation: heroShapeFloat linear infinite;
+  will-change: transform;
+}
+
+.hero-shape:nth-child(1) {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--math-purple), transparent);
+  top: -100px; right: -100px;
+  animation-duration: 20s;
+}
+
+.hero-shape:nth-child(2) {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--math-cyan), transparent);
+  bottom: -50px; left: 10%;
+  animation-duration: 15s;
+  animation-delay: -5s;
+}
+
+.hero-shape:nth-child(3) {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, var(--math-gold), transparent);
+  top: 30%; right: 20%;
+  animation-duration: 12s;
+  animation-delay: -3s;
+}
+
+@keyframes heroShapeFloat {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg);   }
+  33%  { transform: translate3d(30px, -20px, 0) rotate(120deg); }
+  66%  { transform: translate3d(-20px, 15px, 0) rotate(240deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(360deg); }
+}
+
+/* ── 12. NAVBAR GLASS ───────────────────────────────────────────────────────── */
+.navbar {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(67, 56, 202, 0.08);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.97) !important;
+  box-shadow: 0 4px 30px rgba(13, 27, 62, 0.12) !important;
+}
+
+[data-theme="dark"] .navbar {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-bottom-color: rgba(67, 56, 202, 0.2);
+}
+
+[data-theme="dark"] .navbar.scrolled {
+  background: rgba(15, 23, 42, 0.97) !important;
+}
+
+/* Navbar logo glow */
+.navbar-logo span {
+  background: linear-gradient(135deg, var(--math-indigo), var(--math-purple)) !important;
+  box-shadow: 0 4px 12px rgba(67, 56, 202, 0.4);
+  transition: box-shadow 0.3s;
+}
+
+.navbar-logo:hover span {
+  box-shadow: 0 4px 20px rgba(67, 56, 202, 0.7), var(--glow-purple);
+}
+
+/* Active nav link */
+.navbar-menu a.active,
+.navbar-menu a:hover {
+  background: linear-gradient(135deg,
+    rgba(67, 56, 202, 0.1),
+    rgba(124, 58, 237, 0.08)) !important;
+  color: var(--math-indigo) !important;
+}
+
+/* ── 13. FEATURE CARDS UPGRADE ──────────────────────────────────────────────── */
+.feature-card {
+  border: 1px solid rgba(67, 56, 202, 0.08);
+  transition: transform 0.35s var(--transition-bounce),
+              box-shadow 0.35s var(--transition-smooth),
+              border-color 0.3s !important;
+}
+
+.feature-card:hover {
+  border-color: rgba(67, 56, 202, 0.25);
+  box-shadow: 0 16px 40px rgba(67, 56, 202, 0.12) !important;
+  transform: translate3d(0, -8px, 0) !important;
+}
+
+.feature-icon {
+  transition: transform 0.4s var(--transition-bounce);
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.15) rotate(5deg);
+}
+
+/* ── 14. SKELETON LOADER (MATH VARIANT) ─────────────────────────────────────── */
+@keyframes mathShimmer {
+  0%   { background-position: -300% 0; }
+  100% { background-position:  300% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(67, 56, 202, 0.06) 0%,
+    rgba(124, 58, 237, 0.12) 20%,
+    rgba(6, 182, 212, 0.06) 40%,
+    rgba(67, 56, 202, 0.06) 60%
+  ) !important;
+  background-size: 300% 100% !important;
+  animation: mathShimmer 2s ease-in-out infinite !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(67, 56, 202, 0.1) 0%,
+    rgba(124, 58, 237, 0.2) 20%,
+    rgba(6, 182, 212, 0.1) 40%,
+    rgba(67, 56, 202, 0.1) 60%
+  ) !important;
+  background-size: 300% 100% !important;
+}
+
+/* Math symbol loader overlay */
+.math-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+  color: var(--math-indigo);
+  font-size: 22px;
+  opacity: 0.6;
+}
+
+.math-loader .sym {
+  display: inline-block;
+  animation: symDance 1.2s ease-in-out infinite;
+}
+
+.math-loader .sym:nth-child(1) { animation-delay: 0.0s; }
+.math-loader .sym:nth-child(2) { animation-delay: 0.1s; }
+.math-loader .sym:nth-child(3) { animation-delay: 0.2s; }
+.math-loader .sym:nth-child(4) { animation-delay: 0.3s; }
+.math-loader .sym:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes symDance {
+  0%, 60%, 100% { transform: translate3d(0, 0, 0);     }
+  30%            { transform: translate3d(0, -12px, 0); }
+}
+
+/* ── 15. CIRCULAR PROGRESS (TIMER) ──────────────────────────────────────────── */
+.circular-timer {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.circular-timer svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.circular-timer .track {
+  fill: none;
+  stroke: rgba(67, 56, 202, 0.15);
+  stroke-width: 5;
+}
+
+.circular-timer .progress {
+  fill: none;
+  stroke: var(--math-indigo);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear,
+              stroke 0.5s;
+}
+
+.circular-timer .progress.warning { stroke: var(--math-gold);   }
+.circular-timer .progress.danger  { stroke: #ef4444;            }
+
+.circular-timer .time-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--math-indigo);
+  transition: color 0.5s;
+}
+
+.circular-timer.warning .time-label { color: var(--math-gold); }
+.circular-timer.danger  .time-label { color: #ef4444; animation: timerDanger 0.5s ease-in-out infinite alternate; }
+
+@keyframes timerDanger {
+  0%   { opacity: 1;   transform: scale(1);    }
+  100% { opacity: 0.6; transform: scale(1.05); }
+}
+
+/* ── 16. ANSWER FEEDBACK ANIMATIONS ─────────────────────────────────────────── */
+.answer-option {
+  transition: background 0.3s, border-color 0.3s, transform 0.25s var(--transition-bounce);
+  cursor: pointer;
+  border-radius: 10px;
+  border: 2px solid var(--border, #e2e8f0);
+}
+
+.answer-option:hover {
+  border-color: var(--math-indigo);
+  background: rgba(67, 56, 202, 0.05);
+  transform: translate3d(4px, 0, 0);
+}
+
+.answer-option.correct {
+  background: #ecfdf5 !important;
+  border-color: var(--math-emerald) !important;
+  animation: correctPop 0.5s var(--transition-bounce);
+}
+
+.answer-option.wrong {
+  background: #fef2f2 !important;
+  border-color: #ef4444 !important;
+  animation: wrongShake 0.5s ease;
+}
+
+@keyframes correctPop {
+  0%   { transform: scale(1);    }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1);    }
+}
+
+@keyframes wrongShake {
+  0%, 100% { transform: translate3d(0, 0, 0);    }
+  15%       { transform: translate3d(-8px, 0, 0); }
+  30%       { transform: translate3d( 8px, 0, 0); }
+  45%       { transform: translate3d(-5px, 0, 0); }
+  60%       { transform: translate3d( 5px, 0, 0); }
+  75%       { transform: translate3d(-2px, 0, 0); }
+}
+
+/* Answer icon badge */
+.answer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  animation: badgePop 0.4s var(--transition-bounce);
+  flex-shrink: 0;
+}
+
+.answer-badge.correct-badge { background: var(--math-emerald); color: white; }
+.answer-badge.wrong-badge   { background: #ef4444;             color: white; }
+
+@keyframes badgePop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.3);           }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── 17. RESULT PROGRESS BAR ─────────────────────────────────────────────────── */
+.result-bar-wrap {
+  background: rgba(67, 56, 202, 0.1);
+  border-radius: 12px;
+  height: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.result-bar {
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--math-indigo), var(--math-purple), var(--math-cyan));
+  background-size: 200% 100%;
+  animation: barShine 2s linear infinite;
+  transition: width 1.2s var(--transition-smooth);
+  width: 0%;
+}
+
+@keyframes barShine {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* ── 18. CONFETTI CONTAINER ─────────────────────────────────────────────────── */
+#confettiCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 99998;
+}
+
+/* ── 19. SECTION HEADING DECORATION ─────────────────────────────────────────── */
+.section-title {
+  position: relative;
+  display: inline-block;
+}
+
+/* Underline gradient */
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--math-indigo), var(--math-purple), var(--math-cyan));
+  animation: underlineExpand 0.8s var(--transition-smooth) forwards;
+  transform-origin: center;
+}
+
+@keyframes underlineExpand {
+  from { width: 0;   opacity: 0; }
+  to   { width: 60px; opacity: 1; }
+}
+
+/* ── 20. CARD GLOW ON HOVER ─────────────────────────────────────────────────── */
+.card {
+  transition: transform 0.35s var(--transition-bounce),
+              box-shadow 0.35s var(--transition-smooth) !important;
+}
+
+.card:hover {
+  transform: translate3d(0, -5px, 0) !important;
+  box-shadow: 0 16px 40px rgba(67, 56, 202, 0.12) !important;
+}
+
+/* ── 21. SCROLL-TO-TOP BUTTON ────────────────────────────────────────────────── */
+#scrollTopBtn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--math-indigo), var(--math-purple));
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 20px rgba(67, 56, 202, 0.4);
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  transition: opacity 0.35s, transform 0.35s var(--transition-bounce), box-shadow 0.3s;
+  z-index: 9000;
+}
+
+#scrollTopBtn.visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+#scrollTopBtn:hover {
+  box-shadow: 0 8px 30px rgba(67, 56, 202, 0.6), var(--glow-purple);
+  transform: translate3d(0, -3px, 0);
+}
+
+/* ── 22. DARK MODE OVERRIDES ─────────────────────────────────────────────────── */
+[data-theme="dark"] .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(67, 56, 202, 0.25);
+}
+
+[data-theme="dark"] .feature-card,
+[data-theme="dark"] .card {
+  border-color: rgba(67, 56, 202, 0.15);
+}
+
+[data-theme="dark"] .navbar-menu a.active,
+[data-theme="dark"] .navbar-menu a:hover {
+  background: rgba(67, 56, 202, 0.2) !important;
+  color: #a5b4fc !important;
+}
+
+[data-theme="dark"] .circular-timer .track  {
+  stroke: rgba(165, 180, 252, 0.15);
+}
+
+[data-theme="dark"] .result-bar-wrap {
+  background: rgba(67, 56, 202, 0.2);
+}
+
+/* ── 23. REDUCED MOTION ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  #mathCanvas,
+  .hero-shapes { display: none; }
+
+  .sr-hidden { opacity: 1 !important; transform: none !important; }
+}
+
+/* ── 24. MOBILE OPTIMIZATIONS ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Reduce canvas complexity — handled in math-bg.js by checking isMobile */
+  #mathCanvas { opacity: 0.5; }
+
+  /* Simpler hero shapes */
+  .hero-shape:nth-child(2),
+  .hero-shape:nth-child(3) { display: none; }
+
+  /* Smaller scroll-to-top */
+  #scrollTopBtn {
+    width: 42px;
+    height: 42px;
+    bottom: 20px;
+    right: 20px;
+    font-size: 16px;
+  }
+}

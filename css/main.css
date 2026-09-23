@@ -1330,3 +1330,406 @@ a { text-decoration: none; color: inherit; }
 .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
 .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 .alert-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MATH PALETTE UPGRADE — injected by animations system
+   Overrides default colours with deep-blue / neon-purple / gold theme.
+   Appended after all existing rules so specificity wins cleanly.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Root palette override ──────────────────────────────────────────────── */
+:root {
+    --primary:      #4338ca;   /* indigo  */
+    --primary-dark: #3730a3;
+    --secondary:    #06b6d4;   /* cyan    */
+    --success:      #10b981;
+    --danger:       #ef4444;
+    --warning:      #f59e0b;   /* gold    */
+    --dark:         #0d1b3e;   /* deep navy */
+    --accent:       #7c3aed;   /* neon purple */
+    --light:        #f0f4ff;   /* slightly blue-tinted light */
+    --gray:         #64748b;
+    --border:       #e2e8f0;
+    --radius:       12px;
+    --shadow:       0 4px 24px rgba(13, 27, 62, 0.09);
+    --shadow-lg:    0 12px 40px rgba(13, 27, 62, 0.15);
+}
+
+/* ── 2. Body background — very faint math-blue tint ───────────────────────── */
+body {
+    background: #f0f4ff;
+}
+
+/* ── 3. Navbar — glass effect (base layer; animations.css adds blur) ───────── */
+.navbar {
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 20px rgba(67, 56, 202, 0.08);
+    border-bottom: 1px solid rgba(67, 56, 202, 0.06);
+}
+
+.navbar-logo {
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.navbar-logo span {
+    background: linear-gradient(135deg, #4338ca, #7c3aed);
+    box-shadow: 0 4px 12px rgba(67, 56, 202, 0.35);
+}
+
+.navbar-menu a {
+    color: #475569;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-menu a:hover,
+.navbar-menu a.active {
+    background: linear-gradient(135deg,
+        rgba(67, 56, 202, 0.09),
+        rgba(124, 58, 237, 0.06));
+    color: var(--primary);
+}
+
+/* ── 4. Buttons ────────────────────────────────────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, #4338ca, #7c3aed);
+    color: white;
+    box-shadow: 0 4px 14px rgba(67, 56, 202, 0.35);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #3730a3, #6d28d9);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(67, 56, 202, 0.48);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(67, 56, 202, 0.06);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Gold accent button variant */
+.btn-gold {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.48);
+}
+
+/* ── 5. Hero section ───────────────────────────────────────────────────────── */
+.hero {
+    background: linear-gradient(135deg,
+        #0d1b3e  0%,
+        #1e3a8a  30%,
+        #4338ca  65%,
+        #7c3aed  100%) !important;
+    padding: 110px 0 90px;
+}
+
+/* Remove old pseudo circle — animations.css handles shapes */
+.hero::before { display: none; }
+
+.hero-badge {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.hero h1 {
+    font-size: 54px;
+    letter-spacing: -1px;
+}
+
+.hero h1 span {
+    background: linear-gradient(135deg, #a5f3fc, #c4b5fd, #fde68a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 200%;
+    animation: heroTextGrad 4s ease-in-out infinite;
+}
+
+@keyframes heroTextGrad {
+    0%   { background-position: 0%   50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0%   50%; }
+}
+
+.hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 50px;
+    padding-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    flex-wrap: wrap;
+}
+
+.hero-stat h3 {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+/* ── 6. Cards ──────────────────────────────────────────────────────────────── */
+.card {
+    background: white;
+    border: 1px solid rgba(67, 56, 202, 0.07);
+    box-shadow: var(--shadow);
+    border-radius: 14px;
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.32s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* ── 7. Feature cards ──────────────────────────────────────────────────────── */
+.feature-card {
+    border: 1px solid rgba(67, 56, 202, 0.08);
+    border-radius: 16px;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.35s ease,
+                border-color 0.3s;
+}
+
+.feature-card:hover {
+    border-color: rgba(67, 56, 202, 0.22);
+    box-shadow: 0 16px 40px rgba(67, 56, 202, 0.13);
+    transform: translateY(-8px);
+}
+
+.feature-icon {
+    border-radius: 16px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.15) rotate(5deg);
+}
+
+/* ── 8. Section title accent ───────────────────────────────────────────────── */
+.section-title {
+    color: var(--dark);
+    letter-spacing: -0.5px;
+}
+
+/* Gradient accent on section title text */
+.section-title.gradient-title {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── 9. Forms — focused state glow ────────────────────────────────────────── */
+.form-control {
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    transition: border-color 0.22s, box-shadow 0.22s;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(67, 56, 202, 0.12);
+    outline: none;
+}
+
+.form-group.focused label {
+    color: var(--primary);
+}
+
+/* ── 10. Footer ────────────────────────────────────────────────────────────── */
+.footer {
+    background: linear-gradient(180deg, #0d1b3e, #050d1e);
+}
+
+.footer-col ul li a:hover {
+    color: #a5b4fc;
+}
+
+/* ── 11. Spinner — math colour ─────────────────────────────────────────────── */
+.spinner {
+    border-top-color: var(--primary);
+    border-color: rgba(67, 56, 202, 0.2);
+    border-top-color: var(--primary);
+}
+
+/* ── 12. Badge upgrades ─────────────────────────────────────────────────────── */
+.badge-primary {
+    background: rgba(67, 56, 202, 0.1);
+    color: var(--primary);
+}
+
+/* ── 13. Modal upgrade ──────────────────────────────────────────────────────── */
+.modal {
+    border-top: 3px solid var(--primary);
+    box-shadow: 0 24px 60px rgba(13, 27, 62, 0.22);
+}
+
+/* ── 14. Scrollbar — subtle brand colour ───────────────────────────────────── */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(67, 56, 202, 0.3) transparent;
+}
+
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+    background: rgba(67, 56, 202, 0.3);
+    border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: rgba(67, 56, 202, 0.55);
+}
+
+/* ── 15. Selection ──────────────────────────────────────────────────────────── */
+::selection {
+    background: rgba(67, 56, 202, 0.18);
+    color: var(--dark);
+}
+
+/* ── 16. Focus-visible ring ────────────────────────────────────────────────── */
+:focus-visible {
+    outline: 3px solid rgba(67, 56, 202, 0.5);
+    outline-offset: 2px;
+}
+
+/* ── 17. Mobile menu — match glass style ───────────────────────────────────── */
+.mobile-menu {
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(67, 56, 202, 0.08);
+    box-shadow: 0 8px 32px rgba(67, 56, 202, 0.1);
+}
+
+.mobile-menu a:hover,
+.mobile-menu a.active {
+    background: rgba(67, 56, 202, 0.08);
+    color: var(--primary);
+}
+
+/* ── 18. Dark mode palette upgrade ─────────────────────────────────────────── */
+[data-theme="dark"] {
+    --light:  #080e21;
+    --border: #1a2540;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] body {
+    background: #080e21;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .navbar {
+    background: rgba(8, 14, 33, 0.95) !important;
+    border-bottom-color: rgba(67, 56, 202, 0.2);
+}
+
+[data-theme="dark"] .card {
+    background: #0f1a35;
+    border-color: rgba(67, 56, 202, 0.15);
+}
+
+[data-theme="dark"] .feature-card {
+    background: #0f1a35;
+    border-color: rgba(67, 56, 202, 0.15);
+}
+
+[data-theme="dark"] .form-control {
+    background: #080e21;
+    border-color: #1a2540;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(67, 56, 202, 0.2);
+}
+
+[data-theme="dark"] .btn-secondary {
+    background: #0f1a35;
+    color: #a5b4fc;
+    border-color: rgba(67, 56, 202, 0.5);
+}
+
+[data-theme="dark"] th {
+    background: #0f1a35;
+    color: #94a3b8;
+    border-color: #1a2540;
+}
+
+[data-theme="dark"] td {
+    border-color: #1a2540;
+}
+
+[data-theme="dark"] tr:hover {
+    background: rgba(67, 56, 202, 0.05);
+}
+
+[data-theme="dark"] .mobile-menu {
+    background: rgba(8, 14, 33, 0.97);
+    border-bottom-color: rgba(67, 56, 202, 0.2);
+}
+
+[data-theme="dark"] .section-title {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .modal {
+    background: #0f1a35;
+    color: #e2e8f0;
+    border-top-color: var(--primary);
+}
+
+[data-theme="dark"] .footer {
+    background: linear-gradient(180deg, #040914, #020609);
+}
+
+[data-theme="dark"] ::selection {
+    background: rgba(67, 56, 202, 0.35);
+    color: #e2e8f0;
+}
+
+/* ── 19. Responsive tweaks for new palette ─────────────────────────────────── */
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 30px !important;
+        letter-spacing: -0.5px;
+    }
+
+    .hero-stats {
+        gap: 16px;
+    }
+
+    .hero-stat h3 {
+        font-size: 26px;
+    }
+
+    [data-theme="dark"] .navbar-menu {
+        background: rgba(8, 14, 33, 0.98);
+    }
+}
+
+@media (max-width: 480px) {
+    .hero h1 { font-size: 26px !important; }
+}
