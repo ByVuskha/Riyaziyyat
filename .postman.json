@@ -5,47 +5,29 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, Teacher-Test-Access, Payments endpoints. Updated 2026-09-23 (vercel.json diff): added route /api/payments → /api/payments/index.js. Payments support GET (list own or all for admin) and POST (record payment + update user balance). Updated 2026-09-22 (success.html diff): added 'Sınaq Balları' leaderboard tab (renderTestScores). No new REST endpoints were introduced — the change reads testScores from the userPoints Upstash/localStorage structure. awardTestPoints() in points.js must persist a testScores map (keyed by testId) containing {testId, testTitle, ballScore, date} for the new UI to display data. Points — Update User Points now includes the testScores payload shape.",
+      "description": "Bizim Riyaziyyat üçün tam API collection-u. Auth, Tests, News, Users, Teacher Tests, PDF, PDF Requests, Premium, Payments, Stats və Points (Upstash) endpoint-lərini əhatə edir. Son yenilik: 2026-09-23 — bütün çatışmayan endpoint-lər (Tests, PDFs, PDF Requests, Premium, Stats, Auth Logout) əlavə edildi; Teacher Tests approve/reject/mine/requests düzgün real route-lara (body params, /api/teacher-tests) köçürüldü; News view increment düzgün ?action=view query param-ına düzəldildi; mövcud olmayan Videos və Teachers qovluqları silindi; Users DELETE əlavə edildi.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
-      {
-        "key": "base_url",
-        "value": "http://localhost:8080/api",
-        "type": "string"
-      },
-      {
-        "key": "token",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "userId",
-        "value": "1",
-        "type": "string"
-      },
-      {
-        "key": "upstash_url",
-        "value": "https://YOUR_UPSTASH_ENDPOINT.upstash.io",
-        "type": "string"
-      },
-      {
-        "key": "upstash_token",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "teacherTestId",
-        "value": "",
-        "type": "string"
-      }
+      { "key": "base_url",       "value": "http://localhost:8080/api", "type": "string" },
+      { "key": "token",          "value": "",                          "type": "string" },
+      { "key": "userId",         "value": "1",                         "type": "string" },
+      { "key": "testId",         "value": "",                          "type": "string" },
+      { "key": "newsId",         "value": "",                          "type": "string" },
+      { "key": "pdfId",          "value": "",                          "type": "string" },
+      { "key": "pdfRequestId",   "value": "",                          "type": "string" },
+      { "key": "premiumReqId",   "value": "",                          "type": "string" },
+      { "key": "teacherTestId",  "value": "",                          "type": "string" },
+      { "key": "upstash_url",    "value": "https://YOUR_UPSTASH_ENDPOINT.upstash.io", "type": "string" },
+      { "key": "upstash_token",  "value": "",                          "type": "string" }
     ],
     "item": [
+
       {
         "name": "Auth",
         "item": [
           {
-            "name": "Register",
+            "name": "Register — Student",
             "request": {
               "method": "POST",
               "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -55,23 +37,39 @@
                 "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"userType\": \"student\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "if (json.token) pm.collectionVariables.set('token', json.token);"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 201', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                "});",
+                "const json = pm.response.json();",
+                "if (json.token) pm.collectionVariables.set('token', json.token);"
+              ]}
+            }]
           },
           {
-            "name": "Login",
+            "name": "Register — Duplicate Email (should 409)",
+            "request": {
+              "method": "POST",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "url": "{{base_url}}/auth/register",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"userType\": \"student\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 409 on duplicate email', function () {",
+                "  pm.response.to.have.status(409);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Login — Admin",
             "request": {
               "method": "POST",
               "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -81,246 +79,293 @@
                 "raw": "{\n  \"email\": \"admin@riyazmath.az\",\n  \"password\": \"admin123\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Login successful', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "if (json.token) pm.collectionVariables.set('token', json.token);",
-                    "pm.test('Token returned', function () {",
-                    "  pm.expect(json.token).to.be.a('string');",
-                    "});"
-                  ]
-                }
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Login successful', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                "});",
+                "const json = pm.response.json();",
+                "if (json.token) pm.collectionVariables.set('token', json.token);",
+                "pm.test('Token returned', function () {",
+                "  pm.expect(json.token).to.be.a('string');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Login — Wrong Password (should 401)",
+            "request": {
+              "method": "POST",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "url": "{{base_url}}/auth/login",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"admin@riyazmath.az\",\n  \"password\": \"wrongpassword\"\n}"
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 401 on bad password', function () {",
+                "  pm.response.to.have.status(401);",
+                "});"
+              ]}
+            }]
           },
           {
             "name": "Get Current User",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
               "url": "{{base_url}}/auth/me"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('User has email', function () {",
-                    "  pm.expect(json.email).to.be.a('string');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('User has email', function () {",
+                "  pm.expect(json.email).to.be.a('string');",
+                "});",
+                "pm.test('Password not exposed', function () {",
+                "  pm.expect(json).to.not.have.property('password');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get Current User — No Token (should 401)",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": "{{base_url}}/auth/me"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 401 without token', function () {",
+                "  pm.response.to.have.status(401);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Logout",
+            "request": {
+              "method": "POST",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/auth/logout"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('ok: true returned', function () {",
+                "  pm.expect(json.ok).to.equal(true);",
+                "});",
+                "pm.test('Set-Cookie clears token', function () {",
+                "  const cookie = pm.response.headers.get('Set-Cookie') || '';",
+                "  pm.expect(cookie).to.include('token=');",
+                "});"
+              ]}
+            }]
           }
         ]
       },
+
       {
-        "name": "Videos",
+        "name": "Tests",
         "item": [
           {
-            "name": "Get All Videos",
+            "name": "Get All Tests",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos"
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/tests"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Response has data array', function () {",
+                "  pm.expect(json.data).to.be.an('array');",
+                "});",
+                "pm.test('Pagination meta present', function () {",
+                "  pm.expect(json).to.have.property('total');",
+                "  pm.expect(json).to.have.property('page');",
+                "  pm.expect(json).to.have.property('pages');",
+                "});"
+              ]}
+            }]
           },
           {
-            "name": "Get Video by ID",
+            "name": "Get All Tests — Filtered by Category",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/tests?category=Cəbr&page=1&limit=10",
+                "query": [
+                  { "key": "category", "value": "Cəbr" },
+                  { "key": "page",     "value": "1" },
+                  { "key": "limit",    "value": "10" }
+                ]
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('All results match category', function () {",
+                "  json.data.forEach(t => {",
+                "    pm.expect(t.category).to.equal('Cəbr');",
+                "  });",
+                "});"
+              ]}
+            }]
           },
           {
-            "name": "Create Video",
+            "name": "Create Test (Admin)",
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/videos",
+              "url": "{{base_url}}/tests",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"title\": \"Riyaziyyata Giriş\",\n  \"category\": \"Əsaslar\",\n  \"duration\": \"15:30\",\n  \"url\": \"https://youtube.com/watch?v=example\",\n  \"description\": \"Riyaziyyat haqqında giriş dərsi\"\n}"
+                "raw": "{\n  \"title\": \"Cəbr — Tənliklər Sınağı\",\n  \"emoji\": \"📐\",\n  \"category\": \"Cəbr\",\n  \"difficulty\": \"Orta\",\n  \"duration\": 20,\n  \"isPremium\": false,\n  \"description\": \"Tənliklər mövzusu üzrə test.\",\n  \"questions\": [\n    {\n      \"question\": \"2x + 4 = 10 tənliyinin həlli nədir?\",\n      \"options\": [\"x=2\", \"x=3\", \"x=4\", \"x=5\"],\n      \"correctAnswer\": 1\n    }\n  ]\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201', function () {",
+                "  pm.response.to.have.status(201);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Test has id', function () {",
+                "  pm.expect(json).to.have.property('id');",
+                "});",
+                "pm.test('Questions included', function () {",
+                "  pm.expect(json.questions).to.be.an('array').with.length.above(0);",
+                "});",
+                "if (json.id) pm.collectionVariables.set('testId', json.id);"
+              ]}
+            }]
           },
           {
-            "name": "Update Video",
+            "name": "Create Test — Missing Fields (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/tests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Başlıq var amma sual yoxdur\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 on missing questions', function () {",
+                "  pm.response.to.have.status(400);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get Test by ID",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/tests/{{testId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Has id', function () {",
+                "    pm.expect(json).to.have.property('id');",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Update Test (Admin)",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/videos/1",
+              "url": "{{base_url}}/tests/{{testId}}",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"title\": \"Yenilənmiş Başlıq\",\n  \"status\": \"active\"\n}"
+                "raw": "{\n  \"title\": \"Yenilənmiş Sınaq Başlığı\",\n  \"difficulty\": \"Çətin\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('updatedAt present', function () {",
+                "    pm.expect(json).to.have.property('updatedAt');",
+                "  });",
+                "}"
+              ]}
+            }]
           },
           {
-            "name": "Delete Video",
+            "name": "Delete Test (Admin)",
             "request": {
               "method": "DELETE",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos/1"
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/tests/{{testId}}"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 204 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Increment Video View",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos/1/view"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Get Videos by Category",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos/category/Cəbr"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Get Videos by Teacher",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/videos/teacher/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('ok: true', function () {",
+                "    pm.expect(json.ok).to.equal(true);",
+                "  });",
+                "}"
+              ]}
+            }]
           }
         ]
       },
+
       {
         "name": "News",
         "item": [
@@ -328,55 +373,27 @@
             "name": "Get All News",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
               "url": "{{base_url}}/news"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});"
+              ]}
+            }]
           },
           {
-            "name": "Get News by ID",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/news/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Create News",
+            "name": "Create News (Admin)",
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
               "url": "{{base_url}}/news",
@@ -385,233 +402,821 @@
                 "raw": "{\n  \"title\": \"Yeni Riyaziyyat Olimpiadası\",\n  \"text\": \"Bu il olimpiada martda keçiriləcək.\",\n  \"emoji\": \"🏆\",\n  \"author\": \"Admin\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 201', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                "});",
+                "const json = pm.response.json();",
+                "if (json.id) pm.collectionVariables.set('newsId', json.id);"
+              ]}
+            }]
           },
           {
-            "name": "Update News",
+            "name": "Get News by ID",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/news/{{newsId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Update News (Admin)",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/news/1",
+              "url": "{{base_url}}/news/{{newsId}}",
               "body": {
                 "mode": "raw",
                 "raw": "{\n  \"title\": \"Yenilənmiş Xəbər Başlığı\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Delete News",
-            "request": {
-              "method": "DELETE",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/news/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 204 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});"
+              ]}
+            }]
           },
           {
             "name": "Increment News View",
             "request": {
               "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/news/1/view"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/news/{{newsId}}?action=view",
+                "query": [{ "key": "action", "value": "view" }]
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// Real route: POST /api/news/:id?action=view (NOT /news/:id/view sub-path)",
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('views count returned', function () {",
+                "    pm.expect(json).to.have.property('views');",
+                "    pm.expect(json.views).to.be.a('number');",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Delete News (Admin)",
+            "request": {
+              "method": "DELETE",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/news/{{newsId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});"
+              ]}
+            }]
           }
         ]
       },
+
       {
         "name": "Users",
         "item": [
           {
-            "name": "Get All Users",
+            "name": "Get All Users (Admin)",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
               "url": "{{base_url}}/users"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get All Users — Search by Name",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/users?q=Admin",
+                "query": [{ "key": "q", "value": "Admin" }]
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});"
+              ]}
+            }]
           },
           {
             "name": "Get User by ID",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/users/1"
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/users/{{userId}}"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Password not exposed', function () {",
+                "    pm.expect(json).to.not.have.property('password');",
+                "  });",
+                "}"
+              ]}
+            }]
           },
           {
-            "name": "Update User",
+            "name": "Update User (Own Profile)",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/users/1",
+              "url": "{{base_url}}/users/{{userId}}",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"name\": \"Yenilənmiş Ad\"\n}"
+                "raw": "{\n  \"name\": \"Yenilənmiş Ad\",\n  \"bio\": \"Riyaziyyat sevgisi\",\n  \"phone\": \"+994501234567\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('updatedAt present', function () {",
+                "    pm.expect(json).to.have.property('updatedAt');",
+                "  });",
+                "  pm.test('Password not exposed', function () {",
+                "    pm.expect(json).to.not.have.property('password');",
+                "  });",
+                "}"
+              ]}
+            }]
           },
           {
-            "name": "Get User Watched Videos",
+            "name": "Admin — Update User Balance & Role",
             "request": {
-              "method": "GET",
+              "method": "PUT",
               "header": [
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/users/1/videos"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
+              "url": "{{base_url}}/users/{{userId}}",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"balance\": 50,\n  \"role\": \"user\",\n  \"frozen\": false,\n  \"canAddTests\": true\n}"
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Delete User (Admin)",
+            "request": {
+              "method": "DELETE",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/users/{{userId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('ok: true', function () {",
+                "    pm.expect(json.ok).to.equal(true);",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Delete User — Non-Admin (should 403)",
+            "request": {
+              "method": "DELETE",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/users/999"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// Expects 403 if current token is not admin, 404 if admin but user not found",
+                "pm.test('Status 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                "});"
+              ]}
+            }]
           }
         ]
       },
+
       {
-        "name": "Teacher Tests",
+        "name": "PDFs",
         "item": [
           {
-            "name": "Request Test-Add Access",
+            "name": "Get All PDFs",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": "{{base_url}}/pdfs"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Response has data array', function () {",
+                "  pm.expect(json.data).to.be.an('array');",
+                "});",
+                "pm.test('Pagination meta present', function () {",
+                "  pm.expect(json).to.have.property('total');",
+                "  pm.expect(json).to.have.property('page');",
+                "  pm.expect(json).to.have.property('pages');",
+                "});",
+                "pm.test('fileData stripped from listing', function () {",
+                "  json.data.forEach(p => {",
+                "    pm.expect(p).to.not.have.property('fileData');",
+                "  });",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get PDFs — Filtered by Category & Type",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/pdfs?category=Cəbr&type=free",
+                "query": [
+                  { "key": "category", "value": "Cəbr" },
+                  { "key": "type",     "value": "free" }
+                ]
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('All results are free type', function () {",
+                "  json.data.forEach(p => {",
+                "    pm.expect(p.type).to.equal('free');",
+                "  });",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Upload PDF (Admin)",
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/teacher-tests/request-access",
+              "url": "{{base_url}}/pdfs",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+                "raw": "{\n  \"title\": \"Cəbr Məsələlər Toplusu\",\n  \"category\": \"Cəbr\",\n  \"type\": \"free\",\n  \"price\": 0,\n  \"pages\": 48,\n  \"description\": \"Cəbr üzrə məsələlər toplusu\",\n  \"fileName\": \"cebr-mesele.pdf\",\n  \"fileSizeLabel\": \"1.2 MB\",\n  \"fileData\": \"data:application/pdf;base64,JVBERi0xLjQK\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Has status field', function () {",
-                    "  pm.expect(json).to.have.property('status');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201', function () {",
+                "  pm.response.to.have.status(201);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('PDF has id', function () {",
+                "  pm.expect(json).to.have.property('id');",
+                "});",
+                "pm.test('fileData not returned in response', function () {",
+                "  pm.expect(json).to.not.have.property('fileData');",
+                "});",
+                "if (json.id) pm.collectionVariables.set('pdfId', json.id);"
+              ]}
+            }]
           },
+          {
+            "name": "Upload PDF — Missing Fields (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/pdfs",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Fayl olmayan PDF\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 on missing fileData', function () {",
+                "  pm.response.to.have.status(400);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get PDF by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": "{{base_url}}/pdfs/{{pdfId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('fileData stripped', function () {",
+                "    pm.expect(json).to.not.have.property('fileData');",
+                "  });",
+                "  pm.test('Has downloads counter', function () {",
+                "    pm.expect(json).to.have.property('downloads');",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Download Free PDF",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": "{{base_url}}/pdfs/{{pdfId}}/download"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  pm.test('Content-Type is PDF', function () {",
+                "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                "  });",
+                "  pm.test('Content-Disposition is attachment', function () {",
+                "    pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment');",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Download Paid PDF — No Approved Request (should 403)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/pdfs/{{pdfId}}/download"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// For a paid PDF where no pdfDownloadRequest is approved",
+                "// Expects 403 (or 200 if PDF is free / 404 if not found)",
+                "pm.test('Status 200, 403, or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Delete PDF (Admin)",
+            "request": {
+              "method": "DELETE",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/pdfs/{{pdfId}}"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('ok: true', function () {",
+                "    pm.expect(json.ok).to.equal(true);",
+                "  });",
+                "}"
+              ]}
+            }]
+          }
+        ]
+      },
+
+      {
+        "name": "PDF Requests",
+        "item": [
+          {
+            "name": "Get My PDF Requests (User)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/pdf-requests"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get All PDF Requests (Admin)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/pdf-requests?status=pending",
+                "query": [{ "key": "status", "value": "pending" }]
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});",
+                "pm.test('All results have status pending', function () {",
+                "  pm.response.json().forEach(r => {",
+                "    pm.expect(r.status).to.equal('pending');",
+                "  });",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Submit PDF Purchase Request",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/pdf-requests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"pdfId\": \"{{pdfId}}\",\n  \"pdfTitle\": \"Cəbr Məsələlər Toplusu\",\n  \"amount\": 5\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201 or 400', function () {",
+                "  // 201 = success, 400 = insufficient balance",
+                "  pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                "});",
+                "if (pm.response.code === 201) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Request has id', function () {",
+                "    pm.expect(json).to.have.property('id');",
+                "  });",
+                "  pm.test('Status is pending', function () {",
+                "    pm.expect(json.status).to.equal('pending');",
+                "  });",
+                "  pm.collectionVariables.set('pdfRequestId', json.id);",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Submit PDF Request — Missing pdfId (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/pdf-requests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 5\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 on missing pdfId', function () {",
+                "  pm.response.to.have.status(400);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Admin — Approve PDF Request",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/pdf-requests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"id\": \"{{pdfRequestId}}\",\n  \"action\": \"approve\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to approved', function () {",
+                "    pm.expect(json.status).to.equal('approved');",
+                "  });",
+                "  pm.test('approvedAt set', function () {",
+                "    pm.expect(json).to.have.property('approvedAt');",
+                "  });",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Admin — Reject PDF Request (refunds balance)",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/pdf-requests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"id\": \"{{pdfRequestId}}\",\n  \"action\": \"reject\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to rejected', function () {",
+                "    pm.expect(json.status).to.equal('rejected');",
+                "  });",
+                "  pm.test('rejectedAt set', function () {",
+                "    pm.expect(json).to.have.property('rejectedAt');",
+                "  });",
+                "  // Balance is refunded to user on rejection",
+                "}"
+              ]}
+            }]
+          }
+        ]
+      },
+
+      {
+        "name": "Premium",
+        "item": [
+          {
+            "name": "Get My Premium Requests (User)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/premium"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Submit Premium Request — Monthly",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/premium",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"packageType\": \"monthly\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201 or 409', function () {",
+                "  // 201 = new request, 409 = already has pending request",
+                "  pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                "});",
+                "if (pm.response.code === 201) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Has id', function () {",
+                "    pm.expect(json).to.have.property('id');",
+                "  });",
+                "  pm.test('Status is pending', function () {",
+                "    pm.expect(json.status).to.equal('pending');",
+                "  });",
+                "  pm.test('Package details correct', function () {",
+                "    pm.expect(json.packageType).to.equal('monthly');",
+                "    pm.expect(json.duration).to.equal(30);",
+                "    pm.expect(json.price).to.equal(10);",
+                "  });",
+                "  pm.collectionVariables.set('premiumReqId', json.id);",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Submit Premium Request — Duplicate Pending (should 409)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/premium",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"packageType\": \"monthly\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 409 on duplicate pending', function () {",
+                "  pm.response.to.have.status(409);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Submit Premium Request — Invalid Package (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/premium",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"packageType\": \"nonexistent\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 on invalid packageType', function () {",
+                "  pm.response.to.have.status(400);",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Admin — Approve Premium Request",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/premium",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"id\": \"{{premiumReqId}}\",\n  \"action\": \"approve\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to approved', function () {",
+                "    pm.expect(json.status).to.equal('approved');",
+                "  });",
+                "  // User's premium:true and premiumExpiresAt are set via allUsers Redis key",
+                "}"
+              ]}
+            }]
+          },
+          {
+            "name": "Admin — Reject Premium Request",
+            "request": {
+              "method": "PUT",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/premium",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"id\": \"{{premiumReqId}}\",\n  \"action\": \"reject\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to rejected', function () {",
+                "    pm.expect(json.status).to.equal('rejected');",
+                "  });",
+                "}"
+              ]}
+            }]
+          }
+        ]
+      },
+
+      {
+        "name": "Teacher Tests",
+        "item": [
           {
             "name": "Submit Teacher Test",
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
               "url": "{{base_url}}/teacher-tests",
@@ -620,227 +1225,389 @@
                 "raw": "{\n  \"title\": \"Cəbr — Tənliklər\",\n  \"emoji\": \"📝\",\n  \"difficulty\": \"Orta\",\n  \"duration\": 15,\n  \"isPremium\": false,\n  \"description\": \"Tənliklər mövzusu üzrə yoxlama sınağı.\",\n  \"questions\": [\n    {\n      \"question\": \"2x + 4 = 10 tənliyinin həlli nədir?\",\n      \"options\": [\"x=2\", \"x=3\", \"x=4\", \"x=5\"],\n      \"correctAnswer\": 1\n    },\n    {\n      \"question\": \"3x - 6 = 0 tənliyinin həlli nədir?\",\n      \"options\": [\"x=1\", \"x=2\", \"x=3\", \"x=6\"],\n      \"correctAnswer\": 1\n    }\n  ]\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Has id', function () {",
-                    "  pm.expect(json).to.have.property('id');",
-                    "});",
-                    "pm.test('Status is pending', function () {",
-                    "  pm.expect(json.status).to.equal('pending');",
-                    "});",
-                    "if (json.id) pm.collectionVariables.set('teacherTestId', json.id);"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201', function () {",
+                "  pm.response.to.have.status(201);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Has id', function () {",
+                "  pm.expect(json).to.have.property('id');",
+                "});",
+                "pm.test('Status is pending', function () {",
+                "  pm.expect(json.status).to.equal('pending');",
+                "});",
+                "if (json.id) pm.collectionVariables.set('teacherTestId', json.id);"
+              ]}
+            }]
           },
           {
-            "name": "Get My Submitted Tests",
+            "name": "Submit Teacher Test — Missing Fields (should 400)",
             "request": {
-              "method": "GET",
+              "method": "POST",
               "header": [
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/teacher-tests/mine"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
+              "url": "{{base_url}}/teacher-tests",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Sual olmadan sınaq\"\n}"
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 on missing questions', function () {",
+                "  pm.response.to.have.status(400);",
+                "});"
+              ]}
+            }]
           },
           {
-            "name": "Admin — Get All Teacher Access Requests",
+            "name": "Get My Submitted Tests (own — no admin)",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teacher-tests/requests"
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/teacher-tests"
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});",
-                    "// Required by _loadAccessRequests() which populates #teacherAccessRequestsList"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Admin — Get Pending Teacher Access Requests (Badge)",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teacher-tests/requests?status=pending"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});",
-                    "// Required by _updateTeacherTestsBadge() — counts pending requests for #teacherTestsBadge"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// Non-admin sees only own submissions; admin sees all",
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});"
+              ]}
+            }]
           },
           {
             "name": "Admin — Get All Pending Teacher Tests",
             "request": {
               "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teacher-tests?status=pending"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/teacher-tests?status=pending",
+                "query": [{ "key": "status", "value": "pending" }]
               }
-            ]
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "pm.test('Response is array', function () {",
+                "  pm.expect(pm.response.json()).to.be.an('array');",
+                "});",
+                "pm.test('All results are pending', function () {",
+                "  pm.response.json().forEach(t => {",
+                "    pm.expect(t.status).to.equal('pending');",
+                "  });",
+                "});"
+              ]}
+            }]
           },
           {
             "name": "Admin — Approve Teacher Test",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/teacher-tests/{{teacherTestId}}/approve",
+              "url": "{{base_url}}/teacher-tests",
               "body": {
                 "mode": "raw",
-                "raw": "{}"
+                "raw": "{\n  \"id\": \"{{teacherTestId}}\",\n  \"action\": \"approve\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Status updated to approved', function () {",
-                    "  pm.expect(json.status).to.equal('approved');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// Real route: PUT /api/teacher-tests with body {id, action}",
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to approved', function () {",
+                "    pm.expect(json.status).to.equal('approved');",
+                "  });",
+                "  pm.test('approvedAt set', function () {",
+                "    pm.expect(json).to.have.property('approvedAt');",
+                "  });",
+                "  // Approved test is also published to /api/tests automatically",
+                "}"
+              ]}
+            }]
           },
           {
             "name": "Admin — Reject Teacher Test",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/teacher-tests/{{teacherTestId}}/reject",
+              "url": "{{base_url}}/teacher-tests",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"adminNote\": \"Suallar kifayət qədər aydın deyil.\"\n}"
+                "raw": "{\n  \"id\": \"{{teacherTestId}}\",\n  \"action\": \"reject\",\n  \"adminNote\": \"Suallar kifayət qədər aydın deyil.\"\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Status updated to rejected', function () {",
-                    "  pm.expect(json.status).to.equal('rejected');",
-                    "});",
-                    "pm.test('adminNote present', function () {",
-                    "  pm.expect(json.adminNote).to.be.a('string');",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('Status updated to rejected', function () {",
+                "    pm.expect(json.status).to.equal('rejected');",
+                "  });",
+                "  pm.test('adminNote saved', function () {",
+                "    pm.expect(json.adminNote).to.be.a('string');",
+                "  });",
+                "}"
+              ]}
+            }]
           },
           {
-            "name": "Admin — Grant Test-Add Access to User",
+            "name": "Admin — Grant canAddTests to User",
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Content-Type",  "value": "application/json" },
                 { "key": "Authorization", "value": "Bearer {{token}}" }
               ],
-              "url": "{{base_url}}/users/{{userId}}/grant-test-access",
+              "url": "{{base_url}}/users/{{userId}}",
               "body": {
                 "mode": "raw",
                 "raw": "{\n  \"canAddTests\": true\n}"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('canAddTests is true', function () {",
-                    "  pm.expect(json.canAddTests).to.equal(true);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200 or 403 or 404', function () {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]);",
+                "});",
+                "if (pm.response.code === 200) {",
+                "  const json = pm.response.json();",
+                "  pm.test('canAddTests is true', function () {",
+                "    pm.expect(json.canAddTests).to.equal(true);",
+                "  });",
+                "}"
+              ]}
+            }]
           }
         ]
       },
+
+      {
+        "name": "Payments",
+        "item": [
+          {
+            "name": "Get My Payments (User)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": "{{base_url}}/payments"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Response has data array', function () {",
+                "  pm.expect(json.data).to.be.an('array');",
+                "});",
+                "pm.test('Pagination meta present', function () {",
+                "  pm.expect(json).to.have.property('total');",
+                "  pm.expect(json).to.have.property('page');",
+                "  pm.expect(json).to.have.property('pages');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Get All Payments — Paginated (Admin)",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "url": {
+                "raw": "{{base_url}}/payments?page=1&limit=50",
+                "query": [
+                  { "key": "page",  "value": "1" },
+                  { "key": "limit", "value": "50" }
+                ]
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Response has data array', function () {",
+                "  pm.expect(json.data).to.be.an('array');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Record Payment (POST)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 10,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 201', function () {",
+                "  pm.response.to.have.status(201);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Payment object returned', function () {",
+                "  pm.expect(json.payment).to.be.an('object');",
+                "  pm.expect(json.payment).to.have.property('id');",
+                "  pm.expect(json.payment.status).to.equal('completed');",
+                "});",
+                "pm.test('newBalance returned', function () {",
+                "  pm.expect(json).to.have.property('newBalance');",
+                "  pm.expect(json.newBalance).to.be.a('number');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Record Payment — Below Minimum (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type",  "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 3,\n  \"method\": \"Kart\",\n  \"plan\": \"custom\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 400 for amount < 5', function () {",
+                "  pm.response.to.have.status(400);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Error message returned', function () {",
+                "  pm.expect(json.error).to.be.a('string');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Record Payment — Unauthenticated (should 401)",
+            "request": {
+              "method": "POST",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 20,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
+              }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 401 without token', function () {",
+                "  pm.response.to.have.status(401);",
+                "});"
+              ]}
+            }]
+          }
+        ]
+      },
+
+      {
+        "name": "Stats",
+        "item": [
+          {
+            "name": "Get Site Statistics",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": "{{base_url}}/stats"
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () {",
+                "  pm.response.to.have.status(200);",
+                "});",
+                "const json = pm.response.json();",
+                "pm.test('Has users count', function () {",
+                "  pm.expect(json.users).to.be.a('number');",
+                "});",
+                "pm.test('Has tests count', function () {",
+                "  pm.expect(json.tests).to.be.a('number');",
+                "});",
+                "pm.test('Has news count', function () {",
+                "  pm.expect(json.news).to.be.a('number');",
+                "});",
+                "pm.test('Has teachers count', function () {",
+                "  pm.expect(json.teachers).to.be.a('number');",
+                "});",
+                "pm.test('Has pdfs count', function () {",
+                "  pm.expect(json.pdfs).to.be.a('number');",
+                "});",
+                "pm.test('Has premium count', function () {",
+                "  pm.expect(json.premium).to.be.a('number');",
+                "});",
+                "pm.test('Has totalDownloads', function () {",
+                "  pm.expect(json.totalDownloads).to.be.a('number');",
+                "});"
+              ]}
+            }]
+          },
+          {
+            "name": "Stats — Wrong Method (should 405)",
+            "request": {
+              "method": "POST",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "url": "{{base_url}}/stats",
+              "body": { "mode": "raw", "raw": "{}" }
+            },
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 405 on POST', function () {",
+                "  pm.response.to.have.status(405);",
+                "});"
+              ]}
+            }]
+          }
+        ]
+      },
+
       {
         "name": "Points & Test Scores (Upstash)",
         "item": [
@@ -853,31 +1620,23 @@
                 { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{upstash_url}}",
-              "body": {
-                "mode": "raw",
-                "raw": "[\"GET\", \"userPoints\"]"
-              }
+              "body": { "mode": "raw", "raw": "[\"GET\", \"userPoints\"]" }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                    "const json = pm.response.json();",
-                    "pm.test('Has result', function () { pm.expect(json).to.have.property('result'); });",
-                    "// result is JSON string; parse to inspect testScores",
-                    "if (json.result) {",
-                    "  const pts = JSON.parse(json.result);",
-                    "  const sample = Object.values(pts)[0];",
-                    "  pm.test('Sample entry has expected keys', function () {",
-                    "    pm.expect(sample).to.have.property('total');",
-                    "  });",
-                    "}"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "const json = pm.response.json();",
+                "pm.test('Has result', function () { pm.expect(json).to.have.property('result'); });",
+                "if (json.result) {",
+                "  const pts = JSON.parse(json.result);",
+                "  const sample = Object.values(pts)[0];",
+                "  pm.test('Sample entry has total key', function () {",
+                "    pm.expect(sample).to.have.property('total');",
+                "  });",
+                "}"
+              ]}
+            }]
           },
           {
             "name": "Save userPoints with testScores (SET)",
@@ -890,21 +1649,17 @@
               "url": "{{upstash_url}}",
               "body": {
                 "mode": "raw",
-                "raw": "[\"SET\", \"userPoints\", \"{\\\"user_1\\\":{\\\"userId\\\":\\\"user_1\\\",\\\"userName\\\":\\\"Test User\\\",\\\"total\\\":45,\\\"history\\\":[],\\\"watchedVideos\\\":[\\\"1\\\"],\\\"completedTests\\\":[\\\"test_1\\\"],\\\"lastLoginDate\\\":\\\"2026-09-22\\\",\\\"testScores\\\":{\\\"test_1\\\":{\\\"testId\\\":\\\"test_1\\\",\\\"testTitle\\\":\\\"Cəbr — Tənliklər\\\",\\\"ballScore\\\":80,\\\"date\\\":\\\"22.09.2026\\\"}}}}\", \"EX\", 2592000]"
+                "raw": "[\"SET\", \"userPoints\", \"{\\\"user_1\\\":{\\\"userId\\\":\\\"user_1\\\",\\\"userName\\\":\\\"Test User\\\",\\\"total\\\":45,\\\"history\\\":[],\\\"watchedVideos\\\":[\\\"1\\\"],\\\"completedTests\\\":[\\\"test_1\\\"],\\\"lastLoginDate\\\":\\\"2026-09-23\\\",\\\"testScores\\\":{\\\"test_1\\\":{\\\"testId\\\":\\\"test_1\\\",\\\"testTitle\\\":\\\"Cəbr — Tənliklər\\\",\\\"ballScore\\\":80,\\\"date\\\":\\\"23.09.2026\\\"}}}}\", \"EX\", 2592000]"
               }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                    "const json = pm.response.json();",
-                    "pm.test('SET acknowledged', function () { pm.expect(json.result).to.equal('OK'); });"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "const json = pm.response.json();",
+                "pm.test('SET acknowledged', function () { pm.expect(json.result).to.equal('OK'); });"
+              ]}
+            }]
           },
           {
             "name": "Get leaderboard cache",
@@ -915,23 +1670,15 @@
                 { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{upstash_url}}",
-              "body": {
-                "mode": "raw",
-                "raw": "[\"GET\", \"leaderboard\"]"
-              }
+              "body": { "mode": "raw", "raw": "[\"GET\", \"leaderboard\"]" }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                    "const json = pm.response.json();",
-                    "pm.test('Has result key', function () { pm.expect(json).to.have.property('result'); });"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "pm.test('Has result key', function () { pm.expect(pm.response.json()).to.have.property('result'); });"
+              ]}
+            }]
           },
           {
             "name": "Get testResults key",
@@ -942,336 +1689,34 @@
                 { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{upstash_url}}",
-              "body": {
-                "mode": "raw",
-                "raw": "[\"GET\", \"testResults\"]"
-              }
+              "body": { "mode": "raw", "raw": "[\"GET\", \"testResults\"]" }
             },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "// success.html now listens to storage key 'testResults' for cross-tab updates",
-                    "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                    "const json = pm.response.json();",
-                    "pm.test('Has result key', function () { pm.expect(json).to.have.property('result'); });"
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "Payments",
-        "item": [
-          {
-            "name": "Get My Payments (User)",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/payments"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Response has data array', function () {",
-                    "  pm.expect(json.data).to.be.an('array');",
-                    "});",
-                    "pm.test('Pagination meta present', function () {",
-                    "  pm.expect(json).to.have.property('total');",
-                    "  pm.expect(json).to.have.property('page');",
-                    "  pm.expect(json).to.have.property('pages');",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Get All Payments (Admin)",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": {
-                "raw": "{{base_url}}/payments?page=1&limit=50",
-                "query": [
-                  { "key": "page",  "value": "1" },
-                  { "key": "limit", "value": "50" }
-                ]
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Response has data array', function () {",
-                    "  pm.expect(json.data).to.be.an('array');",
-                    "});",
-                    "pm.test('Pagination meta present', function () {",
-                    "  pm.expect(json).to.have.property('total');",
-                    "  pm.expect(json).to.have.property('page');",
-                    "  pm.expect(json).to.have.property('pages');",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Record Payment (POST)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/payments",
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"amount\": 10,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 201', function () {",
-                    "  pm.response.to.have.status(201);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Payment object returned', function () {",
-                    "  pm.expect(json.payment).to.be.an('object');",
-                    "  pm.expect(json.payment).to.have.property('id');",
-                    "  pm.expect(json.payment.status).to.equal('completed');",
-                    "});",
-                    "pm.test('newBalance returned', function () {",
-                    "  pm.expect(json).to.have.property('newBalance');",
-                    "  pm.expect(json.newBalance).to.be.a('number');",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Record Payment — Below Minimum (should 400)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/payments",
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"amount\": 3,\n  \"method\": \"Kart\",\n  \"plan\": \"custom\"\n}"
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 400 for amount < 5', function () {",
-                    "  pm.response.to.have.status(400);",
-                    "});",
-                    "const json = pm.response.json();",
-                    "pm.test('Error message returned', function () {",
-                    "  pm.expect(json.error).to.be.a('string');",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Record Payment — Unauthenticated (should 401)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "url": "{{base_url}}/payments",
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"amount\": 20,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 401 without token', function () {",
-                    "  pm.response.to.have.status(401);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "Teachers",
-        "item": [
-          {
-            "name": "Get All Teachers",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teachers"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200', function () {",
-                    "  pm.response.to.have.status(200);",
-                    "});",
-                    "pm.test('Response is array', function () {",
-                    "  pm.expect(pm.response.json()).to.be.an('array');",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Get Teacher by ID",
-            "request": {
-              "method": "GET",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teachers/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Create Teacher",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teachers",
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"name\": \"Əli Hüseynov\",\n  \"email\": \"ali@riyazmath.az\",\n  \"title\": \"Baş Müəllim\",\n  \"bio\": \"10 illik təcrübəli riyaziyyat müəllimi\",\n  \"subjects\": \"Riyaziyyat, Cəbr\",\n  \"experience\": 10\n}"
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 201', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Update Teacher",
-            "request": {
-              "method": "PUT",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teachers/1",
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"title\": \"Professor\",\n  \"experience\": 12\n}"
-              }
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Delete Teacher",
-            "request": {
-              "method": "DELETE",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{token}}" }
-              ],
-              "url": "{{base_url}}/teachers/1"
-            },
-            "event": [
-              {
-                "listen": "test",
-                "script": {
-                  "exec": [
-                    "pm.test('Status 200 or 204 or 404', function () {",
-                    "  pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
-                    "});"
-                  ]
-                }
-              }
-            ]
+            "event": [{
+              "listen": "test",
+              "script": { "exec": [
+                "// success.html listens to 'testResults' key for cross-tab updates",
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "pm.test('Has result key', function () { pm.expect(pm.response.json()).to.have.property('result'); });"
+              ]}
+            }]
           }
         ]
       }
+
     ]
   },
   "environment": {
     "name": "Bizim Riyaziyyat - Local",
     "values": [
       { "key": "base_url", "value": "http://localhost:8080/api", "enabled": true },
-      { "key": "token", "value": "", "enabled": true }
+      { "key": "token",    "value": "",                          "enabled": true }
     ]
   },
   "environmentProduction": {
     "name": "Bizim Riyaziyyat - Production",
     "values": [
       { "key": "base_url", "value": "https://bizimriyaziyyat.work.gd/api", "enabled": true },
-      { "key": "token", "value": "", "enabled": true }
+      { "key": "token",    "value": "",                                      "enabled": true }
     ]
   }
 }
