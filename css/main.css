@@ -1211,3 +1211,122 @@ a { text-decoration: none; color: inherit; }
     background-size: 200% 200%;
     animation: gradientShift 5s ease infinite;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   DARK MODE
+════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+    --light:  #0f172a;
+    --border: #1e293b;
+    --shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] body        { background: #0f172a; color: #f1f5f9; }
+[data-theme="dark"] .navbar     { background: #1e293b; border-bottom: 1px solid #334155; }
+[data-theme="dark"] .navbar-menu a { color: #cbd5e1; }
+[data-theme="dark"] .navbar-menu a:hover,
+[data-theme="dark"] .navbar-menu a.active { background: #334155; color: #a5b4fc; }
+[data-theme="dark"] .card,
+[data-theme="dark"] .card-panel,
+[data-theme="dark"] .card-section,
+[data-theme="dark"] .admin-section,
+[data-theme="dark"] .sidebar-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .form-control {
+    background: #0f172a; border-color: #334155; color: #f1f5f9;
+}
+[data-theme="dark"] .form-control:focus { border-color: var(--primary); }
+[data-theme="dark"] .btn-secondary { background: #1e293b; color: #a5b4fc; border-color: #4f46e5; }
+[data-theme="dark"] table         { color: #f1f5f9; }
+[data-theme="dark"] th            { background: #1e293b; color: #94a3b8; border-color: #334155; }
+[data-theme="dark"] td            { border-color: #1e293b; }
+[data-theme="dark"] tr:hover      { background: #1e293b; }
+[data-theme="dark"] .footer       { background: #020617; }
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+    background: none; border: none; cursor: pointer; padding: 6px 10px;
+    color: var(--gray); font-size: 18px; border-radius: 8px;
+    transition: background .2s, color .2s;
+}
+.dark-mode-toggle:hover { background: var(--border); color: var(--primary); }
+[data-theme="dark"] .dark-mode-toggle { color: #fbbf24; }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE IMPROVEMENTS
+════════════════════════════════════════════════════════════════════ */
+
+/* Overflow-safe tables */
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Hamburger menu shown only on mobile */
+.hamburger-btn {
+    display: none; background: none; border: none;
+    cursor: pointer; padding: 8px; color: var(--dark);
+}
+@media (max-width: 768px) {
+    .hamburger-btn { display: flex; align-items: center; justify-content: center; }
+    .navbar-menu {
+        display: none; position: absolute; top: 70px; left: 0; right: 0;
+        background: white; padding: 12px 0; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        z-index: 999; flex-direction: column;
+    }
+    [data-theme="dark"] .navbar-menu { background: #1e293b; }
+    .navbar-menu.open { display: flex; }
+    .navbar-menu a { padding: 12px 24px; border-left: none; border-bottom: 1px solid var(--border); }
+    .navbar-inner { position: relative; }
+    .navbar-actions .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* Hide balance badge on very small screens */
+    .balance-badge { display: none !important; }
+
+    /* Hero text smaller */
+    .hero h1 { font-size: 28px !important; }
+    .hero p  { font-size: 14px !important; }
+
+    /* Grid collapse */
+    .stats-row,
+    .pdf-grid,
+    .tests-grid { grid-template-columns: 1fr !important; }
+
+    /* Admin sidebar collapsed */
+    .admin-sidebar { width: 64px !important; }
+    .admin-sidebar .admin-logo div,
+    .admin-sidebar .admin-menu-item span { display: none !important; }
+    .admin-main { margin-left: 64px !important; }
+
+    /* KaTeX math overflow */
+    .katex-display { overflow-x: auto; overflow-y: hidden; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   HAMBURGER MENU JS HOOK
+════════════════════════════════════════════════════════════════════ */
+/* Toggled by app.js via .open class */
+
+/* ════════════════════════════════════════════════════════════════════
+   LOADING SKELETON
+════════════════════════════════════════════════════════════════════ */
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+    height: 16px;
+    display: block;
+}
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);
+    background-size: 200% 100%;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ALERT STYLES (used on auth pages and inline forms)
+════════════════════════════════════════════════════════════════════ */
+.alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.alert-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.alert-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }

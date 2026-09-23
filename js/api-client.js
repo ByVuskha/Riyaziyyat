@@ -94,6 +94,14 @@ const API = (() => {
     async get()                 { return req('GET', '/api/stats'); },
   };
 
+  // ── Payments ──────────────────────────────────────────────────────────────
+  const payments = {
+    async list(params = {})     { return req('GET', '/api/payments?' + new URLSearchParams(params)); },
+    async record(amount, method, plan) {
+      return req('POST', '/api/payments', { amount, method, plan });
+    },
+  };
+
   // ── Session cache (in-memory, cleared on page reload) ─────────────────────
   let _currentUser = null;
 
@@ -129,7 +137,7 @@ const API = (() => {
   }
 
   return {
-    auth, tests, news, users, pdfs, pdfRequests, teacherTests, premium, stats,
+    auth, tests, news, users, pdfs, pdfRequests, teacherTests, premium, stats, payments,
     getCurrentUser, clearUserCache, logout, notify,
   };
 })();

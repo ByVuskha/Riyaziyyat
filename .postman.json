@@ -5,7 +5,7 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, and Teacher-Test-Access endpoints. Updated 2026-09-22 (success.html diff): added 'Sınaq Balları' leaderboard tab (renderTestScores). No new REST endpoints were introduced — the change reads testScores from the userPoints Upstash/localStorage structure. awardTestPoints() in points.js must persist a testScores map (keyed by testId) containing {testId, testTitle, ballScore, date} for the new UI to display data. Points — Update User Points now includes the testScores payload shape.",
+      "description": "API collection for Bizim Riyaziyyat — covers Auth, Videos, News, Users, Teachers, Teacher-Test-Access, Payments endpoints. Updated 2026-09-23 (vercel.json diff): added route /api/payments → /api/payments/index.js. Payments support GET (list own or all for admin) and POST (record payment + update user balance). Updated 2026-09-22 (success.html diff): added 'Sınaq Balları' leaderboard tab (renderTestScores). No new REST endpoints were introduced — the change reads testScores from the userPoints Upstash/localStorage structure. awardTestPoints() in points.js must persist a testScores map (keyed by testId) containing {testId, testTitle, ballScore, date} for the new UI to display data. Points — Update User Points now includes the testScores payload shape.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -956,6 +956,173 @@
                     "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
                     "const json = pm.response.json();",
                     "pm.test('Has result key', function () { pm.expect(json).to.have.property('result'); });"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Payments",
+        "item": [
+          {
+            "name": "Get My Payments (User)",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/payments"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Response has data array', function () {",
+                    "  pm.expect(json.data).to.be.an('array');",
+                    "});",
+                    "pm.test('Pagination meta present', function () {",
+                    "  pm.expect(json).to.have.property('total');",
+                    "  pm.expect(json).to.have.property('page');",
+                    "  pm.expect(json).to.have.property('pages');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Get All Payments (Admin)",
+            "request": {
+              "method": "GET",
+              "header": [
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": {
+                "raw": "{{base_url}}/payments?page=1&limit=50",
+                "query": [
+                  { "key": "page",  "value": "1" },
+                  { "key": "limit", "value": "50" }
+                ]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 200', function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Response has data array', function () {",
+                    "  pm.expect(json.data).to.be.an('array');",
+                    "});",
+                    "pm.test('Pagination meta present', function () {",
+                    "  pm.expect(json).to.have.property('total');",
+                    "  pm.expect(json).to.have.property('page');",
+                    "  pm.expect(json).to.have.property('pages');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Record Payment (POST)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 10,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 201', function () {",
+                    "  pm.response.to.have.status(201);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Payment object returned', function () {",
+                    "  pm.expect(json.payment).to.be.an('object');",
+                    "  pm.expect(json.payment).to.have.property('id');",
+                    "  pm.expect(json.payment.status).to.equal('completed');",
+                    "});",
+                    "pm.test('newBalance returned', function () {",
+                    "  pm.expect(json).to.have.property('newBalance');",
+                    "  pm.expect(json.newBalance).to.be.a('number');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Record Payment — Below Minimum (should 400)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Authorization", "value": "Bearer {{token}}" }
+              ],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 3,\n  \"method\": \"Kart\",\n  \"plan\": \"custom\"\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 400 for amount < 5', function () {",
+                    "  pm.response.to.have.status(400);",
+                    "});",
+                    "const json = pm.response.json();",
+                    "pm.test('Error message returned', function () {",
+                    "  pm.expect(json.error).to.be.a('string');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Record Payment — Unauthenticated (should 401)",
+            "request": {
+              "method": "POST",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "url": "{{base_url}}/payments",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"amount\": 20,\n  \"method\": \"Kart\",\n  \"plan\": \"monthly\"\n}"
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 401 without token', function () {",
+                    "  pm.response.to.have.status(401);",
+                    "});"
                   ]
                 }
               }

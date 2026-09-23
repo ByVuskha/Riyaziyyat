@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kabinet — Bizim Riyaziyyat</title>
+    <title>əxsi Kabinet — Bizim Riyaziyyat</title>
+    <meta name="description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta name="keywords"    content="kabinet, profil, nailiyyətlər">
+    <meta name="author"      content="Bizim Riyaziyyat">
+    <meta name="robots"      content="index, follow">
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://bizimriyaziyyat.vercel.app/dashboard.html">
+    <meta property="og:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
+    <meta property="og:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta property="og:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
+    <meta property="og:locale"      content="az_AZ">
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
+    <meta name="twitter:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
+    <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/dashboard.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -226,6 +241,7 @@
                 <a href="dashboard.html" class="active">Kabinet</a>
             </div>
             <div class="navbar-actions">
+                <button class="hamburger-btn" aria-label="Menyu" aria-expanded="false"><i class="fas fa-bars"></i></button>
                 <div id="guestButtons">
                     <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
                 </div>
@@ -630,32 +646,30 @@ function renderDashboard() {
 }
 
 renderDashboard();
-window.addEventListener('points:updated', renderDashboard);
-window.addEventListener('upstash:loaded', renderDashboard);
+// Teacher section: only show if teacher/admin
+if (user.userType === 'teacher' || user.role === 'admin') {
+    renderTeacherSection(user);
+}
+updateNavbar();
+})(); // end async IIFE
 
 /* ══════════════════════════════════════════════════════════════════════
-   MÜƏLLİM BÖLMƏSİ
+   MÜƏLLİM BÖLMƏSİ (functions defined outside IIFE so onclick works)
 ══════════════════════════════════════════════════════════════════════ */
 function renderTeacherSection(u) {
     document.getElementById('teacherSection').style.display = 'block';
-
-    /* Read fresh user from allUsers */
-    const allUsers  = Storage.get('allUsers') || [];
-    const freshU    = allUsers.find(x => String(x.id) === String(u.id)) || u;
 
     const accessCard  = document.getElementById('accessCard');
     const addTestCard = document.getElementById('addTestCard');
     const myTestsCard = document.getElementById('myTestsCard');
 
-    if (freshU.canAddTests === true) {
-        /* ── APPROVED: show the form ── */
+    if (u.canAddTests === true) {
         accessCard.style.display  = 'none';
         addTestCard.style.display = 'block';
         myTestsCard.style.display = 'block';
         if (document.getElementById('questionsContainer').children.length === 0) addQuestion();
-        loadMyTests(freshU);
+        loadMyTests(u);
     } else {
-        /* ── NOT YET APPROVED: show request card ── */
         accessCard.style.display  = 'block';
         addTestCard.style.display = 'none';
         myTestsCard.style.display = 'none';
@@ -665,52 +679,31 @@ function renderTeacherSection(u) {
         const desc  = document.getElementById('accessDesc');
         const btn   = document.getElementById('requestAccessBtn');
 
-        if (freshU.testAccessRequested) {
-            badge.className = 'access-badge badge-pending';
-            badge.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir';
-            title.textContent = 'Müraciətiniz İcmalda';
-            desc.textContent  = 'Admin müraciətinizi nəzərdən keçirir. Təsdiqlədikdən sonra sınaq formu avtomatik açılacaq.';
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir';
-            btn.style.opacity = '.6';
+        if (u.testAccessRequested) {
+            if (badge) { badge.className = 'access-badge badge-pending'; badge.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; }
+            if (title) title.textContent = 'Müraciətiniz İcmalda';
+            if (desc)  desc.textContent  = 'Admin müraciətinizi nəzərdən keçirir.';
+            if (btn)   { btn.disabled = true; btn.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; btn.style.opacity = '.6'; }
         } else {
-            badge.className = 'access-badge badge-none';
-            badge.innerHTML = '<i class="fas fa-lock"></i> İcazəsiz';
-            title.textContent = 'Sınaq Əlavəetmə İcazəsi';
-            desc.textContent  = 'Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur. Müraciət edərək admin onaylasın.';
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə';
-            btn.style.opacity = '1';
+            if (badge) { badge.className = 'access-badge badge-none'; badge.innerHTML = '<i class="fas fa-lock"></i> İcazəsiz'; }
+            if (title) title.textContent = 'Sınaq Əlavəetmə İcazəsi';
+            if (desc)  desc.textContent  = 'Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.';
+            if (btn)   { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə'; btn.style.opacity = '1'; }
         }
     }
 }
 
-function requestTestAccess() {
-    const u = getCurrentUser();
-    if (!u) return;
-
-    const allUsers = Storage.get('allUsers') || [];
-    const idx = allUsers.findIndex(x => String(x.id) === String(u.id));
-    if (idx !== -1) {
-        allUsers[idx].testAccessRequested = true;
-        allUsers[idx].testAccessRequestedAt = new Date().toISOString();
-        Storage.set('allUsers', allUsers);
-    }
-    u.testAccessRequested = true;
-    Storage.set('currentUser', u);
-
-    /* Save request for admin */
-    const reqs = Storage.get('teacherTestRequests') || [];
-    reqs.unshift({
-        id: Date.now(), userId: u.id, userName: u.name, userEmail: u.email,
-        requestedAt: new Date().toISOString(), status: 'pending'
-    });
-    Storage.set('teacherTestRequests', reqs);
-
-    renderTeacherSection(u);
-
-    if (typeof showNotification === 'function') {
+async function requestTestAccess() {
+    try {
+        await API.teacherTests.submit({ title: '_access_request_', questions: [], duration: 0 })
+            .catch(() => {}); // ignore — just flag the user
+        // Mark user as having requested access via update endpoint
+        await API.users.update(user.id, { testAccessRequested: true });
+        user.testAccessRequested = true;
         showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
+        renderTeacherSection(user);
+    } catch(e) {
+        showNotification(e.message || 'Xəta baş verdi', 'error');
     }
 }
 
@@ -749,10 +742,8 @@ function removeQ(n) {
 }
 
 /* ── Submit test ── */
-function submitTest(e) {
+async function submitTest(e) {
     e.preventDefault();
-    const u = getCurrentUser();
-    if (!u) return;
 
     const title      = document.getElementById('tTitle').value.trim();
     const emoji      = document.getElementById('tEmoji').value;
@@ -786,22 +777,17 @@ function submitTest(e) {
         return;
     }
 
-    const teacherTests = Storage.get('teacherTests') || [];
-    teacherTests.unshift({
-        id: Date.now(),
-        teacherId: u.id, teacherName: u.name, teacherEmail: u.email,
-        title, emoji, difficulty, duration, isPremium, description: desc,
-        questions, submittedAt: new Date().toISOString(), status: 'pending'
-    });
-    Storage.set('teacherTests', teacherTests);
-
-    document.getElementById('addTestAlert').innerHTML =
-        '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> Sınaq admin yoxlamasına göndərildi!</div>';
-
-    resetTestForm();
-    loadMyTests(u);
-
-    setTimeout(() => { document.getElementById('addTestAlert').innerHTML = ''; }, 4000);
+    try {
+        await API.teacherTests.submit({ title, emoji, difficulty, duration, isPremium, description: desc, questions });
+        document.getElementById('addTestAlert').innerHTML =
+            '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> Sınaq admin yoxlamasına göndərildi!</div>';
+        resetTestForm();
+        loadMyTests(user);
+        setTimeout(() => { document.getElementById('addTestAlert').innerHTML = ''; }, 4000);
+    } catch(err) {
+        document.getElementById('addTestAlert').innerHTML =
+            `<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> ${err.message}</div>`;
+    }
 }
 
 function resetTestForm() {
@@ -812,48 +798,44 @@ function resetTestForm() {
 }
 
 /* ── My submitted tests ── */
-function loadMyTests(u) {
-    const all  = Storage.get('teacherTests') || [];
-    const mine = all.filter(t => String(t.teacherId) === String(u.id));
+async function loadMyTests(u) {
     const cont = document.getElementById('myTestsList');
-
-    if (!mine.length) {
-        cont.innerHTML = '<p style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Hələ sınaq göndərməmisiniz.</p>';
-        return;
+    if (!cont) return;
+    try {
+        const tests = await API.teacherTests.list();
+        const mine  = tests.filter(t => String(t.teacherId) === String(u.id));
+        if (!mine.length) {
+            cont.innerHTML = '<p style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Hələ sınaq göndərməmisiniz.</p>';
+            return;
+        }
+        const statusMap = { pending:['badge-pending','⏳ Gözlənilir'], approved:['badge-approved','✅ Təsdiqləndi'], rejected:['badge-rejected','❌ Rədd Edildi'] };
+        cont.innerHTML = mine.map(t => {
+            const d = new Date(t.submittedAt);
+            const [cls, lbl] = statusMap[t.status] || statusMap.pending;
+            const ds = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+            return `<div class="ti-item">
+                <div class="ti-emoji">${t.emoji||'📝'}</div>
+                <div class="ti-info" style="flex:1;">
+                    <h5>${t.title}</h5>
+                    <span>${t.questions?.length||0} sual · ${t.duration} dəq · ${t.difficulty} · ${ds}</span>
+                    ${t.adminNote?`<br><span style="color:#ef4444;font-size:11px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>`:''}
+                </div>
+                <span class="ti-badge ${cls}">${lbl}</span>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        cont.innerHTML = `<p style="color:#ef4444;padding:16px;">${e.message}</p>`;
     }
-
-    const statusMap = {
-        pending:  ['badge-pending',  '⏳ Gözlənilir'],
-        approved: ['badge-approved', '✅ Təsdiqləndi'],
-        rejected: ['badge-rejected', '❌ Rədd Edildi'],
-    };
-
-    cont.innerHTML = mine.map(t => {
-        const d = new Date(t.submittedAt);
-        const [cls, lbl] = statusMap[t.status] || statusMap.pending;
-        const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
-        return `<div class="ti-item">
-            <div class="ti-emoji">${t.emoji || '📝'}</div>
-            <div class="ti-info" style="flex:1;">
-                <h5>${t.title}</h5>
-                <span>${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
-                ${t.adminNote ? `<br><span style="color:#ef4444;font-size:11px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>` : ''}
-            </div>
-            <span class="ti-badge ${cls}">${lbl}</span>
-        </div>`;
-    }).join('');
 }
 
 /* ── Premium request ── */
-function sendPremiumRequest() {
-    if (typeof requestPremium === 'function') {
-        const res = requestPremium();
-        if (res.success) {
-            alert('✅ ' + res.message + '\n\nAdmin tərəfindən yoxlanılacaq.');
-            location.reload();
-        } else {
-            alert('❌ ' + res.message);
-        }
+async function sendPremiumRequest(packageType = 'monthly') {
+    try {
+        await API.premium.request(packageType);
+        showNotification('Premium müraciətiniz göndərildi! Admin tezliklə aktivləşdirəcək.', 'success');
+        setTimeout(() => location.reload(), 1500);
+    } catch(e) {
+        showNotification(e.data?.error || e.message, 'error');
     }
 }
 </script>

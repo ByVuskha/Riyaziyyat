@@ -185,4 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const icon   = btn.querySelector('i');
     if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
   });
+
+  // Wire hamburger menu
+  const hamburger = document.querySelector('.hamburger-btn');
+  const navMenu   = document.querySelector('.navbar-menu');
+  if (hamburger && navMenu) {
+    hamburger.addEventListener('click', () => {
+      navMenu.classList.toggle('open');
+      const icon = hamburger.querySelector('i');
+      if (icon) icon.className = navMenu.classList.contains('open') ? 'fas fa-times' : 'fas fa-bars';
+    });
+    // Close menu when a link is clicked
+    navMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+      navMenu.classList.remove('open');
+      const icon = hamburger.querySelector('i');
+      if (icon) icon.className = 'fas fa-bars';
+    }));
+  }
 });

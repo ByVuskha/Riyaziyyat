@@ -21,6 +21,14 @@
     {
       "src": "favicon.svg",
       "use": "@vercel/static"
+    },
+    {
+      "src": "sitemap.xml",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "robots.txt",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -89,8 +97,20 @@
       "dest": "/api/premium/index.js"
     },
     {
+      "src": "/api/payments",
+      "dest": "/api/payments/index.js"
+    },
+    {
       "src": "/api/stats",
       "dest": "/api/stats/index.js"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/sitemap.xml"
     },
     {
       "src": "/(.*)\\.html",

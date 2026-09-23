@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bizim Riyaziyyat - Riyaziyyat Öyrən</title>
+    <title>Bizim Riyaziyyat — Riyaziyyat Öyrən | Pulsuz Dərslər və Sınaqlar</title>
+    <meta name="description" content="Azərbaycanda ən yaxşı riyaziyyat öyrənmə platforması. Pulsuz video dərslər, sınaqlar, PDF materiallar və müəllim dəstəyi.">
+    <meta name="keywords"    content="riyaziyyat, öyrən, sınaq, video dərs, cəbr, həndəsə, analiz">
+    <meta name="author"      content="Bizim Riyaziyyat">
+    <meta name="robots"      content="index, follow">
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://bizimriyaziyyat.vercel.app/index.html">
+    <meta property="og:title"       content="Bizim Riyaziyyat — Riyaziyyat Öyrən | Pulsuz Dərslər və Sınaqlar">
+    <meta property="og:description" content="Azərbaycanda ən yaxşı riyaziyyat öyrənmə platforması. Pulsuz video dərslər, sınaqlar, PDF materiallar və müəllim dəstəyi.">
+    <meta property="og:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
+    <meta property="og:locale"      content="az_AZ">
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="Bizim Riyaziyyat — Riyaziyyat Öyrən | Pulsuz Dərslər və Sınaqlar">
+    <meta name="twitter:description" content="Azərbaycanda ən yaxşı riyaziyyat öyrənmə platforması. Pulsuz video dərslər, sınaqlar, PDF materiallar və müəllim dəstəyi.">
+    <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
+    <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/index.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,6 +43,7 @@
                 <a href="faq.html">FAQ</a>
             </div>
             <div class="navbar-actions">
+                <button class="hamburger-btn" aria-label="Menyu" aria-expanded="false"><i class="fas fa-bars"></i></button>
                 <span class="balance-badge" id="balanceBadge">
                     <i class="fas fa-wallet"></i> <span id="balanceAmount">0</span> ₼
                 </span>
@@ -341,51 +357,18 @@ function submitPremiumRequest() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Göndərilir...';
     
-    const user = getCurrentUser();
+    const user = await API.getCurrentUser();
     if (!user) { window.location.href = 'login.html'; return; }
-    
-    const allUsers = Storage.get('allUsers') || [];
-    const userIndex = allUsers.findIndex(u => u.id === user.id);
-    
-    if (userIndex !== -1) {
-        allUsers[userIndex].premiumRequestedAt = new Date().toISOString();
-        allUsers[userIndex].requestedPlan = selectedPlan;
-        Storage.set('allUsers', allUsers);
-        
-        user.premiumRequestedAt = allUsers[userIndex].premiumRequestedAt;
-        user.requestedPlan = selectedPlan;
-        Storage.set('currentUser', user);
-        
-        const requests = Storage.get('premiumRequests') || [];
-        const newReq = {
-            id: Date.now(),
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            plan: selectedPlan.planId,
-            months: selectedPlan.months,
-            price: selectedPlan.price,
-            requestedAt: new Date().toISOString(),
-            status: 'pending',
-            date: new Date().toLocaleDateString('az-AZ'),
-            time: new Date().toLocaleTimeString('az-AZ')
-        };
-        requests.unshift(newReq);
-        Storage.set('premiumRequests', requests);
-        
-        // Force sync to Upstash immediately
-        if (typeof upstash !== 'undefined' && upstash) {
-            Promise.all([
-                upstash.set('premiumRequests', requests, 86400 * 30),
-                upstash.set('allUsers', allUsers, 86400 * 30)
-            ]).catch(e => console.error('Upstash sync error:', e));
-        }
-    }
-    
-    setTimeout(() => {
+
+    try {
+        await API.premium.request(selectedPlan?.planId || 'monthly');
         closePremiumModal();
-        alert('✅ Müraciətiniz göndərildi!\n\nAdmin tərəfindən yoxlanılacaq. Təsdiqlənəndən sonra premium giriş aktivləşəcək.');
-    }, 800);
+        showNotification('✅ Müraciətiniz göndərildi! Admin tərəfindən yoxlanılacaq.', 'success');
+    } catch(e) {
+        showNotification(e.data?.error || e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-crown"></i> Müraciət Et';
+    }
 }
 
 // Close modal on outside click
@@ -451,9 +434,39 @@ let currentNewsSlide = 0;
 let newsInterval;
 let totalNewsSlides = 0;
 
-function loadNewsCarousel() {
-    const news = Storage.get('news') || [];
-    const featured = news.filter(n => n.featured).slice(0, 5);
+// Load hero stats from API
+async function loadHeroStats() {
+    try {
+        const stats = await API.stats.get();
+        const uEl = document.getElementById('heroUsers');
+        const vEl = document.getElementById('heroVideos');
+        if (uEl) uEl.textContent = stats.users > 0 ? stats.users.toLocaleString() + '+' : '500+';
+        if (vEl) vEl.textContent = stats.tests > 0 ? stats.tests + '+' : '100+';
+    } catch {}
+}
+
+// Load news carousel from API
+async function loadNewsCarousel() {
+    try {
+        const { data: news } = await API.news.list({ limit: 5 });
+        const container = document.getElementById('newsCarousel');
+        if (!container || !news.length) return;
+        container.innerHTML = news.map(n => `
+            <div class="news-slide">
+                <span style="font-size:28px;">${n.emoji||'📰'}</span>
+                <div>
+                    <strong>${n.title}</strong>
+                    <span style="font-size:12px;color:rgba(255,255,255,.7);margin-left:8px;">${formatDate(n.createdAt)}</span>
+                </div>
+            </div>`).join('');
+    } catch {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadHeroStats();
+    loadNewsCarousel();
+    updateNavbar();
+});
     
     if (featured.length === 0) {
         document.getElementById('newsCarousel').style.display = 'none';
@@ -528,80 +541,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Notifications with animations
-function loadNotifications() {
-    const user = getCurrentUser();
+// Notifications - static for now (user-specific notifications would need a separate API)
+async function loadNotifications() {
+    const user = await API.getCurrentUser();
     if (!user) {
-        document.getElementById('notificationsPanel').style.display = 'none';
+        const panel = document.getElementById('notificationsPanel');
+        if (panel) panel.style.display = 'none';
         return;
     }
-    
     const notifications = [
-        { icon: '🎉', text: 'Yeni video dərs əlavə edildi: "Kvadrat tənliklər"', time: '2 saat əvvəl' },
-        { icon: '📝', text: 'Yeni sınaq mövcuddur: "Həndəsə - Səviyyə 2"', time: '5 saat əvvəl' },
-        { icon: '🏆', text: 'Təbriklər! Reytinqdə 10-cu yerə yüksəldiniz', time: '1 gün əvvəl' }
+        { icon: '🎉', text: 'Sayta xoş gəldiniz!', time: 'İndi' },
+        { icon: '📝', text: 'Yeni sınaqlar mövcuddur', time: 'Bu gün' },
     ];
-    
-    document.getElementById('notificationsList').innerHTML = notifications.map((n, index) => `
-        <div class="notification-item" style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
-            <span style="font-size:24px;animation:bounceIn 0.6s ease-out ${index * 0.1}s backwards;">${n.icon}</span>
-            <div style="flex:1;">
-                <p style="margin:0;font-size:14px;">${n.text}</p>
-                <small style="color:var(--gray);font-size:12px;">${n.time}</small>
-            </div>
-        </div>
-    `).join('');
+    const list = document.getElementById('notificationsList');
+    if (list) list.innerHTML = notifications.map(n => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
+            <span style="font-size:24px;">${n.icon}</span>
+            <div><p style="margin:0;font-size:14px;">${n.text}</p><small style="color:var(--gray);">${n.time}</small></div>
+        </div>`).join('');
 }
 
-// Popular Courses - Sync with videos
+// Popular Courses - static categories
 function loadPopularCourses() {
-    const videos = Storage.get('videos') || [];
-    
-    // Count videos by category
-    const categories = {
-        'Həndəsə': { emoji: '📐', bg: '#eef2ff', count: 0, topic: 'hendese' },
-        'Cəbr': { emoji: '🔢', bg: '#ecfdf5', count: 0, topic: 'cebr' },
-        'Analiz': { emoji: '∫', bg: '#fffbeb', count: 0, topic: 'analiz' }
-    };
-    
-    videos.forEach(v => {
-        if (v.category === 'Həndəsə') categories['Həndəsə'].count++;
-        else if (v.category === 'Cəbr') categories['Cəbr'].count++;
-        else if (v.category === 'Analiz') categories['Analiz'].count++;
-    });
-    
-    document.getElementById('popularCourses').innerHTML = Object.entries(categories).map(([name, data]) => `
+    const categories = [
+        { name:'Həndəsə', emoji:'📐', bg:'#eef2ff', desc:'Müstəvi həndəsəsi, fəza, triqonometriya', topic:'hendese' },
+        { name:'Cəbr', emoji:'🔢', bg:'#ecfdf5', desc:'Tənliklər, bərabərsizliklər, funksiyalar', topic:'cebr' },
+        { name:'Analiz', emoji:'∫', bg:'#fffbeb', desc:'Limitlər, törəmə, inteqral', topic:'analiz' },
+    ];
+    const el = document.getElementById('popularCourses');
+    if (el) el.innerHTML = categories.map(c => `
         <div class="feature-card">
-            <div class="feature-icon" style="background:${data.bg};">${data.emoji}</div>
-            <h3>${name}</h3>
-            <p>${name === 'Həndəsə' ? 'Müstəvi həndəsəsi, fəza həndəsəsi, triqonometriya' : 
-                 name === 'Cəbr' ? 'Tənliklər, bərabərsizliklər, funksiyalar' : 
-                 'Limitlər, törəmə, inteqral'}</p>
+            <div class="feature-icon" style="background:${c.bg};">${c.emoji}</div>
+            <h3>${c.name}</h3>
+            <p>${c.desc}</p>
             <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
-                <span class="badge badge-primary">${data.count} video</span>
-                <a href="videos.html?filter=${data.topic}" class="btn btn-primary btn-sm">Bax</a>
+                <span class="badge badge-primary">Video Dərslər</span>
+                <a href="videos.html?filter=${c.topic}" class="btn btn-primary btn-sm">Bax</a>
             </div>
-        </div>
-    `).join('');
+        </div>`).join('');
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadNewsCarousel();
-    loadNotifications();
-    loadPopularCourses();
-});
-
-// Update hero stats from real data after Upstash loads
-window.addEventListener('upstash:loaded', function() {
-    const users  = JSON.parse(localStorage.getItem('allUsers')  || '[]');
-    const videos = JSON.parse(localStorage.getItem('videos')    || '[]');
-    const uEl = document.getElementById('heroUsers');
-    const vEl = document.getElementById('heroVideos');
-    if (uEl && users.length  > 0) uEl.textContent = users.length  + '+';
-    if (vEl && videos.length > 0) vEl.textContent = videos.length + '+';
-    loadPopularCourses();
-    loadNewsCarousel();
-});
 </script>
 <script src="js/notifications.js"></script>
 <script src="js/api-client.js"></script>
