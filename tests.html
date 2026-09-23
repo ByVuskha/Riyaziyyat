@@ -20,6 +20,7 @@
     <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
     <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/tests.html">`n    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -85,7 +86,11 @@
 
 
 
-<script src="js/notifications.js"></script>
+    <canvas id="mathCanvas"></canvas>
+    <script src="js/confetti.js"></script>
+    <script src="js/math-bg.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/notifications.js"></script>
 
 <script>
 // Load tests from API — replaces MOCK_TESTS + localStorage approach
@@ -325,49 +330,180 @@ function submitTestPremiumRequest() {
     }, 600);
 }
 
+/* ── Quiz timer state ────────────────────────────────────────────────── */
+let _quizTimer      = null;   // CircularTimer instance
+let _quizTimerTick  = null;   // setInterval id
+let _quizSecsLeft   = 0;
+let _quizTotalSecs  = 0;
+
 function showQuestion() {
-    const q = currentTest.data[currentQ];
+    const q         = currentTest.data[currentQ];
+    const totalQs   = currentTest.questions;
+    const progress  = Math.round(((currentQ) / totalQs) * 100);
+
+    /* Total seconds for this test (duration in minutes × 60 / questions) */
+    const secsPerQ  = Math.max(20, Math.floor(((currentTest.time || 30) * 60) / totalQs));
+    _quizSecsLeft   = secsPerQ;
+    _quizTotalSecs  = secsPerQ;
+
     const modal = document.createElement('div');
     modal.id = 'quizModal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    modal.style.cssText = [
+        'position:fixed;top:0;left:0;right:0;bottom:0;',
+        'background:rgba(8,14,33,0.82);backdrop-filter:blur(6px);',
+        'display:flex;align-items:center;justify-content:center;',
+        'z-index:9999;padding:16px;'
+    ].join('');
+
     modal.innerHTML = `
-        <div style="background:white;border-radius:15px;padding:30px;max-width:600px;width:90%;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
-                <span style="color:var(--gray);">Sual ${currentQ + 1}/${currentTest.questions}</span>
-                <button onclick="closeQuiz()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
+        <div style="
+            background:white;border-radius:20px;padding:28px 28px 22px;
+            max-width:600px;width:100%;position:relative;overflow:hidden;
+            box-shadow:0 24px 60px rgba(8,14,33,0.35);
+            animation:modalIn 0.3s ease;
+        ">
+            <!-- Math accent line on top -->
+            <div style="
+                position:absolute;top:0;left:0;right:0;height:4px;
+                background:linear-gradient(90deg,#4338ca,#7c3aed,#06b6d4);
+            "></div>
+
+            <!-- Header row -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                <!-- Circular timer -->
+                <div id="timerWrap" style="flex-shrink:0;"></div>
+
+                <div style="flex:1;">
+                    <!-- Progress bar -->
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;margin-bottom:5px;">
+                        <span>Sual ${currentQ + 1} / ${totalQs}</span>
+                        <span>${currentTest.title}</span>
+                    </div>
+                    <div style="background:#f1f5f9;border-radius:10px;height:6px;overflow:hidden;">
+                        <div id="qProgress" style="
+                            height:100%;border-radius:10px;
+                            background:linear-gradient(90deg,#4338ca,#7c3aed);
+                            width:${progress}%;
+                            transition:width 0.5s ease;
+                        "></div>
+                    </div>
+                </div>
+
+                <button onclick="closeQuiz()" style="
+                    background:rgba(67,56,202,0.08);border:none;
+                    width:34px;height:34px;border-radius:50%;
+                    cursor:pointer;font-size:18px;color:#64748b;
+                    display:flex;align-items:center;justify-content:center;
+                    transition:all 0.2s;flex-shrink:0;
+                " onmouseover="this.style.background='rgba(239,68,68,0.1)';this.style.color='#ef4444'"
+                   onmouseout="this.style.background='rgba(67,56,202,0.08)';this.style.color='#64748b'">&times;</button>
             </div>
-            <h3 style="font-size:20px;margin-bottom:25px;">${q.q}</h3>
-            <div id="options">${q.opts.map((opt, i) => `
-                <button onclick="selectAnswer(${i})" style="display:block;width:100%;padding:15px;margin-bottom:10px;border:2px solid var(--border);border-radius:10px;background:white;text-align:left;cursor:pointer;font-size:15px;">
-                    ${opt}
+
+            <!-- Question text -->
+            <h3 style="
+                font-size:18px;font-weight:700;margin:0 0 22px;
+                color:#1e293b;line-height:1.5;
+            ">${q.q}</h3>
+
+            <!-- Options -->
+            <div id="options" style="display:flex;flex-direction:column;gap:10px;">
+                ${q.opts.map((opt, i) => `
+                <button class="answer-option" data-idx="${i}" onclick="selectAnswer(${i})"
+                    style="
+                        width:100%;padding:14px 16px;
+                        border:2px solid #e2e8f0;border-radius:10px;
+                        background:white;text-align:left;cursor:pointer;
+                        font-size:15px;color:#1e293b;
+                        display:flex;align-items:center;gap:12px;
+                        transition:all 0.22s;
+                    "
+                    onmouseover="if(!this.disabled){this.style.borderColor='#4338ca';this.style.background='rgba(67,56,202,0.04)'}"
+                    onmouseout="if(!this.disabled&&!this.classList.contains('correct')&&!this.classList.contains('wrong')){this.style.borderColor='#e2e8f0';this.style.background='white'}"
+                >
+                    <span style="
+                        width:28px;height:28px;border-radius:8px;
+                        background:#f1f5f9;color:#64748b;
+                        font-size:13px;font-weight:700;
+                        display:flex;align-items:center;justify-content:center;
+                        flex-shrink:0;
+                    ">${['A','B','C','D','E'][i]}</span>
+                    <span style="flex:1;">${opt}</span>
+                </button>`).join('')}
+            </div>
+
+            <!-- Feedback + Next -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;min-height:38px;">
+                <div id="feedback" style="font-size:15px;font-weight:700;"></div>
+                <button id="nextBtn" onclick="nextQuestion()" class="btn btn-primary"
+                    style="display:none;padding:10px 24px;">
+                    ${currentQ + 1 < totalQs ? 'Növbəti <i class="fas fa-arrow-right"></i>' : 'Nəticəni Gör <i class="fas fa-flag-checkered"></i>'}
                 </button>
-            `).join('')}</div>
-            <div id="feedback" style="margin-top:20px;font-weight:600;"></div>
-            <button id="nextBtn" onclick="nextQuestion()" style="display:none;margin-top:15px;" class="btn btn-primary">Növbəti</button>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
+
+    /* Start circular timer */
+    const timerWrap = document.getElementById('timerWrap');
+    if (timerWrap && typeof CircularTimer === 'function') {
+        _quizTimer = CircularTimer(timerWrap, _quizTotalSecs);
+        _quizTimer.update(_quizSecsLeft);
+
+        clearInterval(_quizTimerTick);
+        _quizTimerTick = setInterval(() => {
+            _quizSecsLeft--;
+            if (_quizTimer) _quizTimer.update(_quizSecsLeft);
+            if (_quizSecsLeft <= 0) {
+                clearInterval(_quizTimerTick);
+                /* Auto-advance: treat as wrong answer */
+                const btns = document.querySelectorAll('#options button');
+                btns.forEach(b => b.disabled = true);
+                const q2 = currentTest.data[currentQ];
+                if (typeof AnimateAnswer === 'function' && btns[q2.ans]) {
+                    AnimateAnswer(btns[q2.ans], 'correct');
+                }
+                const fb = document.getElementById('feedback');
+                if (fb) fb.innerHTML = '<span style="color:#f59e0b;">⏰ Vaxt bitdi!</span>';
+                const nb = document.getElementById('nextBtn');
+                if (nb) nb.style.display = 'block';
+            }
+        }, 1000);
+    }
 }
 
 function selectAnswer(idx) {
-    const q = currentTest.data[currentQ];
+    const q    = currentTest.data[currentQ];
     const btns = document.querySelectorAll('#options button');
     btns.forEach(b => b.disabled = true);
-    
-    if (idx === q.ans) {
-        btns[idx].style.background = '#ecfdf5';
-        btns[idx].style.borderColor = '#10b981';
-        document.getElementById('feedback').innerHTML = '<span style="color:#10b981;">✓ Düzgün!</span>';
-        score++;
+
+    clearInterval(_quizTimerTick);
+
+    const isCorrect = idx === q.ans;
+    const fb = document.getElementById('feedback');
+
+    /* Animate the chosen option */
+    if (typeof AnimateAnswer === 'function') {
+        AnimateAnswer(btns[idx], isCorrect ? 'correct' : 'wrong');
+        if (!isCorrect) AnimateAnswer(btns[q.ans], 'correct');
     } else {
-        btns[idx].style.background = '#fef2f2';
-        btns[idx].style.borderColor = '#ef4444';
-        btns[q.ans].style.background = '#ecfdf5';
-        btns[q.ans].style.borderColor = '#10b981';
-        document.getElementById('feedback').innerHTML = '<span style="color:#ef4444;">✗ Səhv</span>';
+        /* Fallback plain style */
+        btns[idx].style.background    = isCorrect ? '#ecfdf5' : '#fef2f2';
+        btns[idx].style.borderColor   = isCorrect ? '#10b981' : '#ef4444';
+        if (!isCorrect) {
+            btns[q.ans].style.background  = '#ecfdf5';
+            btns[q.ans].style.borderColor = '#10b981';
+        }
     }
-    
-    document.getElementById('nextBtn').style.display = 'block';
+
+    if (isCorrect) {
+        score++;
+        if (fb) fb.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Düzgün!</span>';
+    } else {
+        if (fb) fb.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Səhv</span>';
+    }
+
+    const nb = document.getElementById('nextBtn');
+    if (nb) nb.style.display = 'block';
 }
 
 function nextQuestion() {
