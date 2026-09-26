@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Yükləmə - Bizim Riyaziyyat</title>`n    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <title>Video Yükləmə - Bizim Riyaziyyat</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -206,7 +207,7 @@
                             <i class="fas fa-folder-open"></i> Fayl Seç
                         </button>
                         <p style="font-size:12px;color:var(--gray);margin-top:15px;">
-                            Dəstəklənən formatlar: MP4, AVI, MOV, MKV (Max: 500MB)
+                            Dəstəklənən formatlar: MP4, MOV, WebM (Max: 100MB)
                         </p>
                     </div>
                     <div class="upload-progress" id="uploadProgress" style="display:none;">
@@ -268,34 +269,20 @@ let uploadedVideoFile = null;
 let uploadedVideoUrl = null;
 
 // Load teachers into select
-function loadTeachersSelect() {
-    const teachers = Storage.get('teachers') || [];
+async function loadTeachersSelect() {
     const select = document.getElementById('videoTeacher');
-    
-    // Keep default option
-    select.innerHTML = '<option value="">Seçin</option>';
-    
-    // Add teachers from localStorage
-    teachers.forEach(t => {
-        const option = document.createElement('option');
-        option.value = t.id;
-        option.textContent = t.name;
-        select.appendChild(option);
-    });
-    
-    // Add default teachers if no teachers in storage
-    if (teachers.length === 0) {
-        const defaultTeachers = [
-            { id: 1, name: 'Dr. Əli Məmmədov' },
-            { id: 2, name: 'Leyla Həsənova' },
-            { id: 3, name: 'Rəşad Əliyev' }
-        ];
-        defaultTeachers.forEach(t => {
+    select.innerHTML = '<option value="">Müəllim seçin</option>';
+    try {
+        const { data: teachers } = await API.teachers.list({ limit: 100 });
+        teachers.forEach(teacher => {
             const option = document.createElement('option');
-            option.value = t.id;
-            option.textContent = t.name;
+            option.value = teacher.id;
+            option.textContent = teacher.name;
             select.appendChild(option);
         });
+    } catch (error) {
+        select.innerHTML = '<option value="">Müəllim siyahısı yüklənmədi</option>';
+        showNotification(error.message || 'Müəllimləri yükləmək mümkün olmadı.', 'error');
     }
 }
 
@@ -349,55 +336,79 @@ function handleVideoUpload(event) {
     }
 }
 
-function handleVideoFile(file) {
+async function handleVideoFile(file) {
     if (!file.type.startsWith('video/')) {
         showNotification('Zəhmət olmasa video faylı seçin!', 'warning');
         return;
     }
 
-    const maxSize = 500 * 1024 * 1024;
+    const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
-        showNotification('Video faylı 500MB-dan böyük ola bilməz!', 'warning');
+        showNotification('Video faylı 100MB-dan böyük ola bilməz!', 'warning');
         return;
     }
-    
+
     uploadedVideoFile = file;
-    
-    // Show progress
     document.getElementById('uploadPlaceholder').style.display = 'none';
     document.getElementById('uploadProgress').style.display = 'block';
     document.getElementById('fileName').textContent = file.name;
-    
-    // Simulate upload progress
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += 5;
-        document.getElementById('progressBar').style.width = progress + '%';
-        document.getElementById('progressText').textContent = progress + '%';
-        
-        if (progress >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-                showVideoPreview(file);
-            }, 500);
-        }
-    }, 100);
+    document.getElementById('progressText').textContent = 'Hazırlanır...';
+
+    try {
+        const signature = await API.media.signature();
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', signature.apiKey);
+        formData.append('timestamp', signature.timestamp);
+        formData.append('folder', signature.folder);
+        formData.append('signature', signature.signature);
+
+        const upload = await new Promise((resolve, reject) => {
+            const request = new XMLHttpRequest();
+            request.open('POST', `https://api.cloudinary.com/v1_1/${encodeURIComponent(signature.cloudName)}/video/upload`);
+            request.upload.addEventListener('progress', event => {
+                if (!event.lengthComputable) return;
+                const percent = Math.round((event.loaded / event.total) * 100);
+                document.getElementById('progressBar').style.width = `${percent}%`;
+                document.getElementById('progressText').textContent = `${percent}%`;
+            });
+            request.addEventListener('load', () => {
+                let response = {};
+                try { response = JSON.parse(request.responseText); } catch {}
+                if (request.status >= 200 && request.status < 300 && response.secure_url) resolve(response);
+                else reject(new Error(response.error?.message || 'Video bulud saxlancına göndərilmədi.'));
+            });
+            request.addEventListener('error', () => reject(new Error('Video yüklənərkən şəbəkə xətası baş verdi.')));
+            request.send(formData);
+        });
+
+        uploadedVideoUrl = upload.secure_url;
+        uploadedVideoDuration = upload.duration ? `${Math.floor(upload.duration / 60).toString().padStart(2, '0')}:${Math.floor(upload.duration % 60).toString().padStart(2, '0')}` : 'Video';
+        showVideoPreview(file, uploadedVideoUrl);
+    } catch (error) {
+        uploadedVideoFile = null;
+        uploadedVideoUrl = null;
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('uploadPlaceholder').style.display = 'block';
+        showNotification(error.message || 'Video yükləmək mümkün olmadı.', 'error');
+    }
 }
 
-function showVideoPreview(file) {
+let uploadedVideoDuration = 'Video';
+let editingVideoId = null;
+
+function showVideoPreview(file, videoUrl) {
     const preview = document.getElementById('videoPreview');
-    uploadedVideoUrl = URL.createObjectURL(file);
-    
     preview.innerHTML = `
         <p style="color:var(--success);font-weight:600;margin-bottom:10px;">
-            <i class="fas fa-check-circle"></i> Video yükləndi!
+            <i class="fas fa-check-circle"></i> Video buludda saxlanıldı
         </p>
         <video controls style="width:100%;max-height:400px;border-radius:12px;margin-top:10px;">
-            <source src="${uploadedVideoUrl}" type="${file.type}">
+            <source src="${escapeHtml(videoUrl)}" type="${escapeHtml(file.type)}">
             Brauzeriniz video təqdimatını dəstəkləmir.
         </video>
         <p style="margin-top:10px;font-size:14px;color:var(--gray);">
-            <i class="fas fa-info-circle"></i> Fayl: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+            <i class="fas fa-info-circle"></i> Fayl: ${escapeHtml(file.name)} (${(file.size / 1024 / 1024).toFixed(2)} MB)
         </p>
     `;
     preview.classList.add('has-video');
@@ -416,13 +427,7 @@ function previewVideo() {
         return;
     }
     
-    // Extract video ID from YouTube URL
-    let videoId = '';
-    if (url.includes('youtube.com/watch?v=')) {
-        videoId = url.split('v=')[1].split('&')[0];
-    } else if (url.includes('youtu.be/')) {
-        videoId = url.split('youtu.be/')[1].split('?')[0];
-    }
+    const videoId = extractYouTubeId(url);
     
     if (videoId) {
         preview.innerHTML = `
@@ -446,14 +451,15 @@ function previewVideo() {
     }
 }
 
-function saveVideo() {
+async function saveVideo() {
     const source = document.querySelector('input[name="videoSource"]:checked').value;
     
     const videoData = {
-        title: document.getElementById('videoTitle').value,
+        title: document.getElementById('videoTitle').value.trim(),
         category: document.getElementById('videoCategory').value,
-        description: document.getElementById('videoDescription').value,
+        description: document.getElementById('videoDescription').value.trim(),
         teacherId: document.getElementById('videoTeacher').value,
+        teacherName: document.getElementById('videoTeacher').selectedOptions[0]?.textContent || '',
         isPremium: document.getElementById('isPremium').checked,
         isActive: document.getElementById('isActive').checked,
         source: source
@@ -464,57 +470,33 @@ function saveVideo() {
         return;
     }
     
-    let videoDuration = '00:00';
-    
     if (source === 'youtube') {
         videoData.youtubeUrl = document.getElementById('youtubeUrl').value;
-        if (!videoData.youtubeUrl) {
-            showNotification('YouTube linki daxil edin!', 'warning');
+        if (!extractYouTubeId(videoData.youtubeUrl)) {
+            showNotification('Düzgün YouTube linki daxil edin!', 'warning');
             return;
         }
-        // For YouTube, we'll estimate duration or set default
-        videoDuration = '15:30'; // Default for YouTube videos
+        videoData.duration = 'YouTube';
     } else {
-        if (!uploadedVideoFile) {
-            showNotification('Video faylı yükləyin!', 'warning');
+        if (!uploadedVideoUrl) {
+            showNotification('Əvvəlcə video faylını bulud saxlancına yükləyin.', 'warning');
             return;
         }
-        videoData.videoFile = uploadedVideoFile.name;
-        videoData.videoSize = uploadedVideoFile.size;
         videoData.videoUrl = uploadedVideoUrl;
-        
-        // Get actual video duration
-        const video = document.createElement('video');
-        video.src = uploadedVideoUrl;
-        video.onloadedmetadata = function() {
-            const duration = Math.floor(video.duration);
-            const minutes = Math.floor(duration / 60);
-            const seconds = duration % 60;
-            videoDuration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Save video with actual duration
-            saveVideoToStorage(videoData, videoDuration);
-        };
-        return; // Wait for metadata to load
+        videoData.duration = uploadedVideoDuration;
     }
-    
-    // Save immediately for YouTube
-    saveVideoToStorage(videoData, videoDuration);
-}
 
-function saveVideoToStorage(videoData, duration) {
-    // Save to localStorage
-    const videos = Storage.get('videos') || [];
-    videos.push({
-        id: videos.length + 1,
-        ...videoData,
-        views: 0,
-        duration: duration,
-        createdAt: new Date().toISOString()
-    });
-    Storage.set('videos', videos);
-    
-    showNotification('Video uğurla yadda saxlanıldı!', 'success');
+    try {
+        if (editingVideoId) await API.videos.update(editingVideoId, videoData);
+        else await API.videos.create(videoData);
+    } catch (error) {
+        showNotification(error.message || 'Video məlumatını saxlamaq mümkün olmadı.', 'error');
+        return;
+    }
+
+    showNotification(editingVideoId ? 'Video yeniləndi.' : 'Video uğurla yayımlandı.', 'success');
+    editingVideoId = null;
+    document.querySelector('#videoUploadForm button[type="submit"]')?.setAttribute('disabled', '');
 
     // Reset form
     document.getElementById('videoTitle').value = '';
@@ -526,6 +508,9 @@ function saveVideoToStorage(videoData, duration) {
     document.getElementById('uploadProgress').style.display = 'none';
     uploadedVideoFile = null;
     uploadedVideoUrl = null;
+    uploadedVideoDuration = 'Video';
+    document.querySelector('input[name="videoSource"][value="youtube"]').checked = true;
+    toggleVideoSource();
     
     const preview = document.getElementById('videoPreview');
     preview.innerHTML = `
@@ -534,15 +519,22 @@ function saveVideoToStorage(videoData, duration) {
     `;
     preview.classList.remove('has-video');
     
-    loadVideos();
+    await loadVideos();
 }
 
-function loadVideos() {
-    const videos = Storage.get('videos') || [];
-    const teachers = Storage.get('teachers') || [];
-    
+async function loadVideos() {
     const container = document.getElementById('videosList');
-    
+    let videos, teachers;
+    try {
+        [{ data: videos }, { data: teachers }] = await Promise.all([
+            API.videos.list({ limit: 100 }),
+            API.teachers.list({ limit: 100 }),
+        ]);
+    } catch (error) {
+        container.innerHTML = `<p role="alert" style="text-align:center;color:var(--danger);padding:24px;">${escapeHtml(error.message || 'Videoları yükləmək mümkün olmadı.')}</p>`;
+        return;
+    }
+
     if (videos.length === 0) {
         container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:40px;">Hələ video yüklənməyib</p>';
         return;
@@ -555,10 +547,10 @@ function loadVideos() {
         if (v.source === 'youtube' && v.youtubeUrl) {
             const videoId = extractYouTubeId(v.youtubeUrl);
             if (videoId) {
-                thumbnailHtml = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" alt="${v.title}">`;
+                thumbnailHtml = `<img src="https://img.youtube.com/vi/${encodeURIComponent(videoId)}/mqdefault.jpg" alt="${escapeHtml(v.title)}">`;
             }
         } else if (v.videoUrl) {
-            thumbnailHtml = `<video src="${v.videoUrl}" style="width:100%;height:100%;object-fit:cover;"></video>`;
+            thumbnailHtml = `<video src="${escapeHtml(v.videoUrl)}" style="width:100%;height:100%;object-fit:cover;"></video>`;
         }
         
         return `
@@ -567,11 +559,11 @@ function loadVideos() {
                 ${thumbnailHtml || '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f1f5f9;"><i class="fas fa-video" style="font-size:30px;color:var(--gray);"></i></div>'}
             </div>
             <div class="video-info">
-                <div class="video-title">${v.title}</div>
+                <div class="video-title">${escapeHtml(v.title)}</div>
                 <div class="video-meta">
-                    <span class="badge badge-primary">${v.category}</span>
-                    ${teacher ? `<span style="margin-left:10px;"><i class="fas fa-chalkboard-teacher"></i> ${teacher.name}</span>` : ''}
-                    <span style="margin-left:10px;"><i class="fas fa-clock"></i> ${v.duration}</span>
+                    <span class="badge badge-primary">${escapeHtml(v.category)}</span>
+                    ${teacher ? `<span style="margin-left:10px;"><i class="fas fa-chalkboard-teacher"></i> ${escapeHtml(teacher.name)}</span>` : ''}
+                    <span style="margin-left:10px;"><i class="fas fa-clock"></i> ${escapeHtml(v.duration)}</span>
                     <span style="margin-left:10px;"><i class="fas fa-eye"></i> ${v.views || 0}</span>
                     <span style="margin-left:10px;">
                         ${v.source === 'youtube' ? 
@@ -581,10 +573,10 @@ function loadVideos() {
                     </span>
                 </div>
                 <div class="video-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="editVideo(${v.id})">
+                    <button class="btn btn-sm btn-secondary" onclick="editVideo('${escapeHtml(v.id)}')">
                         <i class="fas fa-edit"></i> Redaktə
                     </button>
-                    <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteVideo(${v.id})">
+                    <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteVideo('${escapeHtml(v.id)}')">
                         <i class="fas fa-trash"></i> Sil
                     </button>
                 </div>
@@ -603,23 +595,52 @@ function extractYouTubeId(url) {
     return null;
 }
 
-function editVideo(id) {
-    showNotification('Video redaktəsi: ID ' + id, 'info');
+async function editVideo(id) {
+    try {
+        const video = await API.videos.get(id);
+        editingVideoId = video.id;
+        document.getElementById('videoTitle').value = video.title || '';
+        document.getElementById('videoCategory').value = video.category || '';
+        document.getElementById('videoDescription').value = video.description || '';
+        document.getElementById('videoTeacher').value = video.teacherId || '';
+        document.getElementById('isPremium').checked = Boolean(video.isPremium);
+        document.getElementById('isActive').checked = video.isActive !== false;
+        if (video.source === 'youtube') {
+            document.querySelector('input[name="videoSource"][value="youtube"]').checked = true;
+            document.getElementById('youtubeUrl').value = video.youtubeUrl || '';
+            toggleVideoSource();
+            previewVideo();
+        } else {
+            document.querySelector('input[name="videoSource"][value="upload"]').checked = true;
+            uploadedVideoUrl = video.videoUrl;
+            uploadedVideoDuration = video.duration || 'Video';
+            toggleVideoSource();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+        showNotification(error.message || 'Video məlumatını yükləmək mümkün olmadı.', 'error');
+    }
 }
 
 function deleteVideo(id) {
-    showConfirm('Bu videonu silmək istədiyinizdən əminsiniz?', () => {
-        const videos = Storage.get('videos') || [];
-        const filtered = videos.filter(v => v.id !== id);
-        Storage.set('videos', filtered);
-        showNotification('Video silindi!', 'success');
-        loadVideos();
+    showConfirm('Bu videonu silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.videos.remove(id);
+            showNotification('Video silindi!', 'success');
+            await loadVideos();
+        } catch (error) {
+            showNotification(error.message || 'Video silinmədi.', 'error');
+        }
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadVideos();
-    loadTeachersSelect();
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await API.getCurrentUser();
+    if (!user || user.role !== 'admin') {
+        window.location.replace(user ? 'index.html' : 'login.html');
+        return;
+    }
+    await Promise.all([loadVideos(), loadTeachersSelect()]);
 });
 </script>
 

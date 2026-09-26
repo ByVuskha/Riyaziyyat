@@ -523,8 +523,8 @@ function updateMathPreview(inputId) {
 // ════════════════════════════════════════════════════════
 //  Access check
 // ════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-    const user = getCurrentUser();
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await API.getCurrentUser();
     if (!user) { window.location.href = 'login.html'; return; }
     if (user.userType !== 'teacher' && user.role !== 'admin') {
         showNotification('Bu panel yalnız müəllimlər üçündür!', 'error');
@@ -553,17 +553,14 @@ function initPanel() {
 //  Access control
 // ════════════════════════════════════════════════════════
 function checkAccessState(user) {
-    const allUsers = Storage.get('allUsers') || [];
-    const freshUser = allUsers.find(u => String(u.id) === String(user.id)) || user;
-
     const locked = document.getElementById('lockedState');
     const formEl = document.getElementById('addTestForm');
     const reqBtn = document.getElementById('requestAccessBtn');
 
-    if (freshUser.canAddTests === true) {
+    if (user.canAddTests === true) {
         locked.style.display = 'none';
         formEl.style.display = 'block';
-    } else if (freshUser.testAccessRequested) {
+    } else if (user.testAccessRequested) {
         locked.style.display = 'block';
         formEl.style.display = 'none';
         if (reqBtn) {
@@ -580,33 +577,20 @@ function checkAccessState(user) {
     }
 }
 
-function requestTestAccess() {
-    const user = getCurrentUser();
+async function requestTestAccess() {
+    const user = await API.getCurrentUser();
     if (!user) return;
-
-    const allUsers = Storage.get('allUsers') || [];
-    const idx = allUsers.findIndex(u => String(u.id) === String(user.id));
-    if (idx !== -1) {
-        allUsers[idx].testAccessRequested = true;
-        allUsers[idx].testAccessRequestedAt = new Date().toISOString();
-        Storage.set('allUsers', allUsers);
+    try {
+        const updated = await API.users.update(user.id, {
+            testAccessRequested: true,
+            testAccessRequestedAt: new Date().toISOString(),
+        });
+        API.setCachedUser(updated);
+        checkAccessState(updated);
+        showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
+    } catch (error) {
+        showNotification(error.message || 'Müraciəti göndərmək mümkün olmadı.', 'error');
     }
-    user.testAccessRequested = true;
-    Storage.set('currentUser', user);
-
-    const reqs = Storage.get('teacherTestRequests') || [];
-    reqs.unshift({
-        id: Date.now(),
-        userId: user.id,
-        userName: user.name,
-        userEmail: user.email,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-    });
-    Storage.set('teacherTestRequests', reqs);
-
-    checkAccessState(user);
-    showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
 }
 
 // ════════════════════════════════════════════════════════
@@ -691,7 +675,7 @@ function renumberQuestions() {
 // ════════════════════════════════════════════════════════
 //  Submit test
 // ════════════════════════════════════════════════════════
-function submitTest(e) {
+async function submitTest(e) {
     e.preventDefault();
     const user = getCurrentUser();
     if (!user) return;
@@ -735,27 +719,25 @@ function submitTest(e) {
         return;
     }
 
-    const teacherTests = Storage.get('teacherTests') || [];
     const newTest = {
-        id: Date.now(),
-        teacherId:   user.id,
-        teacherName: user.name,
-        teacherEmail:user.email,
         title, emoji, difficulty, duration, isPremium,
         description: desc,
-        questions,
-        submittedAt: new Date().toISOString(),
-        status: 'pending'
+        questions
     };
-    teacherTests.unshift(newTest);
-    Storage.set('teacherTests', teacherTests);
+    try {
+        await API.teacherTests.submit(newTest);
+    } catch (error) {
+        document.getElementById('addTestAlert').innerHTML =
+            `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${escapeHtml(error.message || 'Sınağı göndərmək mümkün olmadı.')}</div>`;
+        return;
+    }
 
     document.getElementById('addTestAlert').innerHTML =
         '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ✅ Sınaq admin yoxlamasına göndərildi!</div>';
 
     showNotification('Sınaq admin yoxlamasına göndərildi!', 'success');
     resetTestForm();
-    loadMyTests();
+    await loadMyTests();
     setTimeout(() => {
         showTab('myTests', document.querySelector('.side-nav a:nth-child(2)'));
     }, 1200);
@@ -772,13 +754,15 @@ function resetTestForm() {
 // ════════════════════════════════════════════════════════
 //  My tests
 // ════════════════════════════════════════════════════════
-function loadMyTests() {
-    const user = getCurrentUser();
-    if (!user) return;
-    const allTeacherTests = Storage.get('teacherTests') || [];
-    const mine = allTeacherTests.filter(t => String(t.teacherId) === String(user.id));
-
+async function loadMyTests() {
     const container = document.getElementById('myTestsList');
+    let mine;
+    try {
+        mine = await API.teacherTests.list();
+    } catch (error) {
+        container.innerHTML = `<p role="alert" style="color:var(--danger);padding:24px;">${escapeHtml(error.message || 'Sınaqları yükləmək mümkün olmadı.')}</p>`;
+        return;
+    }
     if (mine.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:50px 20px;color:#9ca3af;">
@@ -801,9 +785,9 @@ function loadMyTests() {
         <div class="test-item">
             <div class="ti-emoji">${t.emoji || '📝'}</div>
             <div class="ti-info">
-                <h5>${t.title}</h5>
+                <h5>${escapeHtml(t.title)}</h5>
                 <span>${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
-                ${t.adminNote ? `<br><span style="color:#ef4444;font-size:12px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>` : ''}
+                ${t.adminNote ? `<br><span style="color:#ef4444;font-size:12px;"><i class="fas fa-comment"></i> ${escapeHtml(t.adminNote)}</span>` : ''}
             </div>
             <span class="ti-badge ${cls}">${label}</span>
         </div>`;
@@ -816,8 +800,7 @@ function loadMyTests() {
 function loadProfile() {
     const user = getCurrentUser();
     if (!user) return;
-    const allUsers = Storage.get('allUsers') || [];
-    const fresh = allUsers.find(u => String(u.id) === String(user.id)) || user;
+    const fresh = user;
     const canAdd    = fresh.canAddTests === true;
     const requested = fresh.testAccessRequested;
 

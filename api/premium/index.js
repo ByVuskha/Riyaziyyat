@@ -6,9 +6,12 @@ const { requireAuth, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, genId } = require('../../lib/helpers');
 
 const PACKAGES = {
-  monthly:    { name: '1 Aylıq Premium',  duration: 30,  price: 10 },
-  halfYearly: { name: '6 Aylıq Premium',  duration: 180, price: 50 },
-  yearly:     { name: '1 İllik Premium',  duration: 365, price: 100 },
+  premium1:   { name: 'Premium 1', duration: 30,  price: 15 },
+  premium6:   { name: 'Premium 6', duration: 180, price: 75 },
+  premium12:  { name: 'Premium 12', duration: 365, price: 120 },
+  monthly:    { name: 'Premium 1', duration: 30,  price: 15 },
+  halfYearly: { name: 'Premium 6', duration: 180, price: 75 },
+  yearly:     { name: 'Premium 12', duration: 365, price: 120 },
 };
 
 module.exports = async function handler(req, res) {
@@ -50,6 +53,14 @@ module.exports = async function handler(req, res) {
     };
     reqs.unshift(newReq);
     await redis.set('premiumRequests', JSON.stringify(reqs), { ex: 86400 * 30 });
+    const uRaw = await redis.get('allUsers');
+    const users = Array.isArray(uRaw) ? uRaw : (uRaw ? JSON.parse(uRaw) : []);
+    const userIndex = users.findIndex(user => String(user.id) === String(session.id));
+    if (userIndex >= 0) {
+      users[userIndex].premiumRequestedAt = newReq.requestedAt;
+      users[userIndex].requestedPlan = packageType;
+      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+    }
     return res.status(201).json(newReq);
   }
 
@@ -62,18 +73,20 @@ module.exports = async function handler(req, res) {
     reqs[idx].status = action === 'approve' ? 'approved' : 'rejected';
     await redis.set('premiumRequests', JSON.stringify(reqs), { ex: 86400 * 30 });
 
-    if (action === 'approve') {
-      const uRaw  = await redis.get('allUsers');
-      const users = Array.isArray(uRaw) ? uRaw : (uRaw ? JSON.parse(uRaw) : []);
-      const uIdx  = users.findIndex(u => String(u.id) === String(reqs[idx].userId));
-      if (uIdx !== -1) {
+    const uRaw = await redis.get('allUsers');
+    const users = Array.isArray(uRaw) ? uRaw : (uRaw ? JSON.parse(uRaw) : []);
+    const uIdx = users.findIndex(u => String(u.id) === String(reqs[idx].userId));
+    if (uIdx !== -1) {
+      delete users[uIdx].premiumRequestedAt;
+      delete users[uIdx].requestedPlan;
+      if (action === 'approve') {
         const expires = new Date();
         expires.setDate(expires.getDate() + reqs[idx].duration);
         users[uIdx].premium           = true;
         users[uIdx].premiumActivatedAt = new Date().toISOString();
         users[uIdx].premiumExpiresAt   = expires.toISOString();
-        await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
       }
+      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
     }
     return res.status(200).json(reqs[idx]);
   }

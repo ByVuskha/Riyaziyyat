@@ -9,6 +9,13 @@
     { "source": "/api/tests/:id",            "destination": "/api/tests/index.js?id=:id" },
     { "source": "/api/tests",                "destination": "/api/tests/index.js" },
 
+    { "source": "/api/videos/:id",           "destination": "/api/videos/index.js?id=:id" },
+    { "source": "/api/videos",               "destination": "/api/videos/index.js" },
+
+    { "source": "/api/teachers",             "destination": "/api/teachers/index.js" },
+    { "source": "/api/media-signature",      "destination": "/api/media-signature.js" },
+    { "source": "/api/site-settings",        "destination": "/api/site-settings.js" },
+
     { "source": "/api/news/:id",             "destination": "/api/news/index.js?id=:id" },
     { "source": "/api/news",                 "destination": "/api/news/index.js" },
 
@@ -18,7 +25,8 @@
     { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },
     { "source": "/api/premium",              "destination": "/api/premium/index.js" },
     { "source": "/api/payments",             "destination": "/api/payments/index.js" },
-    { "source": "/api/stats",                "destination": "/api/stats/index.js" }
+    { "source": "/api/stats",                "destination": "/api/stats/index.js" },
+    { "source": "/api/points",               "destination": "/api/points.js" }
   ],
   "headers": [
     {

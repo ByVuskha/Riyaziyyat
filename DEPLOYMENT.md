@@ -1,6 +1,23 @@
 # RiyazMath - Deployment Guide
 ## Domain: bizimriyaziyyat.work.gd
 
+## Current Runtime Requirements
+
+The current site uses Vercel serverless functions under `api/` and Upstash Redis for shared data. Static-only hosting (including plain InfinityFree uploads) will serve the HTML but will not make login, tests, news, videos, teacher profiles, settings, or points work across devices.
+
+Deploy the repository root to Vercel and configure these project environment variables before redeploying:
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- `JWT_SECRET` (use a newly generated random secret)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required only for direct video-file uploads)
+
+YouTube video links and all other API-backed content use the Vercel/Upstash backend. Video-file uploads remain unavailable until Cloudinary is configured. Card payments are intentionally disabled until a real payment provider and its verified callback are integrated; the app must not credit balances based on a browser-only success screen.
+
+After deployment, verify `GET /api/stats`, `GET /api/news`, `GET /api/tests`, `GET /api/videos`, and `GET /api/teachers` return JSON rather than Vercel `NOT_FOUND` pages.
+
+The InfinityFree/FTP steps later in this document describe the retired static-only version. They cannot host the current `/api` functions.
+
 ### 📋 Deployment Checklist
 
 #### 1. Domain Configuration

@@ -48,15 +48,33 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx]));
 
   if (req.method === 'PUT') {
-    const { name, password, balance, role, premium, premiumExpiresAt,
-      frozen, canAddTests, userType, phone, bio, profilePicture } = req.body || {};
+    const { name, password, currentPassword, balance, role, premium, premiumExpiresAt,
+      frozen, canAddTests, userType, phone, bio, profilePicture, testAccessRequested,
+      testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail } = req.body || {};
 
     if (session.role !== 'admin') {
       if (name) users[idx].name = name.trim();
       if (phone) users[idx].phone = phone;
       if (bio) users[idx].bio = bio;
       if (profilePicture) users[idx].profilePicture = profilePicture;
-      if (password && password.length >= 6) users[idx].password = await bcrypt.hash(password, 12);
+      if (users[idx].userType === 'teacher') {
+        if (teacherTitle !== undefined) users[idx].teacherTitle = String(teacherTitle).slice(0, 120);
+        if (subjects !== undefined) users[idx].subjects = String(subjects).slice(0, 300);
+        if (experience !== undefined) users[idx].experience = Math.max(0, Number(experience) || 0);
+        if (publicProfile !== undefined) users[idx].publicProfile = Boolean(publicProfile);
+        if (publicEmail !== undefined) users[idx].publicEmail = Boolean(publicEmail);
+      }
+      if (testAccessRequested === true) {
+        users[idx].testAccessRequested = true;
+        users[idx].testAccessRequestedAt = testAccessRequestedAt || new Date().toISOString();
+      }
+      if (password) {
+        if (password.length < 6) return res.status(400).json({ error: 'Yeni şifrə minimum 6 simvol olmalıdır' });
+        if (!currentPassword || !await bcrypt.compare(currentPassword, users[idx].password)) {
+          return res.status(400).json({ error: 'Köhnə şifrə yanlışdır' });
+        }
+        users[idx].password = await bcrypt.hash(password, 12);
+      }
     } else {
       if (name) users[idx].name = name.trim();
       if (phone !== undefined) users[idx].phone = phone;
@@ -68,6 +86,8 @@ module.exports = async function handler(req, res) {
       if (premiumExpiresAt !== undefined) users[idx].premiumExpiresAt = premiumExpiresAt;
       if (frozen !== undefined) users[idx].frozen = Boolean(frozen);
       if (canAddTests !== undefined) users[idx].canAddTests = Boolean(canAddTests);
+      if (testAccessRequested !== undefined) users[idx].testAccessRequested = Boolean(testAccessRequested);
+      if (testAccessRequestedAt !== undefined) users[idx].testAccessRequestedAt = testAccessRequestedAt;
       if (password && password.length >= 6) users[idx].password = await bcrypt.hash(password, 12);
     }
 

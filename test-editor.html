@@ -433,12 +433,14 @@ function insertSym(inputId, rawSym) {
 }
 
 // Build toolbar for question text after page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await requireAdminPage();
+    if (!user) return;
     buildToolbar('questionText');
 
     // Load existing test if ?id= param
     const testId = new URLSearchParams(window.location.search).get('id');
-    if (testId) loadTestData(testId);
+    if (testId) await loadTestData(testId);
     renderQuestions();
 });
 
@@ -451,10 +453,14 @@ let editingIdx = -1;
 // ════════════════════════════════════════════════════════
 //  Load existing test
 // ════════════════════════════════════════════════════════
-function loadTestData(testId) {
-    const tests = Storage.get('tests') || [];
-    const t = tests.find(x => String(x.id) === String(testId));
-    if (!t) { showNotification('Sınaq tapılmadı!', 'error'); return; }
+async function loadTestData(testId) {
+    let t;
+    try {
+        t = await API.tests.get(testId);
+    } catch (error) {
+        showNotification(error.message || 'Sınaq tapılmadı!', 'error');
+        return;
+    }
 
     document.getElementById('testTitle').value       = t.title || '';
     document.getElementById('testCategory').value    = t.category || '';
@@ -610,13 +616,12 @@ function deleteQuestion(idx) {
 // ════════════════════════════════════════════════════════
 //  Save test
 // ════════════════════════════════════════════════════════
-function saveTestInfo() {
+async function saveTestInfo() {
     const title = document.getElementById('testTitle').value.trim();
     if (!title) { showNotification('Sınaq adını daxil edin!', 'error'); return; }
     if (questions.length === 0) { showNotification('Ən azı 1 sual əlavə edin!', 'error'); return; }
 
     const testData = {
-        id: Date.now(),
         title,
         category:    document.getElementById('testCategory').value.trim() || 'Ümumi',
         difficulty:  document.getElementById('testDifficulty').value,
@@ -631,26 +636,20 @@ function saveTestInfo() {
             explanation: q.explanation || '',
             explanationVideo: q.explanationVideo || ''
         })),
-        createdAt: new Date().toISOString()
     };
 
-    const tests = Storage.get('tests') || [];
-    // If editing (URL has ?id=), replace existing
     const urlId = new URLSearchParams(window.location.search).get('id');
-    if (urlId) {
-        const idx = tests.findIndex(t => String(t.id) === String(urlId));
-        if (idx !== -1) { tests[idx] = { ...tests[idx], ...testData, id: tests[idx].id }; }
-        else tests.push(testData);
-    } else {
-        tests.push(testData);
-    }
-    Storage.set('tests', tests);
-
-    if (typeof syncToUpstash !== 'undefined') {
-        syncToUpstash().catch(() => {});
+    let savedTest;
+    try {
+        savedTest = urlId
+            ? await API.tests.update(urlId, testData)
+            : await API.tests.create(testData);
+    } catch (error) {
+        showNotification(error.message || 'Sınağı saxlamaq mümkün olmadı.', 'error');
+        return;
     }
 
-    showNotification(`✅ "${testData.title}" sınağı saxlanıldı! (${questions.length} sual)`, 'success');
+    showNotification(`✅ "${savedTest.title}" sınağı saxlanıldı! (${questions.length} sual)`, 'success');
 
     setTimeout(() => {
         showConfirm('Yeni sınaq yaratmaq istəyirsiniz?',

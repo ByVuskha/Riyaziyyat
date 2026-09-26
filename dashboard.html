@@ -541,16 +541,13 @@ const sdEl = document.getElementById('statDemo');
 if (sdEl) sdEl.textContent = user.demoTests ?? 3;
 
 /* ── Main dashboard render (points-based) ────────────────────────────── */
-function renderDashboard() {
+async function renderDashboard() {
     document.getElementById('welcomeName').textContent = user.name;
     const navName = document.getElementById('navUserName');
     if (navName) navName.textContent = user.name;
 
-    const allPoints  = JSON.parse(localStorage.getItem('userPoints') || '{}');
-        total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
-    const myData     = allPoints[user.id] || allPoints[String(user.id)] || {
-        total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
-    };
+    const { points: myData, leaderboard } = await API.points.get();
+    const videosArr = myData?.watchedVideos || [];
     const testsArr   = myData.completedTests || [];
     const total      = myData.total || 0;
     const history    = Array.isArray(myData.history) ? myData.history : [];
@@ -561,10 +558,7 @@ function renderDashboard() {
     document.getElementById('statPoints').textContent = total.toLocaleString();
 
     /* Rank */
-    const sorted = Object.values(allPoints)
-        .filter(p => (p.total || 0) > 0)
-        .sort((a, b) => b.total - a.total);
-    const rank = sorted.findIndex(p => String(p.userId) === String(user.id)) + 1;
+    const rank = leaderboard.findIndex(entry => String(entry.userId) === String(user.id)) + 1;
     document.getElementById('statRank').textContent = rank > 0 ? `#${rank}` : '-';
 
     /* Welcome subtitle */
@@ -646,7 +640,13 @@ function renderDashboard() {
     }
 }
 
-renderDashboard();
+renderDashboard().catch(error => {
+    showNotification(error.message || 'Xal məlumatlarını yükləmək mümkün olmadı.', 'error');
+    ['statVideos', 'statTests', 'statPoints', 'statRank'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = '—';
+    });
+});
 // Teacher section: only show if teacher/admin
 if (user.userType === 'teacher' || user.role === 'admin') {
     renderTeacherSection(user);
@@ -696,11 +696,12 @@ function renderTeacherSection(u) {
 
 async function requestTestAccess() {
     try {
-        await API.teacherTests.submit({ title: '_access_request_', questions: [], duration: 0 })
-            .catch(() => {}); // ignore — just flag the user
-        // Mark user as having requested access via update endpoint
-        await API.users.update(user.id, { testAccessRequested: true });
-        user.testAccessRequested = true;
+        const updated = await API.users.update(user.id, {
+            testAccessRequested: true,
+            testAccessRequestedAt: new Date().toISOString(),
+        });
+        API.setCachedUser(updated);
+        Object.assign(user, updated);
         showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
         renderTeacherSection(user);
     } catch(e) {

@@ -3,6 +3,15 @@ const redis  = require('../../lib/redis');
 const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, genId, paginate } = require('../../lib/helpers');
 
+async function hasPremiumAccess(session) {
+  if (!session) return false;
+  if (session.role === 'admin') return true;
+  const rawUsers = await redis.get('allUsers');
+  const users = Array.isArray(rawUsers) ? rawUsers : (rawUsers ? JSON.parse(rawUsers) : []);
+  const user = users.find(item => String(item.id) === String(session.id));
+  return Boolean(user?.premium && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date()));
+}
+
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
   const { id } = req.query || {};
@@ -14,7 +23,19 @@ module.exports = async function handler(req, res) {
     const idx = tests.findIndex(test => String(test.id) === String(id));
     if (idx === -1) return res.status(404).json({ error: 'Sınaq tapılmadı' });
 
-    if (req.method === 'GET') return res.status(200).json(tests[idx]);
+    if (req.method === 'GET') {
+      const session = getUserFromRequest(req);
+      const premiumActive = await hasPremiumAccess(session);
+      if (tests[idx].isPremium && !premiumActive) {
+        return res.status(403).json({ error: 'Bu sınaq Premium üzvlər üçündür' });
+      }
+      if (session?.role === 'admin') return res.status(200).json(tests[idx]);
+      const { questions = [], ...test } = tests[idx];
+      return res.status(200).json({
+        ...test,
+        questions: questions.map(({ correctAnswer, ...question }) => question),
+      });
+    }
     const admin = requireAdmin(req, res);
     if (!admin) return;
 
@@ -37,6 +58,7 @@ module.exports = async function handler(req, res) {
     const tests = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
 
     const session = getUserFromRequest(req);
+    const premiumActive = await hasPremiumAccess(session);
     const page    = parseInt(req.query?.page)  || 1;
     const limit   = parseInt(req.query?.limit) || 50;
     const cat     = req.query?.category || '';
@@ -44,9 +66,7 @@ module.exports = async function handler(req, res) {
     let filtered = tests;
     if (cat) filtered = filtered.filter(t => t.category === cat);
 
-    // Strip questions from non-premium users for premium tests
     const safeTests = filtered.map(t => {
-      const canAccess = !t.isPremium || (session && (session.role === 'admin' || /* premium check handled client side */true));
       return {
         id:          t.id,
         title:       t.title,
@@ -57,9 +77,9 @@ module.exports = async function handler(req, res) {
         isPremium:   t.isPremium || false,
         description: t.description || '',
         questionCount: (t.questions || []).length,
+        attempts:    t.attempts || 0,
+        uniqueUsers: (t.uniqueUsers || []).length,
         createdAt:   t.createdAt,
-        // Only include questions if not premium or user is authenticated
-        ...(canAccess ? { questions: t.questions || [] } : {}),
       };
     });
 

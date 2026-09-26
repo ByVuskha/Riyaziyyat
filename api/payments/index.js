@@ -23,39 +23,5 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(paginate(filtered, page, limit));
   }
 
-  // POST — record a new payment + update user balance
-  const { amount, method = 'Kart', plan = 'custom' } = req.body || {};
-  if (!amount || Number(amount) < 5) {
-    return res.status(400).json({ error: 'Minimum ödəniş 5 ₼-dir' });
-  }
-
-  // Update user balance in allUsers
-  const uRaw  = await redis.get('allUsers');
-  const users = Array.isArray(uRaw) ? uRaw : (uRaw ? JSON.parse(uRaw) : []);
-  const uIdx  = users.findIndex(u => String(u.id) === String(session.id));
-  let newBalance = 0;
-  if (uIdx !== -1) {
-    users[uIdx].balance = (users[uIdx].balance || 0) + Number(amount);
-    newBalance = users[uIdx].balance;
-    await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
-  }
-
-  // Record payment
-  const payment = {
-    id:        genId(),
-    userId:    session.id,
-    user:      session.name,
-    userEmail: session.email,
-    amount:    Number(amount),
-    method,
-    plan,
-    status:    'completed',
-    date:      new Date().toLocaleDateString('az-AZ'),
-    time:      new Date().toLocaleTimeString('az-AZ'),
-    createdAt: new Date().toISOString(),
-  };
-  pays.unshift(payment);
-  await redis.set('payments', JSON.stringify(pays), { ex: 86400 * 90 });
-
-  return res.status(201).json({ payment, newBalance });
+  return res.status(503).json({ error: 'Təhlükəsiz kart provayderi qoşulmayıb. Ödəniş edilmədi və balans artırılmadı.' });
 };

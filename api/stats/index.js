@@ -8,11 +8,12 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const [rawUsers, rawTests, rawNews, rawTeachers] = await Promise.all([
+  const [rawUsers, rawTests, rawNews, rawTeachers, rawVideos] = await Promise.all([
     redis.get('allUsers'),
     redis.get('tests'),
     redis.get('news'),
     redis.get('teachers'),
+    redis.get('videos'),
   ]);
 
   const parse = (v) => Array.isArray(v) ? v : (v ? JSON.parse(v) : []);
@@ -21,12 +22,16 @@ module.exports = async function handler(req, res) {
   const tests    = parse(rawTests);
   const news     = parse(rawNews);
   const teachers = parse(rawTeachers);
+  const videos   = parse(rawVideos);
+  const questions = tests.reduce((total, test) => total + (Array.isArray(test.questions) ? test.questions.length : Number(test.questionCount) || 0), 0);
 
   return res.status(200).json({
     users:   users.length,
     tests:   tests.length,
     news:    news.length,
     teachers: teachers.length,
+    videos: videos.filter(video => video.isActive !== false).length,
+    questions,
     premium: users.filter(u => u.premium).length,
   });
 };

@@ -1,7 +1,7 @@
 /**
  * api-client.js  —  Centralized fetch wrapper for all /api/* endpoints.
  * Replaces all direct Storage.get/set calls for shared data.
- * localStorage is now only used for UI preferences (dark mode, language).
+ * Server data is authoritative; localStorage holds only a small auth UI cache.
  */
 
 const API = (() => {
@@ -280,18 +280,21 @@ const API = (() => {
       if (!r.ok) throw Object.assign(new Error(data.error || 'Xəta baş verdi'), { status: r.status, data });
       return data;
     } catch (error) {
-      if (error.status) throw error;
-      const localData = localFallback(method, path, body && typeof body === 'string' ? JSON.parse(body) : body);
-      if (localData) return localData;
       throw error;
     }
   }
 
   const auth = {
     async me() { return req('GET', '/api/auth/me'); },
-    async login(email, password) { return req('POST', '/api/auth/login', { email, password }); },
+    async login(email, password) {
+      const result = await req('POST', '/api/auth/login', { email, password });
+      setCachedUser(result.user);
+      return result;
+    },
     async register(name, email, password, userType) {
-      return req('POST', '/api/auth/register', { name, email, password, userType });
+      const result = await req('POST', '/api/auth/register', { name, email, password, userType });
+      setCachedUser(result.user);
+      return result;
     },
     async logout() { return req('POST', '/api/auth/logout'); },
   };
@@ -302,6 +305,28 @@ const API = (() => {
     async create(data) { return req('POST', '/api/tests', data); },
     async update(id, data) { return req('PUT', `/api/tests/${id}`, data); },
     async remove(id) { return req('DELETE', `/api/tests/${id}`); },
+  };
+
+  const videos = {
+    async list(params = {}) { return req('GET', '/api/videos?' + new URLSearchParams(params)); },
+    async get(id) { return req('GET', `/api/videos/${id}`); },
+    async create(data) { return req('POST', '/api/videos', data); },
+    async update(id, data) { return req('PUT', `/api/videos/${id}`, data); },
+    async remove(id) { return req('DELETE', `/api/videos/${id}`); },
+    async view(id) { return req('POST', `/api/videos/${id}?action=view`); },
+  };
+
+  const media = {
+    async signature() { return req('POST', '/api/media-signature'); },
+  };
+
+  const settings = {
+    async get() { return req('GET', '/api/site-settings'); },
+    async save(data) { return req('PUT', '/api/site-settings', data); },
+  };
+
+  const teachers = {
+    async list(params = {}) { return req('GET', '/api/teachers?' + new URLSearchParams(params)); },
   };
 
   const news = {
@@ -343,22 +368,41 @@ const API = (() => {
     async record(amount, method, plan) { return req('POST', '/api/payments', { amount, method, plan }); },
   };
 
-  let _currentUser = null;
+  const points = {
+    async get() { return req('GET', '/api/points'); },
+    async results() { return req('GET', '/api/points?view=results'); },
+    async awardTest(testId, answers) { return req('POST', '/api/points', { type: 'test', testId, answers }); },
+    async awardDailyLogin() { return req('POST', '/api/points', { type: 'daily-login' }); },
+  };
+
+  let _currentUser = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      return saved?.user || saved || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  function setCachedUser(user) {
+    _currentUser = user || null;
+    if (_currentUser) localStorage.setItem('currentUser', JSON.stringify({ user: _currentUser }));
+    else localStorage.removeItem('currentUser');
+    return _currentUser;
+  }
 
   async function getCurrentUser() {
-    if (_currentUser) return _currentUser;
     try {
       const { user } = await auth.me();
-      _currentUser = user || null;
-      return user || null;
+      return setCachedUser(user);
     } catch {
-      _currentUser = null;
+      setCachedUser(null);
       return null;
     }
   }
 
   function clearUserCache() {
-    _currentUser = null;
+    setCachedUser(null);
   }
 
   async function logout() {
@@ -377,7 +421,7 @@ const API = (() => {
     }
   }
 
-  return { auth, tests, news, users, teacherTests, premium, stats, payments, getCurrentUser, clearUserCache, logout, notify };
+  return { auth, tests, videos, media, settings, teachers, news, users, teacherTests, premium, stats, payments, points, getCurrentUser, getCachedUser: () => _currentUser, setCachedUser, clearUserCache, logout, notify };
 })();
 
 window.API = API;

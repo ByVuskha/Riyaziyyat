@@ -5,18 +5,15 @@
 
 (function() {
     'use strict';
-    
-    // Load site settings
-    const settings = (window.Storage && typeof window.Storage.get === 'function')
-        ? window.Storage.get('siteSettings')
-        : null;
-    
-    if (!settings) {
-        console.log('📝 Default site settings');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+    let settings;
+    try {
+        settings = await API.settings.get();
+    } catch {
         return;
     }
-    
-    console.log('🎨 Applying custom site settings...');
+    if (!settings) return;
     
     // Apply CSS Variables
     const root = document.documentElement;
@@ -59,6 +56,9 @@
                 textNode.textContent = ' ' + settings.branding.name;
             }
         });
+
+        const heroBadge = document.querySelector('.hero-badge');
+        if (heroBadge && settings.branding.slogan) heroBadge.textContent = settings.branding.slogan;
         
         // Page title
         if (document.title.includes('Bizim Riyaziyyat') || document.title.includes('RiyazMath')) {
@@ -78,15 +78,7 @@
             // Hero title
             const heroTitle = document.querySelector('.hero h1');
             if (heroTitle && settings.content.heroTitle) {
-                // Keep the <span> tag
-                const span = heroTitle.querySelector('span');
-                if (span) {
-                    const parts = settings.content.heroTitle.split(' ');
-                    const lastWord = parts.pop();
-                    heroTitle.innerHTML = parts.join(' ') + ' <span>' + lastWord + '</span>';
-                } else {
-                    heroTitle.textContent = settings.content.heroTitle;
-                }
+                heroTitle.textContent = settings.content.heroTitle;
             }
             
             // Hero subtitle
@@ -99,19 +91,12 @@
             const ctaButtons = document.querySelectorAll('.hero-buttons .btn');
             if (ctaButtons[0] && settings.content.ctaButton1) {
                 const icon = ctaButtons[0].querySelector('i');
-                ctaButtons[0].innerHTML = icon ? icon.outerHTML + ' ' + settings.content.ctaButton1 : settings.content.ctaButton1;
+                ctaButtons[0].replaceChildren(...(icon ? [icon, document.createTextNode(` ${settings.content.ctaButton1}`)] : [document.createTextNode(settings.content.ctaButton1)]));
             }
             if (ctaButtons[1] && settings.content.ctaButton2) {
                 const icon = ctaButtons[1].querySelector('i');
-                ctaButtons[1].innerHTML = icon ? icon.outerHTML + ' ' + settings.content.ctaButton2 : settings.content.ctaButton2;
+                ctaButtons[1].replaceChildren(...(icon ? [icon, document.createTextNode(` ${settings.content.ctaButton2}`)] : [document.createTextNode(settings.content.ctaButton2)]));
             }
-            
-            // Stats
-            const stats = document.querySelectorAll('.hero-stat h3');
-            if (stats[0] && settings.content.statVideos) stats[0].textContent = settings.content.statVideos;
-            if (stats[1] && settings.content.statStudents) stats[1].textContent = settings.content.statStudents;
-            if (stats[2] && settings.content.statTests) stats[2].textContent = settings.content.statTests;
-            if (stats[3] && settings.content.statSatisfaction) stats[3].textContent = settings.content.statSatisfaction;
         }
     }
     
@@ -145,8 +130,17 @@
                 link.textContent = settings.footer.phone;
             }
         });
+
+        const socialLinks = Array.from(document.querySelectorAll('a'));
+        const setSocialLink = (label, value, domain) => {
+            if (!value) return;
+            const url = /^https:\/\//i.test(value) ? value : `https://${domain}/${String(value).replace(/^@/, '')}`;
+            const link = socialLinks.find(item => item.textContent.trim().toLowerCase() === label);
+            if (link) link.href = url;
+        };
+        setSocialLink('instagram', settings.footer.instagram, 'instagram.com');
+        setSocialLink('telegram', settings.footer.telegram, 't.me');
     }
     
-    console.log('✅ Site customization applied');
-    
+    });
 })();

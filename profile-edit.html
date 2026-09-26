@@ -119,26 +119,62 @@
 
 <script src="js/image-upload.js"></script>
 <script>
-// Giriş yoxla
-if (!isLoggedIn()) {
-    window.location.href = 'login.html';
-}
-
-const user = getCurrentUser();
 let newProfilePicture = null;
 
-// Formu doldur
-document.getElementById('name').value = user.name || '';
-document.getElementById('email').value = user.email || '';
-document.getElementById('phone').value = user.phone || '';
-document.getElementById('bio').value = user.bio || '';
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await API.getCurrentUser();
+    if (!user) {
+        window.location.href = 'login.html';
+        return;
+    }
 
-// Profil şəklini göstər
-if (user.profilePicture) {
-    document.getElementById('profilePicturePreview').innerHTML = `
-        <img src="${user.profilePicture}" style="width:100%;height:100%;object-fit:cover;">
-    `;
-}
+    document.getElementById('name').value = user.name || '';
+    document.getElementById('email').value = user.email || '';
+    document.getElementById('phone').value = user.phone || '';
+    document.getElementById('bio').value = user.bio || '';
+    if (user.profilePicture) {
+        const image = document.createElement('img');
+        image.src = user.profilePicture;
+        image.alt = 'Profil şəkli';
+        image.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+        document.getElementById('profilePicturePreview').replaceChildren(image);
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const bio = document.getElementById('bio').value.trim();
+        const currentPassword = document.getElementById('oldPassword').value;
+        const password = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password || confirmPassword || currentPassword) {
+            if (!currentPassword) return showAlert('danger', 'Köhnə şifrəni daxil edin');
+            if (password !== confirmPassword) return showAlert('danger', 'Yeni şifrələr uyğun gəlmir');
+            if (password.length < 6) return showAlert('danger', 'Yeni şifrə minimum 6 simvol olmalıdır');
+        }
+
+        const updates = { name, phone, bio };
+        if (newProfilePicture) updates.profilePicture = newProfilePicture;
+        if (password) {
+            updates.currentPassword = currentPassword;
+            updates.password = password;
+        }
+
+        const button = document.querySelector('#profileForm [type="submit"]');
+        if (button) button.disabled = true;
+        try {
+            const updated = await API.users.update(user.id, updates);
+            API.setCachedUser(updated);
+            showAlert('success', 'Profil uğurla yeniləndi!');
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+        } catch (error) {
+            showAlert('danger', error.message || 'Profili yeniləmək mümkün olmadı.');
+            if (button) button.disabled = false;
+        }
+    });
+});
 
 // Şəkil yüklə
 async function uploadProfilePicture() {
@@ -153,73 +189,6 @@ async function uploadProfilePicture() {
         showAlert('danger', error);
     }
 }
-
-// Formu submit et
-document.getElementById('profileForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const bio = document.getElementById('bio').value.trim();
-    const oldPassword = document.getElementById('oldPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    // Şifrə dəyişikliyi yoxla
-    if (oldPassword || newPassword || confirmPassword) {
-        if (!oldPassword) {
-            showAlert('danger', 'Köhnə şifrəni daxil edin');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            showAlert('danger', 'Yeni şifrələr uyğun gəlmir');
-            return;
-        }
-        if (newPassword.length < 6) {
-            showAlert('danger', 'Yeni şifrə minimum 6 simvol olmalıdır');
-            return;
-        }
-        
-        // Köhnə şifrəni yoxla
-        const allUsers = Storage.get('allUsers') || [];
-        const userWithPassword = allUsers.find(u => u.email === user.email);
-        if (!userWithPassword || userWithPassword.password !== oldPassword) {
-            showAlert('danger', 'Köhnə şifrə yanlışdır');
-            return;
-        }
-        
-        // Şifrəni yenilə
-        userWithPassword.password = newPassword;
-        Storage.set('allUsers', allUsers);
-    }
-    
-    // Profil məlumatlarını yenilə
-    const updates = {
-        name,
-        phone,
-        bio
-    };
-    
-    if (newProfilePicture) {
-        updates.profilePicture = newProfilePicture;
-    }
-    
-    updateUser(updates);
-    
-    // allUsers-də də yenilə
-    const allUsers = Storage.get('allUsers') || [];
-    const userIndex = allUsers.findIndex(u => u.email === user.email);
-    if (userIndex !== -1) {
-        allUsers[userIndex] = { ...allUsers[userIndex], ...updates };
-        Storage.set('allUsers', allUsers);
-    }
-    
-    showAlert('success', 'Profil uğurla yeniləndi!');
-    
-    setTimeout(() => {
-        window.location.href = 'dashboard.html';
-    }, 1500);
-});
 
 function showAlert(type, message) {
     document.getElementById('alertBox').innerHTML = `

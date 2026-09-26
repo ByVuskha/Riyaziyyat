@@ -1733,3 +1733,90 @@ body {
 @media (max-width: 480px) {
     .hero h1 { font-size: 26px !important; }
 }
+
+/* Shared grouped navigation */
+.navbar-inner { position: relative; }
+.standalone-shared-nav { position: relative; display: flex; flex-shrink: 0; margin-left: 12px; }
+.auth-page > .standalone-shared-nav,
+body > .standalone-shared-nav { position: fixed; top: 12px; right: 12px; z-index: 1200; margin: 0; }
+.hamburger-btn {
+    display: grid !important;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: var(--dark);
+    font-size: 18px;
+}
+.navbar-menu {
+    display: none !important;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 20px;
+    z-index: 1100;
+    width: min(760px, calc(100vw - 40px));
+    max-height: min(70vh, 560px);
+    overflow: auto;
+    padding: 22px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-items: start;
+    gap: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 18px 48px rgba(17, 51, 57, .18);
+}
+.navbar-menu.open { display: grid !important; }
+.nav-group h3 {
+    margin: 0 0 8px;
+    color: #087f8c;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.navbar-menu .nav-group a {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    margin: 2px 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: #40545a;
+    font-size: 14px;
+}
+.navbar-menu .nav-group a:hover,
+.navbar-menu .nav-group a.active {
+    background: #e8f5f3;
+    color: #075e66;
+}
+.navbar-menu a:focus-visible,
+.hamburger-btn:focus-visible {
+    outline: 3px solid #20a39e;
+    outline-offset: 2px;
+}
+[data-theme="dark"] .hamburger-btn,
+[data-theme="dark"] .navbar-menu { background: #142a2d; color: #e5f3f1; }
+[data-theme="dark"] .navbar-menu .nav-group a { color: #c2d8d5; }
+[data-theme="dark"] .navbar-menu .nav-group a:hover,
+[data-theme="dark"] .navbar-menu .nav-group a.active { background: #204447; color: #b8ece4; }
+@media (max-width: 768px) {
+    .navbar-menu {
+        top: calc(100% + 6px);
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: calc(100dvh - 84px);
+        padding: 16px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .standalone-shared-nav .navbar-menu {
+        position: fixed;
+        top: 62px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+    }
+}

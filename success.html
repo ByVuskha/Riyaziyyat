@@ -341,6 +341,7 @@ function aInit(name) { return (name || '?')[0].toUpperCase(); }
 
 let _tab = 'all';
 let _lb  = [];   // full leaderboard array
+let _myPoints = null;
 
 function switchTab(tab, btn) {
     _tab = tab;
@@ -350,71 +351,39 @@ function switchTab(tab, btn) {
 }
 
 // ── Build leaderboard — ALL users, not just those with points ─────────────────
-function buildLB() {
-    // Always read directly from localStorage for freshest data
-    const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const users = JSON.parse(localStorage.getItem('allUsers')   || '[]');
-
-    // Start with all non-admin users
-    const allEntries = users
-        .filter(u => u.role !== 'admin')
-        .map(u => {
-            const p = pts[u.id] || pts[String(u.id)] || {};
-            return {
-                userId:  u.id,
-                name:    u.name || 'İstifadəçi',
-                premium: u.premium || false,
-                total:   p.total || 0,
-                videos:  (p.watchedVideos  || []).length,
-                tests:   (p.completedTests || []).length,
-                history: Array.isArray(p.history) ? p.history : [],
-                userType: u.userType || 'student',
-            };
-        });
-
-    // Also include any points entries not in allUsers (cross-device fallback)
-    Object.values(pts).forEach(p => {
-        if (!allEntries.find(e => String(e.userId) === String(p.userId))) {
-            allEntries.push({
-                userId:  p.userId,
-                name:    p.userName || 'İstifadəçi',
-                premium: false,
-                total:   p.total || 0,
-                videos:  (p.watchedVideos  || []).length,
-                tests:   (p.completedTests || []).length,
-                history: Array.isArray(p.history) ? p.history : [],
-                userType: 'student',
-            });
-        }
-    });
-
-    return allEntries
-        .sort((a, b) => b.total - a.total);
+async function buildLB() {
+    const result = await API.points.get();
+    _myPoints = result.points || null;
+    return (result.leaderboard || []).map(entry => ({
+        userId: entry.userId,
+        name: entry.userName || 'İstifadəçi',
+        premium: Boolean(entry.premium),
+        total: Number(entry.total) || 0,
+        videos: entry.watchedCount || 0,
+        tests: entry.testCount || 0,
+        history: String(entry.userId) === String(_myPoints?.userId) ? (_myPoints.history || []) : [],
+        userType: entry.userType || 'student',
+    }));
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
-function renderAll() {
-    _lb = buildLB();
-    const me = getCurrentUser();
-
-    // Hero stats — all users, not just those with points
-    const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+async function renderAll() {
+    try {
+    _lb = await buildLB();
+    const me = await API.getCurrentUser();
     const totalPts = _lb.reduce((s, e) => s + e.total, 0);
     const withPts  = _lb.filter(e => e.total > 0);
-    document.getElementById('heroParticipants').textContent = allUsers.filter(u => u.role !== 'admin').length || _lb.length;
+    document.getElementById('heroParticipants').textContent = _lb.length;
     document.getElementById('heroTotalPoints').textContent  = totalPts.toLocaleString();
     document.getElementById('heroTopScore').textContent     = withPts[0] ? withPts[0].total.toLocaleString() : '0';
 
     // My card
     if (me) {
-        // Re-read fresh points for current user directly from localStorage
-        const freshPts = JSON.parse(localStorage.getItem('userPoints') || '{}');
-        const myFresh  = freshPts[me.id] || freshPts[String(me.id)] || null;
         const idx  = _lb.findIndex(e => String(e.userId) === String(me.id));
-        const myE  = myFresh ? {
-            total:   myFresh.total || 0,
-            videos:  (myFresh.watchedVideos  || []).length,
-            tests:   (myFresh.completedTests || []).length,
+        const myE  = _myPoints ? {
+            total:   _myPoints.total || 0,
+            videos:  (_myPoints.watchedVideos || []).length,
+            tests:   (_myPoints.completedTests || []).length,
         } : (_lb[idx] || null);
         const card = document.getElementById('myCard');
 
@@ -438,10 +407,17 @@ function renderAll() {
             card.style.display = 'flex';
         }
         document.getElementById('histBtn').style.display = 'inline-block';
+    } else {
+        document.getElementById('histBtn').style.display = 'none';
     }
 
     renderPodium(me);
     renderBoard();
+    } catch (error) {
+        const message = escapeHtml(error.message || 'Reytinq məlumatlarını yükləmək mümkün olmadı.');
+        document.getElementById('boardBody').innerHTML = `<div class="empty" role="alert">${message}</div>`;
+        document.getElementById('podiumWrap').innerHTML = `<div class="empty" role="alert">${message}</div>`;
+    }
 }
 
 // ── Podium ────────────────────────────────────────────────────────────────────
@@ -473,7 +449,7 @@ function renderPodium(me) {
             <div class="podium-medal">${medals[i]}</div>
             <div class="podium-avatar" style="background:${color};">${aInit(e.name)}</div>
             <div class="podium-name">
-                ${e.name}
+                ${escapeHtml(e.name)}
                 ${isMe ? '<span style="font-size:10px;color:#667eea;"> (Siz)</span>' : ''}
             </div>
             <div class="podium-score">${e.total.toLocaleString()}</div>
@@ -527,7 +503,7 @@ function renderLeaderboard() {
                 <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
                 <div>
                     <div class="lb-name">
-                        ${typeIcon} ${e.name}
+                        ${typeIcon} ${escapeHtml(e.name)}
                         ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
                     </div>
                     <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
@@ -558,7 +534,7 @@ function renderLeaderboard() {
                     <div class="lb-rank-cell">—</div>
                     <div class="lb-avatar-cell" style="background:${aColor(e.name)};">${aInit(e.name)}</div>
                     <div>
-                        <div class="lb-name">${typeIcon} ${e.name}${isMe ? ' <span style="color:#667eea;font-size:10px;">(Siz)</span>' : ''}</div>
+                        <div class="lb-name">${typeIcon} ${escapeHtml(e.name)}${isMe ? ' <span style="color:#667eea;font-size:10px;">(Siz)</span>' : ''}</div>
                         <div class="lb-sub">Hələ xal qazanmayıb</div>
                     </div>
                     <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
@@ -579,10 +555,10 @@ function toggleNoPoints(btn) {
     icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
 }
 
-function renderHistory() {
+async function renderHistory() {
     document.getElementById('boardTitle').textContent = '📋 Xal Tarixçəm';
     document.getElementById('boardSub').textContent   = '';
-    const me = getCurrentUser();
+    const me = await API.getCurrentUser();
 
     if (!me) {
         document.getElementById('boardBody').innerHTML = `
@@ -594,10 +570,8 @@ function renderHistory() {
         return;
     }
 
-    // Read directly from localStorage (most up-to-date)
-    const pts   = JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const myRaw = pts[me.id] || pts[String(me.id)] || null;
-    const hist  = myRaw && Array.isArray(myRaw.history) ? myRaw.history : [];
+    const { points } = await API.points.get();
+    const hist = Array.isArray(points?.history) ? points.history : [];
 
     if (!hist.length) {
         document.getElementById('boardBody').innerHTML = `
@@ -613,7 +587,7 @@ function renderHistory() {
         <div class="hist-row">
             <div class="hist-amount">+${h.amount} xal</div>
             <div>
-                <div class="hist-reason">${h.reason}</div>
+                <div class="hist-reason">${escapeHtml(h.reason)}</div>
             </div>
             <div class="hist-date">${h.date}<br>${h.time || ''}</div>
         </div>
@@ -628,13 +602,7 @@ window.addEventListener('points:updated', () => {
 });
 
 // Also update when storage changes in another tab
-window.addEventListener('storage', (e) => {
-    if (e.key === 'userPoints' || e.key === 'allUsers') {
-        setTimeout(renderAll, 80);
-    }
-});
-
-window.addEventListener('upstash:loaded', renderAll);
+window.removeEventListener('upstash:loaded', renderAll);
 document.addEventListener('DOMContentLoaded', () => {
     renderAll();
 

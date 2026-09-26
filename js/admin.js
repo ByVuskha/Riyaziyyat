@@ -10,6 +10,8 @@
 //  Boot: require admin, then load dashboard
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('fontSize')?.addEventListener('input', updateSettingRangeLabels);
+    document.getElementById('lineHeight')?.addEventListener('input', updateSettingRangeLabels);
     const user = await requireAdminPage();   // from app.js — redirects if not admin
     if (!user) return;
     renderAdminUser(user);
@@ -57,6 +59,8 @@ function showSection(section) {
         news:         () => loadNews(),
         payments:     () => loadPayments(),
         teacherTests: () => { loadTeacherTestsSection(); _updateTeacherTestsBadge(); },
+        testResults:  () => loadTestResults(),
+        settings:     () => loadSiteSettings(),
         premium:      () => loadPremiumRequests(),
         leaderboard:  () => loadLeaderboard(),
     };
@@ -377,14 +381,50 @@ async function rejectPremium(id) {
 // ════════════════════════════════════════════════════════
 async function _updateTeacherTestsBadge() {
     try {
-        const all = await API.teacherTests.list({ status: 'pending' });
-        const cnt = all.length;
+        const [tests, { data: users }] = await Promise.all([
+            API.teacherTests.list({ status: 'pending' }),
+            API.users.list({ limit: 200 }),
+        ]);
+        const cnt = tests.length + users.filter(user => user.testAccessRequested).length;
         const badge = document.getElementById('teacherTestsBadge');
         if (badge) { badge.textContent = cnt; badge.style.display = cnt ? 'inline-flex' : 'none'; }
     } catch {}
 }
 
 async function loadTeacherTestsSection() {
+    await Promise.all([loadTeacherAccessRequests(), loadTeacherSubmissions()]);
+}
+
+async function loadTeacherAccessRequests() {
+    const container = document.getElementById('teacherAccessRequestsList');
+    if (!container) return;
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const requests = users.filter(user => user.testAccessRequested);
+        if (!requests.length) { showEmpty(container, 'İcazə müraciəti yoxdur'); return; }
+        container.innerHTML = requests.map(user => `
+            <div class="teacher-access-request">
+                <div><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></div>
+                <button class="btn btn-sm btn-success" onclick="grantTeacherTestAccess('${escapeHtml(user.id)}')">
+                    <i class="fas fa-check"></i> İcazə ver
+                </button>
+            </div>`).join('');
+    } catch (error) {
+        showError(container, error.message || 'Müraciətləri yükləmək mümkün olmadı.');
+    }
+}
+
+async function grantTeacherTestAccess(id) {
+    try {
+        await API.users.update(id, { canAddTests: true, testAccessRequested: false });
+        showNotification('Müəllimə sınaq əlavəetmə icazəsi verildi.', 'success');
+        await Promise.all([loadTeacherAccessRequests(), loadTeachers(), _updateTeacherTestsBadge()]);
+    } catch (error) {
+        showNotification(error.message || 'İcazəni yeniləmək mümkün olmadı.', 'error');
+    }
+}
+
+async function loadTeacherSubmissions() {
     const container = document.getElementById('teacherTestsList');
     if (!container) return;
     showSpinner(container);
@@ -424,6 +464,171 @@ async function rejectTeacherTest(id) {
         const reason = String(note || '').trim();
         try { await API.teacherTests.reject(id, reason); showNotification('Sınaq rədd edildi', 'warning'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
         catch(e) { showNotification(e.message, 'error'); }
+    });
+}
+
+let allTestResults = [];
+
+async function loadTestResults() {
+    const table = document.getElementById('testResultsTable');
+    if (!table) return;
+    table.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;">Yüklənir...</td></tr>';
+    try {
+        const [{ data: results }, { data: tests }] = await Promise.all([
+            API.points.results(),
+            API.tests.list({ limit: 100 }),
+        ]);
+        allTestResults = results;
+        const filter = document.getElementById('filterTest');
+        const selected = filter.value;
+        filter.innerHTML = '<option value="">Hamısı</option>' + tests.map(test =>
+            `<option value="${escapeHtml(test.id)}">${escapeHtml(test.title)}</option>`
+        ).join('');
+        filter.value = selected;
+        filterTestResults();
+    } catch (error) {
+        table.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:24px;">${escapeHtml(error.message || 'Nəticələri yükləmək mümkün olmadı.')}</td></tr>`;
+    }
+}
+
+function filterTestResults() {
+    const testId = document.getElementById('filterTest')?.value || '';
+    const query = (document.getElementById('filterUser')?.value || '').toLowerCase();
+    const rows = allTestResults.filter(result =>
+        (!testId || String(result.testId) === testId) &&
+        (!query || `${result.userName || ''} ${result.userEmail || ''}`.toLowerCase().includes(query))
+    );
+    const table = document.getElementById('testResultsTable');
+    if (!rows.length) {
+        table.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--gray);">Nəticə yoxdur</td></tr>';
+    } else {
+        table.innerHTML = rows.map(result => `
+            <tr>
+                <td>${formatDate(result.date)}</td>
+                <td>${escapeHtml(result.userName)}<br><small>${escapeHtml(result.userEmail)}</small></td>
+                <td>${escapeHtml(result.testTitle)}</td>
+                <td>${result.score}/${result.total}</td>
+                <td>${result.percentage}%</td>
+                <td>${result.percentage >= 60 ? 'Uğurlu' : 'Tamamlandı'}</td>
+                <td><button class="btn-icon btn-view" title="Nəticə" onclick="viewTestResult('${escapeHtml(result.id)}')"><i class="fas fa-eye"></i></button></td>
+            </tr>`).join('');
+    }
+    document.getElementById('totalTestAttempts').textContent = allTestResults.length;
+    document.getElementById('uniqueTestTakers').textContent = new Set(allTestResults.map(result => result.userId)).size;
+    const average = allTestResults.length ? Math.round(allTestResults.reduce((sum, result) => sum + (Number(result.percentage) || 0), 0) / allTestResults.length) : 0;
+    const passRate = allTestResults.length ? Math.round(allTestResults.filter(result => result.percentage >= 60).length / allTestResults.length * 100) : 0;
+    document.getElementById('avgTestScore').textContent = `${average}%`;
+    document.getElementById('passRate').textContent = `${passRate}%`;
+}
+
+function viewTestResult(id) {
+    const result = allTestResults.find(item => String(item.id) === String(id));
+    if (!result) return;
+    showNotification(`${result.userName}: ${result.testTitle} · ${result.score}/${result.total} (${result.percentage}%)`, 'info', 6000);
+}
+
+function exportTestResults() {
+    const rows = [['Tarix', 'İstifadəçi', 'Email', 'Sınaq', 'Bal', 'Faiz'], ...allTestResults.map(result => [
+        result.date, result.userName, result.userEmail, result.testTitle, `${result.score}/${result.total}`, `${result.percentage}%`,
+    ])];
+    const csv = rows.map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
+    link.download = 'sinaq-neticeleri.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+const SITE_SETTING_FIELDS = {
+    branding: { siteName: 'name', logoShort: 'logoShort', siteSlogan: 'slogan', metaDescription: 'metaDescription' },
+    colors: { colorPrimary: 'primary', colorSecondary: 'secondary', colorSuccess: 'success', colorWarning: 'warning', colorDanger: 'danger', colorDark: 'dark' },
+    typography: { fontFamily: 'fontFamily', fontSize: 'fontSize', headingFont: 'headingFont', lineHeight: 'lineHeight' },
+    content: { heroTitle: 'heroTitle', heroSubtitle: 'heroSubtitle', ctaButton1: 'ctaButton1', ctaButton2: 'ctaButton2' },
+    footer: { footerEmail: 'email', footerPhone: 'phone', footerInstagram: 'instagram', footerTelegram: 'telegram', footerCopyright: 'copyright', footerDescription: 'description' },
+};
+
+async function loadSiteSettings() {
+    try {
+        const settings = await API.settings.get();
+        for (const [section, fields] of Object.entries(SITE_SETTING_FIELDS)) {
+            for (const [fieldId, key] of Object.entries(fields)) {
+                const input = document.getElementById(fieldId);
+                if (input && settings[section]?.[key] !== undefined) input.value = settings[section][key];
+            }
+        }
+        updateSettingRangeLabels();
+    } catch (error) {
+        showNotification(error.message || 'Sayt tənzimləmələrini yükləmək mümkün olmadı.', 'error');
+    }
+}
+
+function collectSiteSettings() {
+    const settings = {};
+    for (const [section, fields] of Object.entries(SITE_SETTING_FIELDS)) {
+        settings[section] = {};
+        for (const [fieldId, key] of Object.entries(fields)) {
+            const input = document.getElementById(fieldId);
+            if (!input) continue;
+            settings[section][key] = ['fontSize', 'lineHeight'].includes(key) ? Number(input.value) : input.value.trim();
+        }
+    }
+    return settings;
+}
+
+function updateSettingRangeLabels() {
+    const fontSize = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const lineHeight = document.getElementById('lineHeight');
+    const lineHeightValue = document.getElementById('lineHeightValue');
+    if (fontSize && fontSizeValue) fontSizeValue.textContent = `${fontSize.value}px`;
+    if (lineHeight && lineHeightValue) lineHeightValue.textContent = lineHeight.value;
+}
+
+async function saveSiteSettings() {
+    try {
+        await API.settings.save(collectSiteSettings());
+        showNotification('Sayt tənzimləmələri online saxlanıldı.', 'success');
+    } catch (error) {
+        showNotification(error.message || 'Tənzimləmələri saxlamaq mümkün olmadı.', 'error');
+    }
+}
+
+function switchEditorTab(name) {
+    const contentId = `editor${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+    const content = document.getElementById(contentId);
+    if (!content) return;
+    document.querySelectorAll('.editor-content').forEach(section => { section.style.display = 'none'; });
+    content.style.display = 'block';
+    document.querySelectorAll('.editor-tab').forEach(button => {
+        button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${name}'`));
+    });
+}
+
+function previewSite() {
+    const settings = collectSiteSettings();
+    for (const [key, value] of Object.entries(settings.colors || {})) {
+        document.documentElement.style.setProperty(`--${key}`, value);
+    }
+    showNotification('Rəng önizləməsi cari admin səhifəsində tətbiq edildi.', 'info');
+}
+
+function resetSiteSettings() {
+    showConfirm('Sayt tənzimləmələrini standart vəziyyətə qaytarmaq istəyirsiniz?', async () => {
+        try {
+            await API.settings.save({});
+            document.querySelectorAll('#siteEditor input, #siteEditor textarea, #siteEditor select').forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') input.checked = input.defaultChecked;
+                else if (input.tagName === 'SELECT') input.selectedIndex = [...input.options].findIndex(option => option.defaultSelected);
+                else input.value = input.defaultValue;
+            });
+            updateSettingRangeLabels();
+            ['--primary', '--secondary', '--success', '--warning', '--danger', '--dark'].forEach(name => {
+                document.documentElement.style.removeProperty(name);
+            });
+            showNotification('Standart tənzimləmələr bərpa edildi.', 'success');
+        } catch (error) {
+            showNotification(error.message || 'Tənzimləmələri sıfırlamaq mümkün olmadı.', 'error');
+        }
     });
 }
 

@@ -89,12 +89,12 @@
                     <p>Video Dərs</p>
                 </div>
                 <div class="hero-stat">
-                    <h3>1000+</h3>
-                    <p>Sınaq Sualı</p>
+                    <h3 id="heroTests">—</h3>
+                    <p>Sınaq</p>
                 </div>
                 <div class="hero-stat">
-                    <h3>98%</h3>
-                    <p>Məmnuniyyət</p>
+                    <h3 id="heroQuestions">—</h3>
+                    <p>Sual</p>
                 </div>
             </div>
         </div>
@@ -157,18 +157,6 @@
             </button>
             <div id="newsIndicators" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10;">
                 <!-- Indicators will be added here -->
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- NOTIFICATIONS -->
-<section class="section" style="padding:20px 0;">
-    <div class="container">
-        <div id="notificationsPanel" style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);">
-            <h3 style="font-size:18px;margin-bottom:15px;"><i class="fas fa-bell"></i> Bildirişlər</h3>
-            <div id="notificationsList">
-                <!-- Notifications will be loaded here -->
             </div>
         </div>
     </div>
@@ -430,8 +418,6 @@ document.getElementById('premiumModal').addEventListener('click', function(e) {
 
 <script src="js/site-customizer.js"></script>
 
-<script src="js/api.js"></script>
-
 <script>
 // News Carousel with animations
 let currentNewsSlide = 0;
@@ -444,62 +430,83 @@ async function loadHeroStats() {
         const stats = await API.stats.get();
         const uEl = document.getElementById('heroUsers');
         const vEl = document.getElementById('heroVideos');
-        if (uEl) uEl.textContent = stats.users > 0 ? stats.users.toLocaleString() + '+' : '500+';
-        if (vEl) vEl.textContent = stats.tests > 0 ? stats.tests + '+' : '100+';
-    } catch {}
+        const tEl = document.getElementById('heroTests');
+        const qEl = document.getElementById('heroQuestions');
+        if (uEl) uEl.textContent = Number(stats.users || 0).toLocaleString('az-AZ') + '+';
+        if (vEl) vEl.textContent = Number(stats.videos || 0).toLocaleString('az-AZ') + '+';
+        if (tEl) tEl.textContent = Number(stats.tests || 0).toLocaleString('az-AZ') + '+';
+        if (qEl) qEl.textContent = Number(stats.questions || 0).toLocaleString('az-AZ') + '+';
+    } catch {
+        ['heroUsers', 'heroVideos', 'heroTests', 'heroQuestions'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = '—';
+        });
+    }
 }
 
 // Load news carousel from API
 async function loadNewsCarousel() {
+    const slides = document.getElementById('newsSlides');
+    const indicators = document.getElementById('newsIndicators');
+    if (!slides || !indicators) return;
     try {
         const { data: news } = await API.news.list({ limit: 5 });
-        const container = document.getElementById('newsCarousel');
-        if (!container || !news.length) return;
-        container.innerHTML = news.map(n => `
-            <div class="news-slide">
-                <span style="font-size:28px;">${n.emoji||'📰'}</span>
-                <div>
-                    <strong>${n.title}</strong>
-                    <span style="font-size:12px;color:rgba(255,255,255,.7);margin-left:8px;">${formatDate(n.createdAt)}</span>
-                </div>
-            </div>`).join('');
-    } catch {}
+        slides.replaceChildren();
+        indicators.replaceChildren();
+        if (!news.length) {
+            const empty = document.createElement('p');
+            empty.className = 'news-carousel-state';
+            empty.textContent = 'Hələ xəbər dərc edilməyib.';
+            slides.appendChild(empty);
+            totalNewsSlides = 0;
+            return;
+        }
+
+        news.forEach((item, index) => {
+            const slide = document.createElement('article');
+            slide.className = 'news-slide';
+            slide.style.cssText = 'min-width:100%;background:linear-gradient(135deg,#087f8c,#20a39e);color:white;padding:48px 72px;text-align:center;';
+            const emoji = document.createElement('div');
+            emoji.style.fontSize = '28px';
+            emoji.textContent = item.emoji || '📰';
+            const heading = document.createElement('h3');
+            heading.textContent = item.title || 'Xəbər';
+            const summary = document.createElement('p');
+            summary.textContent = String(item.text || '').slice(0, 180);
+            const link = document.createElement('a');
+            link.className = 'btn btn-secondary';
+            link.href = 'news.html';
+            link.textContent = 'Bütün xəbərlər';
+            slide.append(emoji, heading, summary, link);
+            slides.appendChild(slide);
+
+            const indicator = document.createElement('button');
+            indicator.type = 'button';
+            indicator.className = `indicator-dot${index === 0 ? ' active' : ''}`;
+            indicator.setAttribute('aria-label', `Xəbər ${index + 1}`);
+            indicator.addEventListener('click', () => goToSlide(index));
+            indicators.appendChild(indicator);
+        });
+        totalNewsSlides = news.length;
+        updateSlide();
+        startAutoRotate();
+    } catch (error) {
+        slides.replaceChildren();
+        const state = document.createElement('p');
+        state.className = 'news-carousel-state';
+        state.setAttribute('role', 'alert');
+        state.textContent = error.message || 'Xəbərləri yükləmək mümkün olmadı.';
+        slides.appendChild(state);
+        totalNewsSlides = 0;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     loadHeroStats();
     loadNewsCarousel();
+    loadPopularCourses();
     updateNavbar();
 });
-    
-    if (featured.length === 0) {
-        document.getElementById('newsCarousel').style.display = 'none';
-        return;
-    }
-    
-    totalNewsSlides = featured.length;
-    const slidesContainer = document.getElementById('newsSlides');
-    
-    slidesContainer.innerHTML = featured.map((n, index) => `
-        <div class="news-slide" style="min-width:100%;background:linear-gradient(135deg, var(--primary), var(--secondary));color:white;padding:60px 40px;text-align:center;position:relative;overflow:hidden;">
-            <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);"></div>
-            <div style="position:relative;z-index:1;">
-                <h3 style="font-size:28px;margin-bottom:15px;animation:fadeIn 0.8s ease-out;">${n.title}</h3>
-                <p style="opacity:0.9;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto;animation:fadeIn 1s ease-out 0.2s backwards;">${n.excerpt || n.content.substring(0, 150)}...</p>
-                <a href="news.html" class="btn btn-lg" style="background:white;color:var(--primary);animation:bounceIn 1s ease-out 0.4s backwards;">Daha Ətraflı</a>
-            </div>
-        </div>
-    `).join('');
-    
-    // Create indicators
-    const indicatorsContainer = document.getElementById('newsIndicators');
-    indicatorsContainer.innerHTML = featured.map((_, index) => `
-        <div class="indicator-dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${index})"></div>
-    `).join('');
-    
-    // Auto-rotate
-    startAutoRotate();
-}
 
 function nextNews() {
     currentNewsSlide = (currentNewsSlide + 1) % totalNewsSlides;
@@ -519,6 +526,7 @@ function goToSlide(index) {
 
 function updateSlide() {
     const slides = document.getElementById('newsSlides');
+    if (!slides || totalNewsSlides < 1) return;
     slides.style.transform = `translateX(-${currentNewsSlide * 100}%)`;
     
     // Update indicators
@@ -528,7 +536,10 @@ function updateSlide() {
 }
 
 function startAutoRotate() {
-    newsInterval = setInterval(nextNews, 5000);
+    clearInterval(newsInterval);
+    if (totalNewsSlides > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        newsInterval = setInterval(nextNews, 6000);
+    }
 }
 
 function resetAutoRotate() {
@@ -545,44 +556,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Notifications - static for now (user-specific notifications would need a separate API)
-async function loadNotifications() {
-    const user = await API.getCurrentUser();
-    if (!user) {
-        const panel = document.getElementById('notificationsPanel');
-        if (panel) panel.style.display = 'none';
-        return;
-    }
-    const notifications = [
-        { icon: '🎉', text: 'Sayta xoş gəldiniz!', time: 'İndi' },
-        { icon: '📝', text: 'Yeni sınaqlar mövcuddur', time: 'Bu gün' },
-    ];
-    const list = document.getElementById('notificationsList');
-    if (list) list.innerHTML = notifications.map(n => `
-        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;">
-            <span style="font-size:24px;">${n.icon}</span>
-            <div><p style="margin:0;font-size:14px;">${n.text}</p><small style="color:var(--gray);">${n.time}</small></div>
-        </div>`).join('');
-}
-
-// Popular Courses - static categories
-function loadPopularCourses() {
+// Popular courses use the same online video catalog as the lessons page.
+async function loadPopularCourses() {
     const categories = [
-        { name:'Həndəsə', emoji:'📐', bg:'#eef2ff', desc:'Müstəvi həndəsəsi, fəza, triqonometriya', topic:'hendese' },
-        { name:'Cəbr', emoji:'🔢', bg:'#ecfdf5', desc:'Tənliklər, bərabərsizliklər, funksiyalar', topic:'cebr' },
-        { name:'Analiz', emoji:'∫', bg:'#fffbeb', desc:'Limitlər, törəmə, inteqral', topic:'analiz' },
+        { name:'Həndəsə', emoji:'📐', bg:'#e6f4f1', desc:'Müstəvi həndəsəsi, fəza həndəsəsi, triqonometriya', topic:'hendese', aliases:['hendese','həndəsə'] },
+        { name:'Cəbr', emoji:'🔢', bg:'#fff3df', desc:'Tənliklər, bərabərsizliklər, funksiyalar', topic:'cebr', aliases:['cebr','cəbr'] },
+        { name:'Analiz', emoji:'∫', bg:'#e8f1f6', desc:'Limitlər, törəmə, inteqral', topic:'analiz', aliases:['analiz'] },
     ];
     const el = document.getElementById('popularCourses');
-    if (el) el.innerHTML = categories.map(c => `
+    if (!el) return;
+    try {
+        const { data: videos } = await API.videos.list({ limit: 100 });
+        const counts = categories.reduce((result, category) => {
+            result[category.topic] = videos.filter(video => category.aliases.includes(String(video.category || '').toLocaleLowerCase('az-AZ'))).length;
+            return result;
+        }, {});
+        el.innerHTML = categories.map(c => `
         <div class="feature-card">
             <div class="feature-icon" style="background:${c.bg};">${c.emoji}</div>
             <h3>${c.name}</h3>
             <p>${c.desc}</p>
             <div style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;">
-                <span class="badge badge-primary">Video Dərslər</span>
+                <span class="badge badge-primary">${counts[c.topic]} video</span>
                 <a href="videos.html?filter=${c.topic}" class="btn btn-primary btn-sm">Bax</a>
             </div>
         </div>`).join('');
+    } catch (error) {
+        el.innerHTML = `<p role="alert" style="grid-column:1/-1;text-align:center;color:var(--danger);">${escapeHtml(error.message || 'Kursları yükləmək mümkün olmadı.')}</p>`;
+    }
 }
 </script>
     <canvas id="mathCanvas"></canvas>
@@ -594,34 +595,3 @@ function loadPopularCourses() {
 <script src="js/app.js"></script>
 </body>
 </html>
-
-
-<script>
-// Scroll Reveal Animation
-function revealOnScroll() {
-    const reveals = document.querySelectorAll('.scroll-reveal');
-    
-    reveals.forEach(element => {
-        const windowHeight = window.innerHeight;
-        const elementTop = element.getBoundingClientRect().top;
-        const elementVisible = 150;
-        
-        if (elementTop < windowHeight - elementVisible) {
-            element.classList.add('revealed');
-        }
-    });
-}
-
-window.addEventListener('scroll', revealOnScroll);
-window.addEventListener('load', revealOnScroll);
-
-// Add scroll-reveal class to sections
-document.addEventListener('DOMContentLoaded', function() {
-    const sections = document.querySelectorAll('.section');
-    sections.forEach((section, index) => {
-        if (index > 0) { // Skip first section
-            section.classList.add('scroll-reveal');
-        }
-    });
-});
-</script>

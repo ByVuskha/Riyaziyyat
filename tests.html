@@ -110,8 +110,8 @@ async function initTestsPage() {
             time:       t.duration || 30,
             free:       !t.isPremium,
             desc:       t.description || '',
-            attempts:   0,
-            users:      0,
+            attempts:   t.attempts || 0,
+            users:      t.uniqueUsers || 0,
             data:       (t.questions || []).map(q => ({ q: q.question, opts: q.options, ans: q.correctAnswer })),
         }));
         renderTests();
@@ -193,7 +193,7 @@ function renderTests() {
     `}).join('');
 }
 
-let currentTest, currentQ = 0, score = 0;
+let currentTest, currentQ = 0, score = 0, answerSelections = [];
 
 async function startTest(id) {
     const user = await API.getCurrentUser();
@@ -202,10 +202,8 @@ async function startTest(id) {
         return;
     }
     
-    const allTests = getAllTests();
-    currentTest = allTests.find(t => t.id == id);
-    
-    if (!currentTest) {
+    const listing = getAllTests().find(test => String(test.id) === String(id));
+    if (!listing) {
         showNotification('Sınaq tapılmadı!', 'error');
         return;
     }
@@ -217,9 +215,25 @@ async function startTest(id) {
             return;
         }
     }
+
+    try {
+        const test = await API.tests.get(id);
+        currentTest = {
+            ...listing,
+            id: test.id,
+            title: test.title,
+            questions: test.questions.length,
+            data: test.questions.map(question => ({ q: question.question, opts: question.options })),
+        };
+    } catch (error) {
+        if (error.status === 403) showPremiumPromptTest();
+        else showNotification(error.message || 'Sınağı açmaq mümkün olmadı.', 'error');
+        return;
+    }
     
     currentQ = 0;
     score = 0;
+    answerSelections = new Array(currentTest.questions).fill(null);
     showQuestion();
 }
 
@@ -295,39 +309,27 @@ function selectTestPlan(el, planId, months, price) {
     window._selectedTestPlan = { planId, months, price };
 }
 
-function submitTestPremiumRequest() {
+async function submitTestPremiumRequest() {
     const plan = window._selectedTestPlan;
     if (!plan) return;
     
-    const user = getCurrentUser();
+    const user = await API.getCurrentUser();
     if (!user) { window.location.href = 'login.html'; return; }
     
     const btn = document.getElementById('testPromptBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
     
-    const allUsers = Storage.get('allUsers') || [];
-    const idx = allUsers.findIndex(u => u.id === user.id);
-    if (idx !== -1) {
-        allUsers[idx].premiumRequestedAt = new Date().toISOString();
-        allUsers[idx].requestedPlan = plan;
-        Storage.set('allUsers', allUsers);
-        user.premiumRequestedAt = allUsers[idx].premiumRequestedAt;
-        Storage.set('currentUser', user);
-    }
-    
-    const requests = Storage.get('premiumRequests') || [];
-    requests.unshift({
-        id: Date.now(), userId: user.id, userName: user.name, userEmail: user.email,
-        plan: plan.planId, months: plan.months, price: plan.price,
-        requestedAt: new Date().toISOString(), status: 'pending',
-        date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ')
-    });
-    Storage.set('premiumRequests', requests);
-    
-    setTimeout(() => {
+    try {
+        const request = await API.premium.request(plan.planId || 'premium6');
+        user.premiumRequestedAt = request.requestedAt;
+        user.requestedPlan = plan;
+        API.setCachedUser(user);
         document.getElementById('premiumPromptOverlay')?.remove();
         showNotification('✅ Müraciətiniz göndərildi! Admin tərəfindən yoxlanılacaq.', 'success');
-    }, 600);
+    } catch (error) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Müraciət et'; }
+        showNotification(error.message || 'Müraciəti göndərmək mümkün olmadı.', 'error');
+    }
 }
 
 /* ── Quiz timer state ────────────────────────────────────────────────── */
@@ -458,12 +460,8 @@ function showQuestion() {
                 /* Auto-advance: treat as wrong answer */
                 const btns = document.querySelectorAll('#options button');
                 btns.forEach(b => b.disabled = true);
-                const q2 = currentTest.data[currentQ];
-                if (typeof AnimateAnswer === 'function' && btns[q2.ans]) {
-                    AnimateAnswer(btns[q2.ans], 'correct');
-                }
                 const fb = document.getElementById('feedback');
-                if (fb) fb.innerHTML = '<span style="color:#f59e0b;">⏰ Vaxt bitdi!</span>';
+                if (fb) fb.innerHTML = '<span style="color:#f59e0b;">Vaxt bitdi. Cavab qeydə alınmadı.</span>';
                 const nb = document.getElementById('nextBtn');
                 if (nb) nb.style.display = 'block';
             }
@@ -472,35 +470,14 @@ function showQuestion() {
 }
 
 function selectAnswer(idx) {
-    const q    = currentTest.data[currentQ];
     const btns = document.querySelectorAll('#options button');
     btns.forEach(b => b.disabled = true);
 
     clearInterval(_quizTimerTick);
-
-    const isCorrect = idx === q.ans;
+    answerSelections[currentQ] = idx;
     const fb = document.getElementById('feedback');
-
-    /* Animate the chosen option */
-    if (typeof AnimateAnswer === 'function') {
-        AnimateAnswer(btns[idx], isCorrect ? 'correct' : 'wrong');
-        if (!isCorrect) AnimateAnswer(btns[q.ans], 'correct');
-    } else {
-        /* Fallback plain style */
-        btns[idx].style.background    = isCorrect ? '#ecfdf5' : '#fef2f2';
-        btns[idx].style.borderColor   = isCorrect ? '#10b981' : '#ef4444';
-        if (!isCorrect) {
-            btns[q.ans].style.background  = '#ecfdf5';
-            btns[q.ans].style.borderColor = '#10b981';
-        }
-    }
-
-    if (isCorrect) {
-        score++;
-        if (fb) fb.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Düzgün!</span>';
-    } else {
-        if (fb) fb.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Səhv</span>';
-    }
+    if (btns[idx]) btns[idx].classList.add('selected');
+    if (fb) fb.innerHTML = '<span style="color:#0f766e;">Cavab qeydə alındı.</span>';
 
     const nb = document.getElementById('nextBtn');
     if (nb) nb.style.display = 'block';
@@ -518,41 +495,26 @@ function nextQuestion() {
     }
 }
 
-function showResult() {
-    const pct = Math.round((score / currentTest.questions) * 100);
-    // 100-ballıq sistem: neçə sualdan neçəsi düzgün → ball
-    const ballScore = pct; // 100-ballıq (faiz ilə eyni: 10/10=100, 8/10=80 ...)
-    const user = getCurrentUser();
-
-    // Award xal (points) — duplicate-safe
-    let earnedPoints = 0;
-    const pointsData = typeof getUserPoints === 'function' ? getUserPoints(user.id) : null;
-    const alreadyEarned = pointsData && (pointsData.completedTests || []).includes(String(currentTest.id));
-    if (typeof awardTestPoints === 'function') {
-        earnedPoints = awardTestPoints(currentTest.title, score, currentTest.questions, currentTest.id);
+async function showResult() {
+    const user = await API.getCurrentUser();
+    if (!user) {
+        showNotification('Nəticəni saxlamaq üçün hesabınıza daxil olun.', 'warning');
+        return;
     }
 
-    // ── 100-ballıq nəticəni profildə saxla ─────────────────────────────────
-    saveTestScore(user, currentTest, score, ballScore);
-
-    // Save full test result record
-    saveTestResult({
-        testId:       currentTest.id,
-        testTitle:    currentTest.title,
-        userId:       user.id,
-        userName:     user.name,
-        userEmail:    user.email,
-        score:        score,
-        total:        currentTest.questions,
-        percentage:   pct,
-        ballScore:    ballScore,
-        earnedPoints: earnedPoints,
-        date:         new Date().toISOString(),
-        timestamp:    Date.now()
-    });
-
-    // Update attempt / unique-user stats
-    updateTestStats(currentTest.id);
+    let result;
+    try {
+        result = await API.points.awardTest(currentTest.id, answerSelections);
+    } catch (error) {
+        showNotification(error.message || 'Nəticəni serverdə hesablamaq mümkün olmadı.', 'error');
+        return;
+    }
+    score = result.score;
+    const pct = result.ballScore;
+    const ballScore = result.ballScore;
+    const earnedPoints = result.earnedPoints || 0;
+    const alreadyEarned = result.alreadyCompleted;
+    window.dispatchEvent(new CustomEvent('points:updated', { detail: { userId: user.id } }));
 
     // Grade label (100-ballıq)
     const grade = ballScore === 100 ? '🏆 Mükəmməl'
@@ -657,85 +619,6 @@ function showResult() {
     }
 }
 
-// ── 100-ballıq nəticəni userPoints.testScores və allUsers-da saxla ────────────
-function saveTestScore(user, test, rawScore, ballScore) {
-    if (!user || !test) return;
-
-    // 1. userPoints.testScores — yalnız ən yüksək balı saxla
-    if (typeof getUserPoints === 'function' && typeof saveUserPoints === 'function') {
-        const data = getUserPoints(user.id);
-        if (!data.testScores) data.testScores = {};
-        const key = String(test.id);
-        const prev = data.testScores[key];
-        // Həmişə saxla; əgər daha yüksəkdirsə üzərinə yaz
-        if (!prev || ballScore > prev.ballScore) {
-            data.testScores[key] = {
-                testId:    key,
-                testTitle: test.title,
-                ballScore: ballScore,
-                rawScore:  rawScore,
-                total:     test.questions,
-                date:      new Date().toISOString().slice(0, 10),
-                timestamp: Date.now()
-            };
-            // saveUserPoints həm localStorage-a həm Upstash-a yazır + points:updated atır
-            saveUserPoints(user.id, data);
-        }
-    }
-
-    // 2. allUsers — testScores array (ən son 30 nəticə, best-per-test)
-    const allUsers = Storage.get('allUsers') || [];
-    const ui = allUsers.findIndex(u => String(u.id) === String(user.id));
-    if (ui !== -1) {
-        if (!Array.isArray(allUsers[ui].testScores)) allUsers[ui].testScores = [];
-        const existing = allUsers[ui].testScores.findIndex(s => String(s.testId) === String(test.id));
-        const entry = {
-            testId:    String(test.id),
-            testTitle: test.title,
-            ballScore: ballScore,
-            rawScore:  rawScore,
-            total:     test.questions,
-            date:      new Date().toISOString().slice(0, 10),
-            timestamp: Date.now()
-        };
-        if (existing !== -1) {
-            // Yalnız ən yüksəyi saxla
-            if (ballScore >= allUsers[ui].testScores[existing].ballScore) {
-                allUsers[ui].testScores[existing] = entry;
-            }
-        } else {
-            allUsers[ui].testScores.unshift(entry);
-            if (allUsers[ui].testScores.length > 30) allUsers[ui].testScores.length = 30;
-        }
-        allUsers[ui].lastTestScore  = ballScore;
-        allUsers[ui].lastTestTitle  = test.title;
-        allUsers[ui].lastTestDate   = new Date().toISOString().slice(0, 10);
-        Storage.set('allUsers', allUsers);
-    }
-
-    // 3. currentUser-u da yenilə ki, dashboard dərhal görsün
-    const cu = Storage.get('currentUser');
-    if (cu && String(cu.id) === String(user.id)) {
-        if (!Array.isArray(cu.testScores)) cu.testScores = [];
-        const ex = cu.testScores.findIndex(s => String(s.testId) === String(test.id));
-        const entry = {
-            testId: String(test.id), testTitle: test.title,
-            ballScore, rawScore, total: test.questions,
-            date: new Date().toISOString().slice(0,10), timestamp: Date.now()
-        };
-        if (ex !== -1) {
-            if (ballScore >= cu.testScores[ex].ballScore) cu.testScores[ex] = entry;
-        } else {
-            cu.testScores.unshift(entry);
-            if (cu.testScores.length > 30) cu.testScores.length = 30;
-        }
-        cu.lastTestScore = ballScore;
-        cu.lastTestTitle = test.title;
-        cu.lastTestDate  = new Date().toISOString().slice(0,10);
-        Storage.set('currentUser', cu);
-    }
-}
-
 function closeQuiz() {
     clearInterval(_quizTimerTick);
     if (_quizTimer) { _quizTimer.destroy(); _quizTimer = null; }
@@ -746,38 +629,6 @@ function closeQuiz() {
 function closeResult() {
     const modal = document.getElementById('resultModal');
     if (modal) modal.remove();
-}
-
-// Sınaq nəticəsini saxla
-function saveTestResult(result) {
-    const results = Storage.get('testResults') || [];
-    results.push(result);
-    Storage.set('testResults', results);
-    console.log('✅ Nəticə saxlanıldı:', result);
-}
-
-// Sınaq statistikasını yenilə
-function updateTestStats(testId) {
-    const stats = Storage.get('testStats') || {};
-
-    if (!stats[testId]) {
-        stats[testId] = { testId, totalAttempts: 0, uniqueUsers: [] };
-    }
-
-    stats[testId].totalAttempts++;
-
-    // uniqueUsers həmişə array kimi saxla
-    if (!Array.isArray(stats[testId].uniqueUsers)) {
-        stats[testId].uniqueUsers = [];
-    }
-
-    const user = getCurrentUser();
-    if (user && user.email && !stats[testId].uniqueUsers.includes(user.email)) {
-        stats[testId].uniqueUsers.push(user.email);
-    }
-
-    Storage.set('testStats', stats);
-    console.log('📊 Statistika yeniləndi:', stats[testId]);
 }
 
 renderTests();

@@ -18,15 +18,15 @@
   /* ── Constants ─────────────────────────────────────────────────────────── */
   const SYMBOLS = ['π', '∑', '√', '∞', '∫', 'sin', 'cos', 'Δ', 'θ', 'λ', '÷', '×', 'f(x)', 'dx', 'lim', 'α', 'β', 'σ', '∂', '≈'];
   const COLORS  = [
-    'rgba(67, 56, 202,',   // indigo
-    'rgba(124, 58, 237,',  // purple
-    'rgba(6, 182, 212,',   // cyan
-    'rgba(245, 158, 11,',  // gold
-    'rgba(16, 185, 129,',  // emerald
+    'rgba(8, 127, 140,',   // teal
+    'rgba(32, 163, 158,',  // turquoise
+    'rgba(14, 116, 144,',  // blue
+    'rgba(232, 155, 72,',  // amber
+    'rgba(74, 124, 89,',   // green
   ];
 
-  const GRID_COLOR_LIGHT = 'rgba(67, 56, 202, 0.06)';
-  const GRID_COLOR_DARK  = 'rgba(99, 102, 241, 0.08)';
+  const GRID_COLOR_LIGHT = 'rgba(8, 127, 140, 0.07)';
+  const GRID_COLOR_DARK  = 'rgba(45, 212, 191, 0.09)';
   const GRID_STEP        = 60;      // px between grid lines
   const MAX_FPS          = 40;      // cap framerate (battery friendly)
   const MIN_FPS_MOBILE   = 25;
@@ -176,7 +176,7 @@
 
     // Draw intersection dots
     const dotAlpha = isDark ? 0.08 : 0.05;
-    ctx.fillStyle = `rgba(67, 56, 202, ${dotAlpha})`;
+    ctx.fillStyle = `rgba(8, 127, 140, ${dotAlpha})`;
     for (let x = ox - GRID_STEP; x < W + GRID_STEP; x += GRID_STEP) {
       for (let y = oy - GRID_STEP; y < H + GRID_STEP; y += GRID_STEP) {
         ctx.beginPath();
@@ -202,7 +202,7 @@
         const maxDist = isMobile ? 100 : 140;
         if (dist < maxDist) {
           const a = (1 - dist / maxDist) * 0.07;
-          ctx.strokeStyle = `rgba(67, 56, 202, ${a})`;
+          ctx.strokeStyle = `rgba(8, 127, 140, ${a})`;
           ctx.lineWidth = 0.8;
           ctx.beginPath();
           ctx.moveTo(p1.x, p1.y);

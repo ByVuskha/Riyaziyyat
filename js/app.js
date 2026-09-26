@@ -21,63 +21,24 @@
   else document.documentElement.removeAttribute('data-theme');
 })();
 
-(function initStorageHelper() {
-  if (!window.Storage) {
-    window.Storage = {
-      get(key) {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : null;
-        } catch {
-          return null;
-        }
-      },
-      set(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
-        return value;
-      },
-      remove(key) {
-        localStorage.removeItem(key);
-      }
-    };
-  }
-})();
-
 (function initMathBackground() {
   if (document.getElementById('math-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'math-theme-styles';
   style.textContent = `
     :root {
-      --math-bg-1: rgba(76, 110, 245, 0.12);
-      --math-bg-2: rgba(141, 92, 255, 0.10);
-      --math-bg-3: rgba(45, 212, 191, 0.10);
+      --math-bg-1: #eff8f6;
+      --math-bg-2: #f7faf6;
     }
     body {
-      background:
-        radial-gradient(circle at top left, var(--math-bg-1), transparent 28%),
-        radial-gradient(circle at bottom right, var(--math-bg-2), transparent 26%),
-        linear-gradient(135deg, #f7f9ff 0%, #edf4ff 48%, #f9fafb 100%);
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px),
-        radial-gradient(circle at center, rgba(15,118,110,0.14) 0, transparent 35%);
-      background-size: 36px 36px, 36px 36px, 100% 100%;
-      pointer-events: none;
-      z-index: 0;
+      background: linear-gradient(135deg, var(--math-bg-1), var(--math-bg-2) 58%, #f8faf9);
+      background-attachment: fixed;
     }
     .navbar, .hero, .section, .card, .footer, .admin-section, .stat-box {
       position: relative;
       z-index: 1;
     }
-    .logo-mark {
-      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.2);
-    }
+    #mathCanvas { opacity: .72; }
   `;
   document.head.appendChild(style);
 })();
@@ -100,6 +61,21 @@ function toggleDarkMode() {
 // ════════════════════════════════════════════════════════
 //  Page Auth Guards  (call at top of page-specific script)
 // ════════════════════════════════════════════════════════
+
+function getCurrentUser() {
+  return API.getCachedUser();
+}
+
+function isLoggedIn() {
+  return Boolean(getCurrentUser());
+}
+
+async function updateUser(updates) {
+  const user = await API.getCurrentUser();
+  if (!user) throw new Error('Giriş tələb olunur');
+  const updated = await API.users.update(user.id, updates);
+  return API.setCachedUser(updated.user || updated);
+}
 
 /** Redirect to login if not authenticated */
 async function requireLogin(redirectBack = true) {
@@ -131,8 +107,127 @@ async function redirectIfLoggedIn(dest = 'dashboard.html') {
 // ════════════════════════════════════════════════════════
 //  Navbar dynamic update
 // ════════════════════════════════════════════════════════
+function renderSharedNavigation(user) {
+  let inner = document.querySelector('.navbar-inner');
+  if (!inner) {
+    const adminHeader = document.querySelector('.admin-header');
+    const standaloneHost = adminHeader || document.querySelector('.auth-page, .error-container');
+    if (!standaloneHost) return;
+    inner = document.querySelector('.standalone-shared-nav') || standaloneHost.querySelector('.standalone-shared-nav');
+    if (!inner) {
+      inner = document.createElement('div');
+      inner.className = 'standalone-shared-nav';
+      if (adminHeader) adminHeader.appendChild(inner);
+      else document.body.prepend(inner);
+    }
+  }
+
+  let actions = inner.querySelector('.navbar-actions');
+  if (!actions) {
+    actions = document.createElement('div');
+    actions.className = 'navbar-actions';
+    inner.appendChild(actions);
+  }
+
+  let menu = inner.querySelector('.navbar-menu');
+  if (!menu) {
+    menu = document.createElement('nav');
+    menu.className = 'navbar-menu';
+    inner.insertBefore(menu, actions);
+  }
+
+  let toggle = actions.querySelector('.hamburger-btn');
+  if (!toggle) {
+    toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'hamburger-btn';
+    toggle.setAttribute('aria-label', 'Naviqasiya menyusu');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
+    actions.prepend(toggle);
+  }
+
+  const groups = [
+    { title: 'Öyrənmə', links: [['Video dərslər', 'videos.html'], ['Sınaqlar', 'tests.html'], ['Müəllimlər', 'teachers.html']] },
+    { title: 'Platforma', links: [['Ana səhifə', 'index.html'], ['Xəbərlər', 'news.html'], ['Uğurlar', 'success.html'], ['Yardım', 'faq.html']] },
+    { title: 'Hesab', links: user
+      ? [['Kabinet', 'dashboard.html'], ['Profili düzəlt', 'profile-edit.html'], ['Ödənişlər', 'payment.html']]
+      : [['Daxil ol', 'login.html'], ['Qeydiyyat', 'register.html']] },
+  ];
+
+  if (user?.role === 'admin' || user?.userType === 'teacher') {
+    const links = [['Müəllim paneli', 'teacher-panel.html']];
+    if (user.role === 'admin') links.unshift(['Admin paneli', 'admin.html'], ['Sınaq redaktəsi', 'test-editor.html'], ['Xəbər əlavə et', 'news-add.html'], ['Video əlavə et', 'video-upload.html']);
+    groups.push({ title: 'İdarəetmə', links });
+  }
+
+  const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+  menu.setAttribute('aria-label', 'Əsas naviqasiya');
+  menu.innerHTML = groups.map(group => `
+    <section class="nav-group">
+      <h3>${group.title}</h3>
+      ${group.links.map(([label, href]) => `
+        <a href="${href}"${href === currentPath ? ' class="active" aria-current="page"' : ''}>${label}</a>
+      `).join('')}
+    </section>`).join('');
+  toggle.setAttribute('aria-controls', 'sharedNavigation');
+  menu.id = 'sharedNavigation';
+
+  if (!toggle.dataset.sharedNavReady) {
+    toggle.dataset.sharedNavReady = 'true';
+    toggle.addEventListener('click', () => {
+      const open = menu.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+      const icon = toggle.querySelector('i');
+      if (icon) icon.className = open ? 'fas fa-times' : 'fas fa-bars';
+    });
+    menu.addEventListener('click', event => {
+      if (!event.target.closest('a')) return;
+      menu.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      const icon = toggle.querySelector('i');
+      if (icon) icon.className = 'fas fa-bars';
+    });
+  }
+
+  if (!document.documentElement.dataset.sharedNavDismissReady) {
+    document.documentElement.dataset.sharedNavDismissReady = 'true';
+    document.addEventListener('click', event => {
+      const openMenu = document.getElementById('sharedNavigation');
+      const button = document.querySelector('.hamburger-btn');
+      if (!openMenu || openMenu.contains(event.target) || button?.contains(event.target)) return;
+      openMenu.classList.remove('open');
+      button?.setAttribute('aria-expanded', 'false');
+      const icon = button?.querySelector('i');
+      if (icon) icon.className = 'fas fa-bars';
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const openMenu = document.getElementById('sharedNavigation');
+      const button = document.querySelector('.hamburger-btn');
+      openMenu?.classList.remove('open');
+      button?.setAttribute('aria-expanded', 'false');
+      const icon = button?.querySelector('i');
+      if (icon) icon.className = 'fas fa-bars';
+    });
+  }
+}
+
+let dailyLoginRequested = false;
+
 async function updateNavbar() {
   const user = await API.getCurrentUser();
+  renderSharedNavigation(user);
+  if (user && user.role !== 'admin' && !dailyLoginRequested && API.points) {
+    dailyLoginRequested = true;
+    API.points.awardDailyLogin()
+      .then(result => {
+        if (result.earnedPoints) {
+          window.dispatchEvent(new CustomEvent('points:updated', { detail: { userId: user.id } }));
+        }
+      })
+      .catch(() => {});
+  }
 
   const guestEl  = document.getElementById('guestButtons');
   const userEl   = document.getElementById('userButtons');
@@ -228,16 +323,8 @@ function isPremiumActive(user) {
 //  Auto-init on DOMContentLoaded
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  renderSharedNavigation(API.getCachedUser());
   updateNavbar();
-
-  // Active nav link highlighting
-  const path = window.location.pathname.split('/').pop() || 'index.html';
-  document.querySelectorAll('.navbar-menu a').forEach(a => {
-    const href = a.getAttribute('href') || '';
-    if (href === path || (path === '' && href === 'index.html')) {
-      a.classList.add('active');
-    }
-  });
 
   // Wire dark-mode toggles
   document.querySelectorAll('.dark-mode-toggle').forEach(btn => {
@@ -247,20 +334,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
   });
 
-  // Wire hamburger menu
-  const hamburger = document.querySelector('.hamburger-btn');
-  const navMenu   = document.querySelector('.navbar-menu');
-  if (hamburger && navMenu) {
-    hamburger.addEventListener('click', () => {
-      navMenu.classList.toggle('open');
-      const icon = hamburger.querySelector('i');
-      if (icon) icon.className = navMenu.classList.contains('open') ? 'fas fa-times' : 'fas fa-bars';
-    });
-    // Close menu when a link is clicked
-    navMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-      navMenu.classList.remove('open');
-      const icon = hamburger.querySelector('i');
-      if (icon) icon.className = 'fas fa-bars';
-    }));
-  }
 });
