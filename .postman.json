@@ -5,11 +5,11 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "Bizim Riyaziyyat üçün tam API collection-u. Auth, Tests, News, Users, Teacher Tests, PDF, PDF Requests, Premium, Payments, Stats endpoint-lərini əhatə edir. Son yenilik: 2026-09-23 — vercel.json rewrite-larda PDFs, PDF Download, PDF Requests route-ları silinmişdi, bərpa edildi; CORS origin bizimriyaziyyat.work.gd-ə düzəldildi.",
+      "description": "Bizim Riyaziyyat üçün tam API collection-u. Auth, Tests, News, Users, Teacher Tests, PDF, PDF Requests, Premium, Payments, Stats endpoint-lərini əhatə edir. Son yenilik: 2026-09-27 — Auth cookie-based-dir (Bearer deyil): login/register Set-Cookie ilə br_session cookie qaytarır, bütün auth header-lər silindi, Postman cookie jar istifadə edir; base_url port 3000-ə düzəldildi; vercel.json-a /api/pdfs və /api/pdf-requests rewrite-ları əlavə edildi; logout Set-Cookie testi düzəldildi.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
-      { "key": "base_url",       "value": "http://localhost:8080/api", "type": "string" },
+      { "key": "base_url",       "value": "http://localhost:3000/api", "type": "string" },
       { "key": "token",          "value": "",                          "type": "string" },
       { "key": "userId",         "value": "1",                         "type": "string" },
       { "key": "testId",         "value": "",                          "type": "string" },
@@ -38,11 +38,21 @@
             "event": [{
               "listen": "test",
               "script": { "exec": [
+                "// Auth is cookie-based: JWT is set via Set-Cookie (br_session), NOT in response body.",
+                "// Postman's cookie jar handles subsequent requests automatically.",
                 "pm.test('Status 200 or 201', function () {",
                 "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                 "});",
                 "const json = pm.response.json();",
-                "if (json.token) pm.collectionVariables.set('token', json.token);"
+                "pm.test('User object returned', function () {",
+                "  pm.expect(json.user).to.be.an('object');",
+                "});",
+                "pm.test('User email present', function () {",
+                "  pm.expect(json.user.email).to.be.a('string');",
+                "});",
+                "pm.test('Password not exposed', function () {",
+                "  pm.expect(json.user).to.not.have.property('password');",
+                "});"
               ]}
             }]
           },
@@ -80,13 +90,20 @@
             "event": [{
               "listen": "test",
               "script": { "exec": [
+                "// Auth is cookie-based: JWT is set via Set-Cookie (br_session), NOT in response body.",
+                "// Postman's cookie jar handles all subsequent authenticated requests automatically.",
                 "pm.test('Login successful', function () {",
                 "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                 "});",
                 "const json = pm.response.json();",
-                "if (json.token) pm.collectionVariables.set('token', json.token);",
-                "pm.test('Token returned', function () {",
-                "  pm.expect(json.token).to.be.a('string');",
+                "pm.test('User object returned', function () {",
+                "  pm.expect(json.user).to.be.an('object');",
+                "});",
+                "pm.test('User email present', function () {",
+                "  pm.expect(json.user.email).to.be.a('string');",
+                "});",
+                "pm.test('Password not exposed', function () {",
+                "  pm.expect(json.user).to.not.have.property('password');",
                 "});"
               ]}
             }]
@@ -115,7 +132,7 @@
             "name": "Get Current User",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/auth/me"
             },
             "event": [{
@@ -154,7 +171,7 @@
             "name": "Logout",
             "request": {
               "method": "POST",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/auth/logout"
             },
             "event": [{
@@ -167,9 +184,12 @@
                 "pm.test('ok: true returned', function () {",
                 "  pm.expect(json.ok).to.equal(true);",
                 "});",
-                "pm.test('Set-Cookie clears token', function () {",
-                "  const cookie = pm.response.headers.get('Set-Cookie') || '';",
-                "  pm.expect(cookie).to.include('token=');",
+                "// Set-Cookie header is HttpOnly and not readable via pm.response.headers in Postman.",
+                "// Verify the session cookie is cleared by checking the cookie jar instead.",
+                "pm.test('br_session cookie cleared or absent', function () {",
+                "  const cookie = pm.cookies.get('br_session');",
+                "  // After logout, cookie value should be empty string or undefined",
+                "  pm.expect(cookie == null || cookie === '').to.be.true;",
                 "});"
               ]}
             }]
@@ -184,7 +204,7 @@
             "name": "Get All Tests",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/tests"
             },
             "event": [{
@@ -209,7 +229,7 @@
             "name": "Get All Tests — Filtered by Category",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/tests?category=Cəbr&page=1&limit=10",
                 "query": [
@@ -239,8 +259,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/tests",
               "body": {
@@ -270,8 +289,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/tests",
               "body": {
@@ -292,7 +310,7 @@
             "name": "Get Test by ID",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/tests/{{testId}}"
             },
             "event": [{
@@ -315,8 +333,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/tests/{{testId}}",
               "body": {
@@ -343,7 +360,7 @@
             "name": "Delete Test (Admin)",
             "request": {
               "method": "DELETE",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/tests/{{testId}}"
             },
             "event": [{
@@ -371,7 +388,7 @@
             "name": "Get All News",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/news"
             },
             "event": [{
@@ -391,8 +408,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/news",
               "body": {
@@ -415,7 +431,7 @@
             "name": "Get News by ID",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/news/{{newsId}}"
             },
             "event": [{
@@ -432,8 +448,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/news/{{newsId}}",
               "body": {
@@ -454,7 +469,7 @@
             "name": "Increment News View",
             "request": {
               "method": "POST",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/news/{{newsId}}?action=view",
                 "query": [{ "key": "action", "value": "view" }]
@@ -481,7 +496,7 @@
             "name": "Delete News (Admin)",
             "request": {
               "method": "DELETE",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/news/{{newsId}}"
             },
             "event": [{
@@ -503,7 +518,7 @@
             "name": "Get All Users (Admin)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/users"
             },
             "event": [{
@@ -522,7 +537,7 @@
             "name": "Get All Users — Search by Name",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/users?q=Admin",
                 "query": [{ "key": "q", "value": "Admin" }]
@@ -541,7 +556,7 @@
             "name": "Get User by ID",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/users/{{userId}}"
             },
             "event": [{
@@ -564,8 +579,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/users/{{userId}}",
               "body": {
@@ -596,8 +610,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/users/{{userId}}",
               "body": {
@@ -618,7 +631,7 @@
             "name": "Delete User (Admin)",
             "request": {
               "method": "DELETE",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/users/{{userId}}"
             },
             "event": [{
@@ -640,7 +653,7 @@
             "name": "Delete User — Non-Admin (should 403)",
             "request": {
               "method": "DELETE",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/users/999"
             },
             "event": [{
@@ -722,8 +735,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdfs",
               "body": {
@@ -753,8 +765,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdfs",
               "body": {
@@ -824,7 +835,7 @@
             "name": "Download Paid PDF — No Approved Request (should 403)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/pdfs/{{pdfId}}/download"
             },
             "event": [{
@@ -842,7 +853,7 @@
             "name": "Delete PDF (Admin)",
             "request": {
               "method": "DELETE",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/pdfs/{{pdfId}}"
             },
             "event": [{
@@ -870,7 +881,7 @@
             "name": "Get My PDF Requests (User)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/pdf-requests"
             },
             "event": [{
@@ -889,7 +900,7 @@
             "name": "Get All PDF Requests (Admin)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/pdf-requests?status=pending",
                 "query": [{ "key": "status", "value": "pending" }]
@@ -917,8 +928,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdf-requests",
               "body": {
@@ -951,8 +961,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdf-requests",
               "body": {
@@ -974,8 +983,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdf-requests",
               "body": {
@@ -1006,8 +1014,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/pdf-requests",
               "body": {
@@ -1044,7 +1051,7 @@
             "name": "Get My Premium Requests (User)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/premium"
             },
             "event": [{
@@ -1064,8 +1071,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/premium",
               "body": {
@@ -1103,8 +1109,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/premium",
               "body": {
@@ -1126,8 +1131,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/premium",
               "body": {
@@ -1149,8 +1153,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/premium",
               "body": {
@@ -1179,8 +1182,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/premium",
               "body": {
@@ -1214,8 +1216,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/teacher-tests",
               "body": {
@@ -1245,8 +1246,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/teacher-tests",
               "body": {
@@ -1267,7 +1267,7 @@
             "name": "Get My Submitted Tests (own — no admin)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/teacher-tests"
             },
             "event": [{
@@ -1287,7 +1287,7 @@
             "name": "Admin — Get All Pending Teacher Tests",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/teacher-tests?status=pending",
                 "query": [{ "key": "status", "value": "pending" }]
@@ -1315,8 +1315,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/teacher-tests",
               "body": {
@@ -1349,8 +1348,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/teacher-tests",
               "body": {
@@ -1381,8 +1379,7 @@
             "request": {
               "method": "PUT",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/users/{{userId}}",
               "body": {
@@ -1415,7 +1412,7 @@
             "name": "Get My Payments (User)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": "{{base_url}}/payments"
             },
             "event": [{
@@ -1440,7 +1437,7 @@
             "name": "Get All Payments — Paginated (Admin)",
             "request": {
               "method": "GET",
-              "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+              "header": [],
               "url": {
                 "raw": "{{base_url}}/payments?page=1&limit=50",
                 "query": [
@@ -1467,8 +1464,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/payments",
               "body": {
@@ -1500,8 +1496,7 @@
             "request": {
               "method": "POST",
               "header": [
-                { "key": "Content-Type",  "value": "application/json" },
-                { "key": "Authorization", "value": "Bearer {{token}}" }
+                { "key": "Content-Type",  "value": "application/json" }
               ],
               "url": "{{base_url}}/payments",
               "body": {
@@ -1611,7 +1606,7 @@
   "environment": {
     "name": "Bizim Riyaziyyat - Local",
     "values": [
-      { "key": "base_url", "value": "http://localhost:8080/api", "enabled": true },
+      { "key": "base_url", "value": "http://localhost:3000/api", "enabled": true },
       { "key": "token",    "value": "",                          "enabled": true }
     ]
   },

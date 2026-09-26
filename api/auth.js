@@ -21,7 +21,12 @@ const ADMIN_FALLBACK = {
 };
 
 function parseUsers(value) {
-  return Array.isArray(value) ? value : (value ? JSON.parse(value) : []);
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return []; }
+  }
+  return [];
 }
 
 async function login(req, res) {
@@ -138,10 +143,15 @@ function logout(req, res) {
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
-  const action = req.query?.action;
-  if (action === 'login') return login(req, res);
-  if (action === 'register') return register(req, res);
-  if (action === 'me') return me(req, res);
-  if (action === 'logout') return logout(req, res);
-  return res.status(404).json({ error: 'Auth endpoint tapılmadı' });
+  try {
+    const action = req.query?.action;
+    if (action === 'login') return await login(req, res);
+    if (action === 'register') return await register(req, res);
+    if (action === 'me') return await me(req, res);
+    if (action === 'logout') return logout(req, res);
+    return res.status(404).json({ error: 'Auth endpoint tapılmadı' });
+  } catch (err) {
+    console.error('[auth] unhandled error:', err);
+    return res.status(500).json({ error: 'Server xətası baş verdi', detail: err.message });
+  }
 };

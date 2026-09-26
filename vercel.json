@@ -25,6 +25,10 @@
     { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },
     { "source": "/api/premium",              "destination": "/api/premium/index.js" },
     { "source": "/api/payments",             "destination": "/api/payments/index.js" },
+    { "source": "/api/pdfs/:id/download",    "destination": "/api/pdfs/[id]/index.js?download=1" },
+    { "source": "/api/pdfs/:id",             "destination": "/api/pdfs/[id]/index.js?id=:id" },
+    { "source": "/api/pdfs",                 "destination": "/api/pdfs/index.js" },
+    { "source": "/api/pdf-requests",         "destination": "/api/pdf-requests/index.js" },
     { "source": "/api/stats",                "destination": "/api/points.js?view=stats" },
     { "source": "/api/points",               "destination": "/api/points.js" }
   ],
