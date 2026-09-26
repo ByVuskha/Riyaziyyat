@@ -1,10 +1,10 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/auth/login",           "destination": "/api/auth/login.js" },
-    { "source": "/api/auth/register",        "destination": "/api/auth/register.js" },
-    { "source": "/api/auth/logout",          "destination": "/api/auth/logout.js" },
-    { "source": "/api/auth/me",              "destination": "/api/auth/me.js" },
+    { "source": "/api/auth/login",           "destination": "/api/auth.js?action=login" },
+    { "source": "/api/auth/register",        "destination": "/api/auth.js?action=register" },
+    { "source": "/api/auth/logout",          "destination": "/api/auth.js?action=logout" },
+    { "source": "/api/auth/me",              "destination": "/api/auth.js?action=me" },
 
     { "source": "/api/tests/:id",            "destination": "/api/tests/index.js?id=:id" },
     { "source": "/api/tests",                "destination": "/api/tests/index.js" },
@@ -25,7 +25,7 @@
     { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },
     { "source": "/api/premium",              "destination": "/api/premium/index.js" },
     { "source": "/api/payments",             "destination": "/api/payments/index.js" },
-    { "source": "/api/stats",                "destination": "/api/stats/index.js" },
+    { "source": "/api/stats",                "destination": "/api/points.js?view=stats" },
     { "source": "/api/points",               "destination": "/api/points.js" }
   ],
   "headers": [

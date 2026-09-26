@@ -61,6 +61,27 @@ module.exports = async function handler(req, res) {
   setCommonHeaders(res);
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
 
+  if (req.method === 'GET' && req.query?.view === 'stats') {
+    const [rawUsers, rawTests, rawNews, rawTeachers, rawVideos] = await Promise.all([
+      redis.get('allUsers'), redis.get('tests'), redis.get('news'), redis.get('teachers'), redis.get('videos'),
+    ]);
+    const users = parseList(rawUsers);
+    const tests = parseList(rawTests);
+    const news = parseList(rawNews);
+    const teachers = parseList(rawTeachers);
+    const videos = parseList(rawVideos);
+    const questions = tests.reduce((total, test) => total + (Array.isArray(test.questions) ? test.questions.length : Number(test.questionCount) || 0), 0);
+    return res.status(200).json({
+      users: users.length,
+      tests: tests.length,
+      news: news.length,
+      teachers: teachers.length,
+      videos: videos.filter(video => video.isActive !== false).length,
+      questions,
+      premium: users.filter(user => user.premium).length,
+    });
+  }
+
   const session = getUserFromRequest(req);
   const [rawPoints, rawUsers] = await Promise.all([redis.get('userPoints'), redis.get('allUsers')]);
   const points = rawPoints && typeof rawPoints === 'object' ? rawPoints : (rawPoints ? JSON.parse(rawPoints) : {});
