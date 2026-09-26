@@ -495,12 +495,11 @@ function loadTeachers() {
 }
 
 function viewTeacherVideos(teacherId) {
-    // Müəllimin videolarını göstər
     const teachers = getAllTeachers();
     const teacher = teachers.find(t => t.id === teacherId);
-    
+
     if (!teacher) {
-        alert('Müəllim tapılmadı');
+        showNotification('Müəllim tapılmadı', 'warning');
         return;
     }
     
@@ -511,9 +510,9 @@ function viewTeacherVideos(teacherId) {
 function contactTeacher(teacherId) {
     const teachers = getAllTeachers();
     const teacher = teachers.find(t => t.id === teacherId);
-    
+
     if (!teacher) {
-        alert('Müəllim tapılmadı');
+        showNotification('Müəllim tapılmadı', 'warning');
         return;
     }
     

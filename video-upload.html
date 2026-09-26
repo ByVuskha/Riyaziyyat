@@ -350,16 +350,14 @@ function handleVideoUpload(event) {
 }
 
 function handleVideoFile(file) {
-    // Check file type
     if (!file.type.startsWith('video/')) {
-        alert('Zəhmət olmasa video faylı seçin!');
+        showNotification('Zəhmət olmasa video faylı seçin!', 'warning');
         return;
     }
-    
-    // Check file size (500MB max)
-    const maxSize = 500 * 1024 * 1024; // 500MB
+
+    const maxSize = 500 * 1024 * 1024;
     if (file.size > maxSize) {
-        alert('Video faylı 500MB-dan böyük ola bilməz!');
+        showNotification('Video faylı 500MB-dan böyük ola bilməz!', 'warning');
         return;
     }
     
@@ -444,7 +442,7 @@ function previewVideo() {
         `;
         preview.classList.add('has-video');
     } else {
-        alert('Düzgün YouTube linki daxil edin!');
+        showNotification('Düzgün YouTube linki daxil edin!', 'warning');
     }
 }
 
@@ -462,7 +460,7 @@ function saveVideo() {
     };
     
     if (!videoData.title || !videoData.category) {
-        alert('Zəhmət olmasa bütün məcburi sahələri doldurun!');
+        showNotification('Zəhmət olmasa bütün məcburi sahələri doldurun!', 'warning');
         return;
     }
     
@@ -471,14 +469,14 @@ function saveVideo() {
     if (source === 'youtube') {
         videoData.youtubeUrl = document.getElementById('youtubeUrl').value;
         if (!videoData.youtubeUrl) {
-            alert('YouTube linki daxil edin!');
+            showNotification('YouTube linki daxil edin!', 'warning');
             return;
         }
         // For YouTube, we'll estimate duration or set default
         videoDuration = '15:30'; // Default for YouTube videos
     } else {
         if (!uploadedVideoFile) {
-            alert('Video faylı yükləyin!');
+            showNotification('Video faylı yükləyin!', 'warning');
             return;
         }
         videoData.videoFile = uploadedVideoFile.name;
@@ -516,8 +514,8 @@ function saveVideoToStorage(videoData, duration) {
     });
     Storage.set('videos', videos);
     
-    alert('Video uğurla yadda saxlanıldı!');
-    
+    showNotification('Video uğurla yadda saxlanıldı!', 'success');
+
     // Reset form
     document.getElementById('videoTitle').value = '';
     document.getElementById('videoCategory').value = '';
@@ -606,17 +604,17 @@ function extractYouTubeId(url) {
 }
 
 function editVideo(id) {
-    alert('Video redaktəsi: ID ' + id);
+    showNotification('Video redaktəsi: ID ' + id, 'info');
 }
 
 function deleteVideo(id) {
-    if (confirm('Bu videonu silmək istədiyinizdən əminsiniz?')) {
+    showConfirm('Bu videonu silmək istədiyinizdən əminsiniz?', () => {
         const videos = Storage.get('videos') || [];
         const filtered = videos.filter(v => v.id !== id);
         Storage.set('videos', filtered);
-        alert('Video silindi!');
+        showNotification('Video silindi!', 'success');
         loadVideos();
-    }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -239,11 +239,13 @@ async function viewNews(id) {
 async function editNewsInline(id) {
     try {
         const n = await API.news.get(id);
-        const newTitle = prompt('Başlıq:', n.title);
-        if (!newTitle) return;
-        await API.news.update(id, { title: newTitle.trim() });
-        showNotification('Xəbər yeniləndi!', 'success');
-        loadNews();
+        showPrompt('Başlıq:', n.title || '', async (newTitle) => {
+            const title = String(newTitle || '').trim();
+            if (!title) return;
+            await API.news.update(id, { title });
+            showNotification('Xəbər yeniləndi!', 'success');
+            loadNews();
+        });
     } catch(e) { showNotification(e.message, 'error'); }
 }
 
@@ -418,9 +420,11 @@ async function approveTeacherTest(id) {
     catch(e) { showNotification(e.message, 'error'); }
 }
 async function rejectTeacherTest(id) {
-    const note = prompt('Rədd səbəbi (istəyə bağlı):') || '';
-    try { await API.teacherTests.reject(id, note); showNotification('Sınaq rədd edildi', 'warning'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
-    catch(e) { showNotification(e.message, 'error'); }
+    showPrompt('Rədd səbəbi (istəyə bağlı):', '', async (note) => {
+        const reason = String(note || '').trim();
+        try { await API.teacherTests.reject(id, reason); showNotification('Sınaq rədd edildi', 'warning'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
+        catch(e) { showNotification(e.message, 'error'); }
+    });
 }
 
 // ── Render admin name/avatar from session ────────────────────────────────

@@ -326,7 +326,7 @@ function submitTestPremiumRequest() {
     
     setTimeout(() => {
         document.getElementById('premiumPromptOverlay')?.remove();
-        alert('✅ Müraciətiniz göndərildi!\nAdmin tərəfindən yoxlanılacaq.');
+        showNotification('✅ Müraciətiniz göndərildi! Admin tərəfindən yoxlanılacaq.', 'success');
     }, 600);
 }
 

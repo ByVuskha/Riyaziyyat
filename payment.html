@@ -328,7 +328,7 @@ function updateSummary() {
 
 function goToCard() {
     if (!selectedAmount || selectedAmount < 5) {
-        alert('Minimum 5 ₼ seçin');
+        showNotification('Minimum 5 ₼ seçin', 'warning');
         return;
     }
     document.getElementById('panelAmount').style.display = 'none';

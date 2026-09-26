@@ -7,7 +7,9 @@
     'use strict';
     
     // Load site settings
-    const settings = Storage.get('siteSettings');
+    const settings = (window.Storage && typeof window.Storage.get === 'function')
+        ? window.Storage.get('siteSettings')
+        : null;
     
     if (!settings) {
         console.log('📝 Default site settings');

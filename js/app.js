@@ -21,6 +21,67 @@
   else document.documentElement.removeAttribute('data-theme');
 })();
 
+(function initStorageHelper() {
+  if (!window.Storage) {
+    window.Storage = {
+      get(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      },
+      set(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+        return value;
+      },
+      remove(key) {
+        localStorage.removeItem(key);
+      }
+    };
+  }
+})();
+
+(function initMathBackground() {
+  if (document.getElementById('math-theme-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'math-theme-styles';
+  style.textContent = `
+    :root {
+      --math-bg-1: rgba(76, 110, 245, 0.12);
+      --math-bg-2: rgba(141, 92, 255, 0.10);
+      --math-bg-3: rgba(45, 212, 191, 0.10);
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, var(--math-bg-1), transparent 28%),
+        radial-gradient(circle at bottom right, var(--math-bg-2), transparent 26%),
+        linear-gradient(135deg, #f7f9ff 0%, #edf4ff 48%, #f9fafb 100%);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px),
+        radial-gradient(circle at center, rgba(15,118,110,0.14) 0, transparent 35%);
+      background-size: 36px 36px, 36px 36px, 100% 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .navbar, .hero, .section, .card, .footer, .admin-section, .stat-box {
+      position: relative;
+      z-index: 1;
+    }
+    .logo-mark {
+      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.2);
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
 function toggleDarkMode() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   if (isDark) {

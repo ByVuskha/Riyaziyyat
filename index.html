@@ -294,34 +294,35 @@
 <script>
 let selectedPlan = null;
 
-function openPremiumRequest(planId, months, price) {
-    const user = window.getCurrentUser ? getCurrentUser() : null;
-    
+async function openPremiumRequest(planId, months, price) {
+    const user = await API.getCurrentUser();
+
     if (!user) {
-        window.location.href = 'login.html';
+        showNotification('Giriş tələb olunur. Zəhmət olmasa hesabınıza daxil olun.', 'warning');
+        setTimeout(() => window.location.href = 'login.html', 800);
         return;
     }
-    
+
     if (user.premium) {
-        alert('✅ Artıq premium üzvlüyünüz var!');
+        showNotification('✅ Artıq premium üzvlüyünüz var.', 'success');
         return;
     }
-    
+
     if (user.premiumRequestedAt) {
-        alert('⏳ Müraciətiniz artıq göndərilib. Admin tərəfindən yoxlanılır.');
+        showNotification('⏳ Müraciətiniz artıq göndərilib. Admin yoxlamaqda davam edir.', 'info');
         return;
     }
-    
+
     selectedPlan = { planId, months, price };
-    
+
     const planNames = { premium1: 'Premium 1 (1 Aylıq)', premium6: 'Premium 6 (6 Aylıq)', premium12: 'Premium 12 (1 İllik)' };
-    
+
     document.getElementById('modalTitle').textContent = planNames[planId];
     document.getElementById('modalSubtitle').textContent = `${price} ₼ - ${months} aylıq giriş`;
     document.getElementById('modalContent').innerHTML = `
         <div style="background:#f0f9ff;border-radius:12px;padding:16px;margin-bottom:16px;">
             <p style="margin:0;color:#1e40af;font-size:14px;line-height:1.6;">
-                <i class="fas fa-info-circle"></i> 
+                <i class="fas fa-info-circle"></i>
                 Müraciətiniz admin tərəfindən yoxlanılacaq. Təsdiqlənəndən sonra premium giriş aktivləşəcək.
             </p>
         </div>
@@ -340,7 +341,7 @@ function openPremiumRequest(planId, months, price) {
             </div>
         </div>
     `;
-    
+
     const modal = document.getElementById('premiumModal');
     modal.style.display = 'flex';
 }
@@ -350,28 +351,31 @@ function closePremiumModal() {
     selectedPlan = null;
 }
 
-function submitPremiumRequest() {
+async function submitPremiumRequest() {
     if (!selectedPlan) return;
-    
+
     const btn = document.getElementById('modalSubmitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Göndərilir...';
-    
-    const user = await API.getCurrentUser();
-    if (!user) { window.location.href = 'login.html'; return; }
 
     try {
-        await API.premium.request(selectedPlan?.planId || 'monthly');
+        const user = await API.getCurrentUser();
+        if (!user) {
+            showNotification('Giriş tələb olunur.', 'warning');
+            setTimeout(() => window.location.href = 'login.html', 800);
+            return;
+        }
+
+        await API.premium.request(selectedPlan.planId || 'monthly');
         closePremiumModal();
         showNotification('✅ Müraciətiniz göndərildi! Admin tərəfindən yoxlanılacaq.', 'success');
-    } catch(e) {
-        showNotification(e.data?.error || e.message, 'error');
+    } catch (e) {
+        showNotification(e.data?.error || e.message || 'Müraciət göndərilmədi.', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-crown"></i> Müraciət Et';
     }
 }
 
-// Close modal on outside click
 document.getElementById('premiumModal').addEventListener('click', function(e) {
     if (e.target === this) closePremiumModal();
 });

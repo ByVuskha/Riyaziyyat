@@ -97,14 +97,15 @@
 
 
 <script>
-// Check admin access
-const user = getCurrentUser();
-if (!user || user.role !== 'admin') {
-    alert('Bu səhifəyə giriş yalnız adminlər üçündür!');
-    window.location.href = 'index.html';
-}
+(async () => {
+    const user = await API.getCurrentUser();
+    if (!user || user.role !== 'admin') {
+        showNotification('Bu səhifəyə giriş yalnız adminlər üçündür!', 'warning');
+        setTimeout(() => window.location.href = 'index.html', 700);
+        return;
+    }
 
-document.getElementById('newsForm').addEventListener('submit', function(e) {
+    document.getElementById('newsForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const newsData = {
@@ -182,15 +183,17 @@ function loadNews() {
 }
 
 function deleteNews(id) {
-    if (confirm('Bu xəbəri silmək istədiyinizdən əminsiniz?')) {
+    showConfirm('Bu xəbəri silmək istədiyinizdən əminsiniz?', () => {
         const news = Storage.get('news') || [];
         const filtered = news.filter(n => n.id !== id);
         Storage.set('news', filtered);
+        showNotification('Xəbər silindi.', 'success');
         loadNews();
-    }
+    });
 }
 
 loadNews();
+})();
 </script>
 
     <canvas id="mathCanvas"></canvas>
