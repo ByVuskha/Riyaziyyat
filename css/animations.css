@@ -60,18 +60,16 @@
 }
 
 /* Push all real content above canvas, but keep the navbar stack above hero sections */
-body > *:not(#mathCanvas):not(.navbar):not(.navbar-inner):not(.navbar-menu):not(.hamburger-btn):not(.navbar-actions) {
+body > *:not(#mathCanvas):not(#pageTransition):not(.navbar):not(.navbar-inner):not(.navbar-menu):not(.hamburger-btn):not(.navbar-actions):not(.admin-layout):not(.auth-page) {
   position: relative;
   z-index: 1;
 }
 
 .navbar,
 .navbar-inner,
-.navbar-menu,
-.navbar-actions,
-.hamburger-btn {
+.navbar-actions {
   position: relative;
-  z-index: 2000;
+  z-index: 2147483646;
 }
 
 /* ── 3. PAGE TRANSITION OVERLAY ─────────────────────────────────────────────── */

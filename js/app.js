@@ -34,7 +34,7 @@
       background: linear-gradient(135deg, var(--math-bg-1), var(--math-bg-2) 58%, #f8faf9);
       background-attachment: fixed;
     }
-    .navbar, .hero, .section, .card, .footer, .admin-section, .stat-box {
+    .hero, .section, .card, .footer, .admin-section, .stat-box {
       position: relative;
       z-index: 1;
     }
@@ -129,7 +129,7 @@ function renderSharedNavigation(user) {
     inner.appendChild(actions);
   }
 
-  let menu = inner.querySelector('.navbar-menu');
+  let menu = document.getElementById('sharedNavigation') || inner.querySelector('.navbar-menu');
   if (!menu) {
     menu = document.createElement('nav');
     menu.className = 'navbar-menu';
@@ -177,6 +177,7 @@ function renderSharedNavigation(user) {
     </section>`).join('');
   toggle.setAttribute('aria-controls', 'sharedNavigation');
   menu.id = 'sharedNavigation';
+  if (menu.parentElement !== document.body) document.body.appendChild(menu);
 
   if (!toggle.dataset.sharedNavReady) {
     toggle.dataset.sharedNavReady = 'true';
