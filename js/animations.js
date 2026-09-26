@@ -39,6 +39,9 @@
       const link = e.target.closest('a[href]');
       if (!link) return;
 
+      // Allow navigation from the shared navbar menu without the global transition override.
+      if (link.closest('.navbar-menu')) return;
+
       const href = link.getAttribute('href');
       // Skip external, hash, mailto, tel, JS links
       if (!href ||

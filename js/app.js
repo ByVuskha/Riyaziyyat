@@ -180,42 +180,46 @@ function renderSharedNavigation(user) {
 
   if (!toggle.dataset.sharedNavReady) {
     toggle.dataset.sharedNavReady = 'true';
-    toggle.addEventListener('click', () => {
-      const open = menu.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', String(open));
+    toggle.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const isOpen = menu.classList.toggle('open');
+      menu.style.display = isOpen ? 'flex' : 'none';
+      menu.style.visibility = isOpen ? 'visible' : 'hidden';
+      menu.style.opacity = isOpen ? '1' : '0';
+      menu.style.pointerEvents = isOpen ? 'auto' : 'none';
+      menu.style.transform = isOpen ? 'translateX(0)' : 'translateX(-120%)';
+
+      toggle.setAttribute('aria-expanded', String(isOpen));
       const icon = toggle.querySelector('i');
-      if (icon) icon.className = open ? 'fas fa-times' : 'fas fa-bars';
+      if (icon) icon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
     });
     menu.addEventListener('click', event => {
-      if (!event.target.closest('a')) return;
+      const link = event.target.closest('a');
+      if (!link) return;
       menu.classList.remove('open');
+      menu.style.display = 'none';
+      menu.style.visibility = 'hidden';
+      menu.style.opacity = '0';
+      menu.style.pointerEvents = 'none';
+      menu.style.transform = 'translateX(-120%)';
       toggle.setAttribute('aria-expanded', 'false');
       const icon = toggle.querySelector('i');
       if (icon) icon.className = 'fas fa-bars';
+      window.location.href = link.href;
     });
   }
 
-  if (!document.documentElement.dataset.sharedNavDismissReady) {
-    document.documentElement.dataset.sharedNavDismissReady = 'true';
-    document.addEventListener('click', event => {
-      const openMenu = document.getElementById('sharedNavigation');
-      const button = document.querySelector('.hamburger-btn');
-      if (!openMenu || openMenu.contains(event.target) || button?.contains(event.target)) return;
-      openMenu.classList.remove('open');
-      button?.setAttribute('aria-expanded', 'false');
-      const icon = button?.querySelector('i');
-      if (icon) icon.className = 'fas fa-bars';
-    });
-    document.addEventListener('keydown', event => {
-      if (event.key !== 'Escape') return;
-      const openMenu = document.getElementById('sharedNavigation');
-      const button = document.querySelector('.hamburger-btn');
-      openMenu?.classList.remove('open');
-      button?.setAttribute('aria-expanded', 'false');
-      const icon = button?.querySelector('i');
-      if (icon) icon.className = 'fas fa-bars';
-    });
-  }
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const openMenu = document.getElementById('sharedNavigation');
+    const button = document.querySelector('.hamburger-btn');
+    openMenu?.classList.remove('open');
+    button?.setAttribute('aria-expanded', 'false');
+    const icon = button?.querySelector('i');
+    if (icon) icon.className = 'fas fa-bars';
+  });
 }
 
 let dailyLoginRequested = false;
