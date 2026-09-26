@@ -1,8 +1,8 @@
 // POST /api/auth/register
 const bcrypt = require('bcryptjs');
-const redis  = require('../_lib/redis');
-const { signToken, buildCookieHeader, setCommonHeaders } = require('../_lib/auth');
-const { genId, sanitizeUser } = require('../_lib/helpers');
+const redis  = require('../../lib/redis');
+const { signToken, buildCookieHeader, setCommonHeaders } = require('../../lib/auth');
+const { genId, sanitizeUser } = require('../../lib/helpers');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);

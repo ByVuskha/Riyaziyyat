@@ -1,11 +1,34 @@
-// GET /api/tests          — list all tests (public for free, gated for premium)
-// POST /api/tests         — create test (admin only)
-const redis  = require('../_lib/redis');
-const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../_lib/auth');
-const { allowMethods, genId, paginate } = require('../_lib/helpers');
+// Collection and ID-based test operations share one serverless function.
+const redis  = require('../../lib/redis');
+const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
+const { allowMethods, genId, paginate } = require('../../lib/helpers');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
+  const { id } = req.query || {};
+
+  if (id) {
+    if (!allowMethods(req, res, ['GET', 'PUT', 'DELETE'])) return;
+    const raw = await redis.get('tests');
+    const tests = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
+    const idx = tests.findIndex(test => String(test.id) === String(id));
+    if (idx === -1) return res.status(404).json({ error: 'Sınaq tapılmadı' });
+
+    if (req.method === 'GET') return res.status(200).json(tests[idx]);
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+
+    if (req.method === 'PUT') {
+      tests[idx] = { ...tests[idx], ...req.body, id: tests[idx].id, updatedAt: new Date().toISOString() };
+      await redis.set('tests', JSON.stringify(tests), { ex: 86400 * 30 });
+      return res.status(200).json(tests[idx]);
+    }
+
+    tests.splice(idx, 1);
+    await redis.set('tests', JSON.stringify(tests), { ex: 86400 * 30 });
+    return res.status(200).json({ ok: true });
+  }
+
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
 
   // ── GET — list tests ──────────────────────────────────────────────────────

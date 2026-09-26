@@ -1,8 +1,8 @@
 // GET  /api/payments  — list payments (admin) or own (user)
 // POST /api/payments  — record a payment
-const redis  = require('../_lib/redis');
-const { requireAuth, setCommonHeaders } = require('../_lib/auth');
-const { allowMethods, genId, paginate } = require('../_lib/helpers');
+const redis  = require('../../lib/redis');
+const { requireAuth, setCommonHeaders } = require('../../lib/auth');
+const { allowMethods, genId, paginate } = require('../../lib/helpers');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);

@@ -1,5 +1,5 @@
 // POST /api/auth/logout
-const { clearCookieHeader, setCommonHeaders } = require('../_lib/auth');
+const { clearCookieHeader, setCommonHeaders } = require('../../lib/auth');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);

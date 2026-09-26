@@ -1,8 +1,8 @@
 // POST /api/auth/login
 const bcrypt = require('bcryptjs');
-const redis  = require('../_lib/redis');
-const { signToken, buildCookieHeader, setCommonHeaders } = require('../_lib/auth');
-const { sanitizeUser } = require('../_lib/helpers');
+const redis  = require('../../lib/redis');
+const { signToken, buildCookieHeader, setCommonHeaders } = require('../../lib/auth');
+const { sanitizeUser } = require('../../lib/helpers');
 
 // Hardcoded admin fallback (only used if Redis has no allUsers yet)
 const ADMIN_FALLBACK = {

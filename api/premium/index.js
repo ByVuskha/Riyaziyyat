@@ -1,9 +1,9 @@
 // GET  /api/premium  — list requests (admin) or own (user)
 // POST /api/premium  — user submits premium request
 // PUT  /api/premium  — admin approves/rejects
-const redis  = require('../_lib/redis');
-const { requireAuth, setCommonHeaders } = require('../_lib/auth');
-const { allowMethods, genId } = require('../_lib/helpers');
+const redis  = require('../../lib/redis');
+const { requireAuth, setCommonHeaders } = require('../../lib/auth');
+const { allowMethods, genId } = require('../../lib/helpers');
 
 const PACKAGES = {
   monthly:    { name: '1 Aylıq Premium',  duration: 30,  price: 10 },

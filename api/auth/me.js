@@ -1,7 +1,7 @@
 // GET /api/auth/me — returns the current authenticated user from Redis
-const redis = require('../_lib/redis');
-const { getUserFromRequest, setCommonHeaders } = require('../_lib/auth');
-const { sanitizeUser } = require('../_lib/helpers');
+const redis = require('../../lib/redis');
+const { getUserFromRequest, setCommonHeaders } = require('../../lib/auth');
+const { sanitizeUser } = require('../../lib/helpers');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);

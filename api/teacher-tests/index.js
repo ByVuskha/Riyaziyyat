@@ -1,9 +1,9 @@
 // GET  /api/teacher-tests        — list (admin: all, teacher: own)
 // POST /api/teacher-tests        — submit test for review (teacher)
 // PUT  /api/teacher-tests?action=approve|reject&id=  (admin)
-const redis  = require('../_lib/redis');
-const { requireAuth, getUserFromRequest, setCommonHeaders } = require('../_lib/auth');
-const { allowMethods, genId } = require('../_lib/helpers');
+const redis  = require('../../lib/redis');
+const { requireAuth, getUserFromRequest, setCommonHeaders } = require('../../lib/auth');
+const { allowMethods, genId } = require('../../lib/helpers');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);

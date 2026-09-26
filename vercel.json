@@ -6,13 +6,13 @@
     { "source": "/api/auth/logout",          "destination": "/api/auth/logout.js" },
     { "source": "/api/auth/me",              "destination": "/api/auth/me.js" },
 
-    { "source": "/api/tests/:id",            "destination": "/api/tests/[id].js" },
+    { "source": "/api/tests/:id",            "destination": "/api/tests/index.js?id=:id" },
     { "source": "/api/tests",                "destination": "/api/tests/index.js" },
 
-    { "source": "/api/news/:id",             "destination": "/api/news/[id].js" },
+    { "source": "/api/news/:id",             "destination": "/api/news/index.js?id=:id" },
     { "source": "/api/news",                 "destination": "/api/news/index.js" },
 
-    { "source": "/api/users/:id",            "destination": "/api/users/[id].js" },
+    { "source": "/api/users/:id",            "destination": "/api/users/index.js?id=:id" },
     { "source": "/api/users",                "destination": "/api/users/index.js" },
 
     { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },

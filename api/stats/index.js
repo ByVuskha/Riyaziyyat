@@ -1,6 +1,6 @@
 // GET /api/stats — public site statistics
-const redis = require('../_lib/redis');
-const { setCommonHeaders } = require('../_lib/auth');
+const redis = require('../../lib/redis');
+const { setCommonHeaders } = require('../../lib/auth');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
