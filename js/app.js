@@ -143,9 +143,14 @@ function renderSharedNavigation(user) {
     toggle.className = 'hamburger-btn';
     toggle.setAttribute('aria-label', 'Naviqasiya menyusu');
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
     actions.prepend(toggle);
   }
+
+  if (!toggle.querySelector('.hamburger-label')) {
+    toggle.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i><span class="hamburger-label">Menyu</span>';
+  }
+  toggle.setAttribute('aria-label', 'Naviqasiya menyusu');
+  toggle.setAttribute('aria-expanded', toggle.getAttribute('aria-expanded') || 'false');
 
   const groups = [
     { title: 'Öyrənmə', links: [['Video dərslər', 'videos.html'], ['Sınaqlar', 'tests.html'], ['Müəllimlər', 'teachers.html']] },
