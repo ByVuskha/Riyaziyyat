@@ -5,7 +5,7 @@
   "collection": {
     "info": {
       "name": "Bizim Riyaziyyat API",
-      "description": "Bizim Riyaziyyat üçün tam API collection-u. Auth, Tests, News, Users, Teacher Tests, PDF, PDF Requests, Premium, Payments, Stats və Points (Upstash) endpoint-lərini əhatə edir. Son yenilik: 2026-09-23 — vercel.json rewrite-larda PDFs, PDF Download, PDF Requests route-ları silinmişdi, bərpa edildi; CORS origin bizimriyaziyyat.work.gd-ə düzəldildi.",
+      "description": "Bizim Riyaziyyat üçün tam API collection-u. Auth, Tests, News, Users, Teacher Tests, PDF, PDF Requests, Premium, Payments, Stats endpoint-lərini əhatə edir. Son yenilik: 2026-09-23 — vercel.json rewrite-larda PDFs, PDF Download, PDF Requests route-ları silinmişdi, bərpa edildi; CORS origin bizimriyaziyyat.work.gd-ə düzəldildi.",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -17,9 +17,7 @@
       { "key": "pdfId",          "value": "",                          "type": "string" },
       { "key": "pdfRequestId",   "value": "",                          "type": "string" },
       { "key": "premiumReqId",   "value": "",                          "type": "string" },
-      { "key": "teacherTestId",  "value": "",                          "type": "string" },
-      { "key": "upstash_url",    "value": "https://YOUR_UPSTASH_ENDPOINT.upstash.io", "type": "string" },
-      { "key": "upstash_token",  "value": "",                          "type": "string" }
+      { "key": "teacherTestId",  "value": "",                          "type": "string" }
     ],
     "item": [
 
@@ -1602,101 +1600,6 @@
                 "pm.test('Status 405 on POST', function () {",
                 "  pm.response.to.have.status(405);",
                 "});"
-              ]}
-            }]
-          }
-        ]
-      },
-
-      {
-        "name": "Points & Test Scores (Upstash)",
-        "item": [
-          {
-            "name": "Get userPoints (all users)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
-                { "key": "Content-Type",  "value": "application/json" }
-              ],
-              "url": "{{upstash_url}}",
-              "body": { "mode": "raw", "raw": "[\"GET\", \"userPoints\"]" }
-            },
-            "event": [{
-              "listen": "test",
-              "script": { "exec": [
-                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                "const json = pm.response.json();",
-                "pm.test('Has result', function () { pm.expect(json).to.have.property('result'); });",
-                "if (json.result) {",
-                "  const pts = JSON.parse(json.result);",
-                "  const sample = Object.values(pts)[0];",
-                "  pm.test('Sample entry has total key', function () {",
-                "    pm.expect(sample).to.have.property('total');",
-                "  });",
-                "}"
-              ]}
-            }]
-          },
-          {
-            "name": "Save userPoints with testScores (SET)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
-                { "key": "Content-Type",  "value": "application/json" }
-              ],
-              "url": "{{upstash_url}}",
-              "body": {
-                "mode": "raw",
-                "raw": "[\"SET\", \"userPoints\", \"{\\\"user_1\\\":{\\\"userId\\\":\\\"user_1\\\",\\\"userName\\\":\\\"Test User\\\",\\\"total\\\":45,\\\"history\\\":[],\\\"watchedVideos\\\":[\\\"1\\\"],\\\"completedTests\\\":[\\\"test_1\\\"],\\\"lastLoginDate\\\":\\\"2026-09-23\\\",\\\"testScores\\\":{\\\"test_1\\\":{\\\"testId\\\":\\\"test_1\\\",\\\"testTitle\\\":\\\"Cəbr — Tənliklər\\\",\\\"ballScore\\\":80,\\\"date\\\":\\\"23.09.2026\\\"}}}}\", \"EX\", 2592000]"
-              }
-            },
-            "event": [{
-              "listen": "test",
-              "script": { "exec": [
-                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                "const json = pm.response.json();",
-                "pm.test('SET acknowledged', function () { pm.expect(json.result).to.equal('OK'); });"
-              ]}
-            }]
-          },
-          {
-            "name": "Get leaderboard cache",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
-                { "key": "Content-Type",  "value": "application/json" }
-              ],
-              "url": "{{upstash_url}}",
-              "body": { "mode": "raw", "raw": "[\"GET\", \"leaderboard\"]" }
-            },
-            "event": [{
-              "listen": "test",
-              "script": { "exec": [
-                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                "pm.test('Has result key', function () { pm.expect(pm.response.json()).to.have.property('result'); });"
-              ]}
-            }]
-          },
-          {
-            "name": "Get testResults key",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Authorization", "value": "Bearer {{upstash_token}}" },
-                { "key": "Content-Type",  "value": "application/json" }
-              ],
-              "url": "{{upstash_url}}",
-              "body": { "mode": "raw", "raw": "[\"GET\", \"testResults\"]" }
-            },
-            "event": [{
-              "listen": "test",
-              "script": { "exec": [
-                "// success.html listens to 'testResults' key for cross-tab updates",
-                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-                "pm.test('Has result key', function () { pm.expect(pm.response.json()).to.have.property('result'); });"
               ]}
             }]
           }
