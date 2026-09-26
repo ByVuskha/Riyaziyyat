@@ -129,6 +129,18 @@ function renderSharedNavigation(user) {
     inner.appendChild(actions);
   }
 
+  let adminLink = actions.querySelector('#navAdminLink');
+  if (!adminLink) {
+    adminLink = document.createElement('a');
+    adminLink.id = 'navAdminLink';
+    adminLink.href = 'admin.html';
+    adminLink.className = 'btn btn-primary btn-sm nav-admin-button';
+    adminLink.setAttribute('aria-label', 'Admin paneli');
+    adminLink.innerHTML = '<i class="fas fa-shield-alt" aria-hidden="true"></i><span class="nav-admin-label">Admin paneli</span>';
+    actions.appendChild(adminLink);
+  }
+  adminLink.style.display = user?.role === 'admin' ? 'inline-flex' : 'none';
+
   let menu = document.getElementById('sharedNavigation') || inner.querySelector('.navbar-menu');
   if (!menu) {
     menu = document.createElement('nav');

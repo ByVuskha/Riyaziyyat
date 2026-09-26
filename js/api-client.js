@@ -41,7 +41,7 @@ const API = (() => {
       writeLocalList('localUsers', [{
         id: 'admin-demo',
         name: 'Admin',
-        email: 'admin@riyaziyyat.az',
+        email: 'admin@riyazmath.az',
         password: 'admin123',
         role: 'admin',
         userType: 'teacher',

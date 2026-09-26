@@ -11,7 +11,7 @@ const { genId, sanitizeUser } = require('../lib/helpers');
 
 const ADMIN_FALLBACK = {
   id: 'admin-001',
-  email: 'admin@riyaziyyat.az',
+  email: 'admin@riyazmath.az',
   password: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4AYczaAvtW',
   name: 'Admin',
   role: 'admin',

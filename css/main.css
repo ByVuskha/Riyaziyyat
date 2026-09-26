@@ -1751,6 +1751,7 @@ body {
 .standalone-shared-nav { position: relative; display: flex; flex-shrink: 0; margin-left: 12px; }
 body > .standalone-shared-nav,
 .auth-page > .standalone-shared-nav { position: fixed; top: 12px; left: 12px; right: auto; z-index: 2147483646; margin: 0; }
+.nav-admin-button { align-items: center; justify-content: center; gap: 8px; white-space: nowrap; flex-shrink: 0; }
 .admin-header { position: relative; padding-left: 160px; }
 .admin-header .standalone-shared-nav { position: absolute; top: 50%; left: 25px; z-index: 2147483646; margin: 0; transform: translateY(-50%); }
 .admin-header h1#pageTitle { margin-left: 120px; }
@@ -1889,6 +1890,10 @@ body > .standalone-shared-nav,
         right: auto;
         width: min(300px, calc(100vw - 16px));
     }
+}
+@media (max-width: 480px) {
+    .nav-admin-button { width: 42px; min-width: 42px; padding: 0; }
+    .nav-admin-label { display: none; }
 }
 @media (min-width: 769px) {
     .navbar-menu {

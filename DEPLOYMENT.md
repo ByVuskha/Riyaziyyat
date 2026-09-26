@@ -12,6 +12,8 @@ Deploy the repository root to Vercel and configure these project environment var
 - `JWT_SECRET` (use a newly generated random secret)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required only for direct video-file uploads)
 
+In Vercel, open **Project Settings → Environment Variables**, add `JWT_SECRET`, select the Production environment (and Preview/Development if used), and set its value to a newly generated random secret. Generate one locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Save the variable and redeploy so the serverless functions receive it. Do not put the real value in this repository or in client-side code.
+
 YouTube video links and all other API-backed content use the Vercel/Upstash backend. Video-file uploads remain unavailable until Cloudinary is configured. Card payments are intentionally disabled until a real payment provider and its verified callback are integrated; the app must not credit balances based on a browser-only success screen.
 
 After deployment, verify `GET /api/stats`, `GET /api/news`, `GET /api/tests`, `GET /api/videos`, and `GET /api/teachers` return JSON rather than Vercel `NOT_FOUND` pages.
