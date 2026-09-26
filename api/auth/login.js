@@ -60,10 +60,6 @@ module.exports = async function handler(req, res) {
     if (passwordOk) {
       // Migrate to hash in-place
       const hashed = await bcrypt.hash(password, 12);
-
-    if (!hasAdminFallback) {
-      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
-    }
       const idx = users.findIndex(u => u.email === normalizedEmail);
       if (idx !== -1) {
         users[idx].password = hashed;
@@ -74,6 +70,10 @@ module.exports = async function handler(req, res) {
 
   if (!passwordOk) {
     return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
+  }
+
+  if (!hasAdminFallback) {
+    await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
   }
 
   // ── Issue JWT ─────────────────────────────────────────────────────────────

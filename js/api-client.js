@@ -280,6 +280,7 @@ const API = (() => {
       if (!r.ok) throw Object.assign(new Error(data.error || 'Xəta baş verdi'), { status: r.status, data });
       return data;
     } catch (error) {
+      if (error.status) throw error;
       const localData = localFallback(method, path, body && typeof body === 'string' ? JSON.parse(body) : body);
       if (localData) return localData;
       throw error;
