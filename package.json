@@ -4,7 +4,7 @@
   "description": "Bizim Riyaziyyat — Riyaziyyat Öyrənmə Platforması",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "dependencies": {
     "@upstash/redis": "^1.28.4",
