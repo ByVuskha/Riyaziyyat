@@ -1899,3 +1899,36 @@ body > .standalone-shared-nav,
         max-height: calc(100vh - 100px) !important;
     }
 }
+
+img,
+video,
+iframe {
+    max-width: 100%;
+}
+
+input,
+select,
+textarea {
+    max-width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .modal {
+        width: calc(100vw - 24px) !important;
+        max-width: 600px !important;
+        max-height: calc(100vh - 24px) !important;
+        max-height: calc(100dvh - 24px) !important;
+        margin: 12px !important;
+        padding: clamp(18px, 5vw, 28px) !important;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
