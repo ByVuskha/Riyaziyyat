@@ -15,12 +15,6 @@
     { "source": "/api/users/:id",            "destination": "/api/users/[id].js" },
     { "source": "/api/users",                "destination": "/api/users/index.js" },
 
-    { "source": "/api/pdfs/:id/download",    "destination": "/api/pdfs/[id]/download.js" },
-    { "source": "/api/pdfs/:id",             "destination": "/api/pdfs/[id].js" },
-    { "source": "/api/pdfs",                 "destination": "/api/pdfs/index.js" },
-
-    { "source": "/api/pdf-requests",         "destination": "/api/pdf-requests/index.js" },
-
     { "source": "/api/teacher-tests",        "destination": "/api/teacher-tests/index.js" },
     { "source": "/api/premium",              "destination": "/api/premium/index.js" },
     { "source": "/api/payments",             "destination": "/api/payments/index.js" },

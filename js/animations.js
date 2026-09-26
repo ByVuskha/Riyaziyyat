@@ -93,7 +93,7 @@
       '.section-title',
       '.section-subtitle',
       '.hero-stat',
-      '.news-card, .test-card, .teacher-card, .pdf-card',
+      '.news-card, .test-card, .teacher-card',
       '.stat-card',
       '.pricing-card',
       'table',
