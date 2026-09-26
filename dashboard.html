@@ -1,22 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="az">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Şəxsi Kabinet — Bizim Riyaziyyat</title>
-    <meta name="description" content="?xsi kabinetimizd? nailiyy?tl?rinizi izl?yin, s�naq n?tic?l?rinizi g�r�n.">
-    <meta name="keywords"    content="kabinet, profil, nailiyy?tl?r">
+    <title>əxsi Kabinet — Bizim Riyaziyyat</title>
+    <meta name="description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta name="keywords"    content="kabinet, profil, nailiyyətlər">
     <meta name="author"      content="Bizim Riyaziyyat">
     <meta name="robots"      content="index, follow">
     <meta property="og:type"        content="website">
     <meta property="og:url"         content="https://bizimriyaziyyat.vercel.app/dashboard.html">
-    <meta property="og:title"       content="?xsi Kabinet � Bizim Riyaziyyat">
-    <meta property="og:description" content="?xsi kabinetimizd? nailiyy?tl?rinizi izl?yin, s�naq n?tic?l?rinizi g�r�n.">
+    <meta property="og:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
+    <meta property="og:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
     <meta property="og:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
     <meta property="og:locale"      content="az_AZ">
     <meta name="twitter:card"        content="summary_large_image">
-    <meta name="twitter:title"       content="?xsi Kabinet � Bizim Riyaziyyat">
-    <meta name="twitter:description" content="?xsi kabinetimizd? nailiyy?tl?rinizi izl?yin, s�naq n?tic?l?rinizi g�r�n.">
+    <meta name="twitter:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
+    <meta name="twitter:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
     <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
     <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/dashboard.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -26,7 +26,7 @@
     <style>
         body { background: #f1f5f9; }
 
-        /* �� Welcome card �� */
+        /* ── Welcome card ── */
         .welcome {
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             color: white; border-radius: 20px; padding: 28px 32px;
@@ -57,7 +57,7 @@
             font-weight: 600; margin-top: 8px; color: #fbbf24;
         }
 
-        /* �� Stats �� */
+        /* ── Stats ── */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -78,7 +78,7 @@
         .stat-card h3 { font-size: 22px; font-weight: 800; margin: 0 0 2px; line-height: 1; }
         .stat-card p  { font-size: 11px; color: #9ca3af; margin: 0; }
 
-        /* �� Premium banner �� */
+        /* ── Premium banner ── */
         .premium-banner {
             background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 16px; padding: 20px 26px; color: white;
@@ -96,7 +96,7 @@
             display: inline-block;
         }
 
-        /* �� Daily goal �� */
+        /* ── Daily goal ── */
         .daily-goal {
             background: white; border-radius: 16px; padding: 20px 22px;
             box-shadow: 0 2px 10px rgba(0,0,0,.05); margin-bottom: 22px;
@@ -109,15 +109,15 @@
         .progress-bar  { height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
 
-        /* �� Two-col �� */
+        /* ── Two-col ── */
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
         @media(max-width:768px){ .two-col { grid-template-columns: 1fr; } }
 
-        /* �� Panel �� */
+        /* ── Panel ── */
         .panel { background: white; border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
         .panel-title { font-size: 14px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 7px; }
 
-        /* �� Activity feed �� */
+        /* ── Activity feed ── */
         .activity-item {
             display: flex; align-items: center; gap: 10px;
             padding: 9px 0; border-bottom: 1px solid #f1f5f9;
@@ -132,7 +132,7 @@
         .activity-pts  { font-size: 12px; font-weight: 700; color: #10b981; white-space: nowrap; }
         .activity-time { font-size: 10px; color: #9ca3af; }
 
-        /* �� Streak �� */
+        /* ── Streak ── */
         .streak-grid { display: flex; gap: 3px; flex-wrap: wrap; }
         .streak-day {
             width: 26px; height: 26px; border-radius: 6px;
@@ -143,7 +143,7 @@
         .streak-day.today  { background: #fbbf24; color: white; }
         .streak-day.empty  { background: #f1f5f9; color: #9ca3af; }
 
-        /* �� Quick links �� */
+        /* ── Quick links ── */
         .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 22px; }
         .quick-card {
             background: white; border-radius: 14px; padding: 16px 10px;
@@ -157,7 +157,7 @@
         .quick-card h4 { font-size: 12px; font-weight: 700; margin: 0 0 3px; }
         .quick-card p  { font-size: 10px; color: #9ca3af; margin: 0; }
 
-        /* �� Teacher section �� */
+        /* ── Teacher section ── */
         #teacherSection { margin-bottom: 22px; }
 
         .teacher-section-title {
@@ -188,7 +188,7 @@
         .access-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
         .access-desc  { font-size: 13px; color: #6b7280; margin: 0; line-height: 1.5; }
 
-        /* S�naq ?lav?etm? form (unlocked) */
+        /* Sınaq əlavəetmə form (unlocked) */
         .add-test-card {
             background: white; border-radius: 16px;
             box-shadow: 0 2px 10px rgba(0,0,0,.05); padding: 24px;
@@ -235,16 +235,16 @@
         <div class="navbar-inner">
             <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
             <div class="navbar-menu">
-                <a href="index.html">Ana S?hif?</a>
-                <a href="videos.html">D?rsl?r</a>
-                <a href="tests.html">S�naqlar</a>
-                <a href="news.html">X?b?rl?r</a>
+                <a href="index.html">Ana Səhifə</a>
+                <a href="videos.html">Dərslər</a>
+                <a href="tests.html">Sınaqlar</a>
+                <a href="news.html">Xəbərlər</a>
                 <a href="dashboard.html" class="active">Kabinet</a>
             </div>
             <div class="navbar-actions">
                 <button class="hamburger-btn" aria-label="Menyu" aria-expanded="false"><i class="fas fa-bars"></i></button>
                 <div id="guestButtons">
-                    <a href="login.html" class="btn btn-secondary btn-sm">Giri�</a>
+                    <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
                 </div>
                 <div id="userButtons" style="display:none;">
                     <span class="btn btn-secondary btn-sm">
@@ -262,63 +262,63 @@
 <div style="padding:28px 0 50px;">
 <div class="container">
 
-    <!-- �� Welcome �� -->
+    <!-- ── Welcome ── -->
     <div class="welcome">
         <div>
             <div class="welcome-name" id="welcomeName">...</div>
-            <p class="welcome-sub" id="welcomeSub">Y�kl?nir...</p>
+            <p class="welcome-sub" id="welcomeSub">Yüklənir...</p>
             <div class="streak-badge" id="streakBadge" style="display:none;">
-                ?? <span id="streakCount">0</span> g�nl�k ard�c�l giri�
+                🔥 <span id="streakCount">0</span> günlük ardıcıl giriş
             </div>
         </div>
-        <div class="welcome-avatar" id="profileAvatar">??</div>
+        <div class="welcome-avatar" id="profileAvatar">🎓</div>
     </div>
 
-    <!-- �� Premium banner �� -->
+    <!-- ── Premium banner ── -->
     <div id="premiumBanner" style="display:none;" class="premium-banner">
-        <div style="font-size:32px;">??</div>
+        <div style="font-size:32px;">👑</div>
         <div>
-            <h3>Premium �zvl�k</h3>
-            <p id="premiumBannerText">B�t�n videolara v? s�na�lara limitsiz giri� ?ld? edin!</p>
+            <h3>Premium Üzvlük</h3>
+            <p id="premiumBannerText">Bütün videolara və sınağlara limitsiz giriş əldə edin!</p>
         </div>
-        <button onclick="sendPremiumRequest()" class="btn-white">M�raci?t Et �</button>
+        <button onclick="sendPremiumRequest()" class="btn-white">Müraciət Et →</button>
     </div>
 
-    <!-- �� Stats �� -->
+    <!-- ── Stats ── -->
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon" style="background:#eef2ff;">??</div>
-            <div><h3 id="statVideos">0</h3><p>�zl?n?n Video</p></div>
+            <div class="stat-icon" style="background:#eef2ff;">📹</div>
+            <div><h3 id="statVideos">0</h3><p>İzlənən Video</p></div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background:#ecfdf5;">??</div>
-            <div><h3 id="statTests">0</h3><p>H?ll Edil?n S�naq</p></div>
+            <div class="stat-icon" style="background:#ecfdf5;">📝</div>
+            <div><h3 id="statTests">0</h3><p>Həll Edilən Sınaq</p></div>
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
-            <div class="stat-icon" style="background:rgba(255,255,255,.2);">?</div>
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">⭐</div>
             <div><h3 id="statPoints" style="color:white;">0</h3><p style="color:rgba(255,255,255,.75);">Xal</p></div>
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">
-            <div class="stat-icon" style="background:rgba(255,255,255,.2);">??</div>
-            <div><h3 id="statRank" style="color:white;">-</h3><p style="color:rgba(255,255,255,.75);">S�ralama</p></div>
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">🏆</div>
+            <div><h3 id="statRank" style="color:white;">-</h3><p style="color:rgba(255,255,255,.75);">Sıralama</p></div>
         </div>
         <div class="stat-card" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;">
-            <div class="stat-icon" style="background:rgba(255,255,255,.2);">??</div>
+            <div class="stat-icon" style="background:rgba(255,255,255,.2);">👑</div>
             <div><h3 id="statPremium" style="color:white;font-size:15px;">Pulsuz</h3><p style="color:rgba(255,255,255,.75);">Premium</p></div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background:#fff7ed;">??</div>
-            <div><h3 id="statDemo">0</h3><p>Demo S�naq</p></div>
+            <div class="stat-icon" style="background:#fff7ed;">🎁</div>
+            <div><h3 id="statDemo">0</h3><p>Demo Sınaq</p></div>
         </div>
     </div>
 
-    <!-- �� Daily goal �� -->
+    <!-- ── Daily goal ── -->
     <div class="daily-goal">
-        <h4>?? G�nd?lik H?d?f</h4>
+        <h4>🎯 Gündəlik Hədəf</h4>
         <div class="goal-items">
             <div>
                 <div class="goal-label">
-                    <span>?? Video izl?</span>
+                    <span>📹 Video izlə</span>
                     <span id="goalVideoText">0 / 2</span>
                 </div>
                 <div class="progress-bar">
@@ -327,7 +327,7 @@
             </div>
             <div>
                 <div class="goal-label">
-                    <span>?? S�naq h?ll et</span>
+                    <span>📝 Sınaq həll et</span>
                     <span id="goalTestText">0 / 1</span>
                 </div>
                 <div class="progress-bar">
@@ -336,7 +336,7 @@
             </div>
             <div>
                 <div class="goal-label">
-                    <span>? Xal qazanma</span>
+                    <span>⭐ Xal qazanma</span>
                     <span id="goalPointsText">0 / 10</span>
                 </div>
                 <div class="progress-bar">
@@ -346,103 +346,103 @@
         </div>
     </div>
 
-    <!-- �� Activity + Streak �� -->
+    <!-- ── Activity + Streak ── -->
     <div class="two-col">
         <div class="panel">
-            <div class="panel-title">? Son F?aliyy?t</div>
+            <div class="panel-title">⚡ Son Fəaliyyət</div>
             <div id="activityFeed">
                 <div style="text-align:center;padding:28px;color:#9ca3af;">
                     <i class="fas fa-history" style="font-size:28px;opacity:.2;display:block;margin-bottom:9px;"></i>
-                    H?l? f?aliyy?t yoxdur
+                    Hələ fəaliyyət yoxdur
                 </div>
             </div>
         </div>
         <div class="panel">
-            <div class="panel-title">?? Giri� Seriyas�</div>
+            <div class="panel-title">🔥 Giriş Seriyası</div>
             <div style="margin-bottom:14px;">
                 <div style="font-size:32px;font-weight:900;color:#f59e0b;" id="streakNum">0</div>
-                <div style="font-size:12px;color:#9ca3af;">ard�c�l g�n</div>
+                <div style="font-size:12px;color:#9ca3af;">ardıcıl gün</div>
             </div>
             <div class="streak-grid" id="streakGrid"></div>
             <div style="margin-top:12px;font-size:11px;color:#9ca3af;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span> Giri� edildi</span>
-                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#fbbf24;display:inline-block;"></span> Bu g�n</span>
-                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#f1f5f9;display:inline-block;"></span> Giri� yox</span>
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span> Giriş edildi</span>
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#fbbf24;display:inline-block;"></span> Bu gün</span>
+                <span style="display:flex;align-items:center;gap:3px;"><span style="width:11px;height:11px;border-radius:3px;background:#f1f5f9;display:inline-block;"></span> Giriş yox</span>
             </div>
         </div>
     </div>
 
-    <!-- �� Quick links �� -->
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px;">?? S�r?tli Ke�idl?r</div>
+    <!-- ── Quick links ── -->
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;">🚀 Sürətli Keçidlər</div>
     <div class="quick-grid">
-        <a href="videos.html"       class="quick-card"><i class="fas fa-play-circle"></i><h4>D?rsl?r</h4><p>Video d?rsl?ri izl?</p></a>
-        <a href="tests.html"        class="quick-card"><i class="fas fa-clipboard-list"></i><h4>S�naqlar</h4><p>Bilikini yoxla</p></a>
-        <a href="success.html"      class="quick-card"><i class="fas fa-trophy"></i><h4>U�urlar</h4><p>Xal s�ralamas�</p></a>
-        <a href="teachers.html"     class="quick-card"><i class="fas fa-chalkboard-teacher"></i><h4>M�?lliml?r</h4><p>Pe�?kar komanda</p></a>
-        <a href="news.html"         class="quick-card"><i class="fas fa-newspaper"></i><h4>X?b?rl?r</h4><p>Son yenilikl?r</p></a>
-        <a href="profile-edit.html" class="quick-card"><i class="fas fa-user-edit"></i><h4>Profil</h4><p>M?lumatlar� yenil?</p></a>
+        <a href="videos.html"       class="quick-card"><i class="fas fa-play-circle"></i><h4>Dərslər</h4><p>Video dərsləri izlə</p></a>
+        <a href="tests.html"        class="quick-card"><i class="fas fa-clipboard-list"></i><h4>Sınaqlar</h4><p>Bilikini yoxla</p></a>
+        <a href="success.html"      class="quick-card"><i class="fas fa-trophy"></i><h4>Uğurlar</h4><p>Xal sıralaması</p></a>
+        <a href="teachers.html"     class="quick-card"><i class="fas fa-chalkboard-teacher"></i><h4>Müəllimlər</h4><p>Peşəkar komanda</p></a>
+        <a href="news.html"         class="quick-card"><i class="fas fa-newspaper"></i><h4>Xəbərlər</h4><p>Son yeniliklər</p></a>
+        <a href="profile-edit.html" class="quick-card"><i class="fas fa-user-edit"></i><h4>Profil</h4><p>Məlumatları yenilə</p></a>
     </div>
 
-    <!-- ======================================================
-         M�?LL�M B�LM?S� � yaln�z teacher / admin ���n g�r�n�r
-    ====================================================== -->
+    <!-- ══════════════════════════════════════════════════════
+         MÜƏLLİM BÖLMƏSİ — yalnız teacher / admin üçün görünür
+    ══════════════════════════════════════════════════════ -->
     <div id="teacherSection" style="display:none;">
 
         <div class="teacher-section-title">
             <i class="fas fa-chalkboard-teacher" style="color:#2563eb;"></i>
-            M�?llim Paneli
+            Müəllim Paneli
         </div>
 
-        <!-- �Caz? kart� (pending / rejected / not-requested) -->
+        <!-- İCazə kartı (pending / rejected / not-requested) -->
         <div id="accessCard" class="access-card" style="display:none;">
             <div class="access-card-inner">
                 <div>
                     <div class="access-badge badge-none" id="accessBadge">
-                        <i class="fas fa-lock"></i> �caz?siz
+                        <i class="fas fa-lock"></i> İcazəsiz
                     </div>
-                    <div class="access-title" id="accessTitle">S�naq ?lav?etm? �caz?si</div>
-                    <p class="access-desc" id="accessDesc">Sayta s�naq ?lav? etm?k ���n admin icaz?si t?l?b olunur.</p>
+                    <div class="access-title" id="accessTitle">Sınaq Əlavəetmə İcazəsi</div>
+                    <p class="access-desc" id="accessDesc">Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.</p>
                 </div>
                 <div>
                     <button id="requestAccessBtn" class="btn btn-primary" onclick="requestTestAccess()" style="white-space:nowrap;">
-                        <i class="fas fa-paper-plane"></i> �caz? �st?
+                        <i class="fas fa-paper-plane"></i> İcazə İstə
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- S�naq ?lav? etm? formu (canAddTests === true) -->
+        <!-- Sınaq əlavə etmə formu (canAddTests === true) -->
         <div id="addTestCard" class="add-test-card" style="display:none;">
-            <h4><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni S�naq G�nd?r</h4>
+            <h4><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Sınaq Göndər</h4>
             <div id="addTestAlert"></div>
             <form id="testForm" onsubmit="submitTest(event)">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:12px;">S�naq Ad� *</label>
-                        <input type="text" class="form-control" id="tTitle" placeholder="M?s: C?br � T?nlikl?r" required>
+                        <label style="font-size:12px;">Sınaq Adı *</label>
+                        <input type="text" class="form-control" id="tTitle" placeholder="Məs: Cəbr — Tənliklər" required>
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label style="font-size:12px;">Emoji</label>
                         <select class="form-control" id="tEmoji">
-                            <option>??</option><option>??</option><option>??</option>
-                            <option>?</option><option>??</option><option>??</option>
-                            <option>??</option><option>?</option>
+                            <option>📝</option><option>🔢</option><option>📐</option>
+                            <option>∫</option><option>🎲</option><option>📊</option>
+                            <option>🏆</option><option>⚡</option>
                         </select>
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:12px;">�?tinlik</label>
+                        <label style="font-size:12px;">Çətinlik</label>
                         <select class="form-control" id="tDifficulty">
-                            <option>Asan</option><option selected>Orta</option><option>�?tin</option>
+                            <option>Asan</option><option selected>Orta</option><option>Çətin</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:12px;">M�dd?t (d?q)</label>
+                        <label style="font-size:12px;">Müddət (dəq)</label>
                         <input type="number" class="form-control" id="tDuration" value="15" min="1" max="180" required>
                     </div>
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:12px;">N�v</label>
+                        <label style="font-size:12px;">Növ</label>
                         <select class="form-control" id="tType">
                             <option value="free">Pulsuz</option>
                             <option value="premium">Premium</option>
@@ -450,38 +450,38 @@
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px;">
-                    <label style="font-size:12px;">A��qlama</label>
-                    <textarea class="form-control" id="tDesc" rows="2" placeholder="Bu s�naq n? haqq�ndad�r?"></textarea>
+                    <label style="font-size:12px;">Açıqlama</label>
+                    <textarea class="form-control" id="tDesc" rows="2" placeholder="Bu sınaq nə haqqındadır?"></textarea>
                 </div>
 
                 <!-- Sual qurucusu -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                     <label style="font-size:12px;font-weight:700;margin:0;">Suallar *</label>
                     <button type="button" class="btn btn-sm btn-secondary" onclick="addQuestion()" style="font-size:12px;">
-                        <i class="fas fa-plus"></i> Sual ?lav? Et
+                        <i class="fas fa-plus"></i> Sual Əlavə Et
                     </button>
                 </div>
                 <div id="questionsContainer"></div>
 
                 <div style="display:flex;gap:10px;margin-top:6px;">
                     <button type="submit" class="btn btn-primary" style="font-size:13px;">
-                        <i class="fas fa-paper-plane"></i> Admin Yoxlamas�na G�nd?r
+                        <i class="fas fa-paper-plane"></i> Admin Yoxlamasına Göndər
                     </button>
                     <button type="button" class="btn btn-secondary" onclick="resetTestForm()" style="font-size:13px;">
-                        <i class="fas fa-undo"></i> S�f�rla
+                        <i class="fas fa-undo"></i> Sıfırla
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- G�nd?rilmi� s�naqlar siyah�s� -->
+        <!-- Göndərilmiş sınaqlar siyahısı -->
         <div class="my-tests-card" id="myTestsCard" style="display:none;">
             <div class="panel-title" style="font-size:14px;">
-                <i class="fas fa-list" style="color:var(--primary);"></i> G�nd?rilmi� S�naqlar�m
+                <i class="fas fa-list" style="color:var(--primary);"></i> Göndərilmiş Sınaqlarım
             </div>
             <div id="myTestsList">
                 <div style="text-align:center;padding:30px;color:#9ca3af;font-size:13px;">
-                    H?l? s�naq g�nd?rm?misiniz.
+                    Hələ sınaq göndərməmisiniz.
                 </div>
             </div>
         </div>
@@ -498,12 +498,12 @@
 
 
 <script>
-// �� API-based auth guard ����������������������������������������������
+// ── API-based auth guard ──────────────────────────────────────────────
 (async () => {
-const user = await requireLogin(); // from app.js � redirects if not logged in
+const user = await requireLogin(); // from app.js — redirects if not logged in
 if (!user) return;
 
-/* �� Avatar & name ��������������������������������������������������� */
+/* ── Avatar & name ─────────────────────────────────────────────────── */
 document.getElementById('welcomeName').textContent = user.name;
 updateNavbar();
 
@@ -517,7 +517,7 @@ if (user.profilePicture) {
     av.style.color = 'white';
 }
 
-/* �� Premium banner ��������������������������������������������������� */
+/* ── Premium banner ─────────────────────────────────────────────────── */
 function updatePremiumBanner() {
     const banner = document.getElementById('premiumBanner');
     const statP  = document.getElementById('statPremium');
@@ -526,10 +526,10 @@ function updatePremiumBanner() {
         statP.textContent = 'Premium';
         banner.style.display = 'none';
     } else if (user.premiumRequestedAt) {
-        statP.textContent = 'G�zl?nilir';
+        statP.textContent = 'Gözlənilir';
         banner.innerHTML = `
-            <div style="font-size:28px;">?</div>
-            <div><h3>M�raci?tiniz G�nd?rilib</h3><p>Admin t?r?find?n yoxlan�l�r.</p></div>`;
+            <div style="font-size:28px;">⏳</div>
+            <div><h3>Müraciətiniz Göndərilib</h3><p>Admin tərəfindən yoxlanılır.</p></div>`;
         banner.style.display = 'flex';
     } else {
         statP.textContent = 'Pulsuz';
@@ -540,16 +540,17 @@ updatePremiumBanner();
 const sdEl = document.getElementById('statDemo');
 if (sdEl) sdEl.textContent = user.demoTests ?? 3;
 
-/* �� Main dashboard render (points-based) ������������������������������ */
+/* ── Main dashboard render (points-based) ────────────────────────────── */
 function renderDashboard() {
+    document.getElementById('welcomeName').textContent = user.name;
     const navName = document.getElementById('navUserName');
     if (navName) navName.textContent = user.name;
 
     const allPoints  = JSON.parse(localStorage.getItem('userPoints') || '{}');
+        total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
     const myData     = allPoints[user.id] || allPoints[String(user.id)] || {
         total: 0, watchedVideos: [], completedTests: [], history: [], lastLoginDate: null
     };
-    const videosArr  = myData.watchedVideos  || [];
     const testsArr   = myData.completedTests || [];
     const total      = myData.total || 0;
     const history    = Array.isArray(myData.history) ? myData.history : [];
@@ -579,7 +580,7 @@ function renderDashboard() {
     const todayKey = new Date().toISOString().slice(0, 10);
     const todayH   = history.filter(h => h.timestamp && new Date(h.timestamp).toISOString().slice(0,10) === todayKey);
     const tVid     = todayH.filter(h => h.reason && h.reason.includes('videosu')).length;
-    const tTst     = todayH.filter(h => h.reason && h.reason.includes('�')).length;
+    const tTst     = todayH.filter(h => h.reason && h.reason.includes('—')).length;
     const tPts     = todayH.reduce((s, h) => s + (h.amount || 0), 0);
 
     document.getElementById('goalVideoText').textContent  = `${Math.min(tVid,2)} / 2`;
@@ -594,19 +595,19 @@ function renderDashboard() {
     if (!history.length) {
         feed.innerHTML = `<div style="text-align:center;padding:28px;color:#9ca3af;">
             <i class="fas fa-history" style="font-size:28px;opacity:.2;display:block;margin-bottom:9px;"></i>
-            H?l? f?aliyy?t yoxdur</div>`;
+            Hələ fəaliyyət yoxdur</div>`;
     } else {
         feed.innerHTML = history.slice(0, 6).map(h => {
-            let bg = '#f1f5f9', ic = '?';
+            let bg = '#f1f5f9', ic = '⭐';
             if (h.reason) {
-                if (h.reason.includes('videosu'))   { bg = '#eef2ff'; ic = '??'; }
-                else if (h.reason.includes('�'))    { bg = '#ecfdf5'; ic = '??'; }
-                else if (h.reason.includes('G�nd?lik')) { bg = '#fff7ed'; ic = '??'; }
+                if (h.reason.includes('videosu'))   { bg = '#eef2ff'; ic = '📹'; }
+                else if (h.reason.includes('—'))    { bg = '#ecfdf5'; ic = '📝'; }
+                else if (h.reason.includes('Gündəlik')) { bg = '#fff7ed'; ic = '🔥'; }
             }
             return `<div class="activity-item">
                 <div class="activity-dot" style="background:${bg};">${ic}</div>
                 <div style="flex:1;">
-                    <div class="activity-text">${h.reason || 'Xal qazan�ld�'}</div>
+                    <div class="activity-text">${h.reason || 'Xal qazanıldı'}</div>
                     <div class="activity-time">${h.date || ''} ${h.time || ''}</div>
                 </div>
                 <div class="activity-pts">+${h.amount} xal</div>
@@ -646,12 +647,16 @@ function renderDashboard() {
 }
 
 renderDashboard();
+// Teacher section: only show if teacher/admin
+if (user.userType === 'teacher' || user.role === 'admin') {
+    renderTeacherSection(user);
+}
 updateNavbar();
 })(); // end async IIFE
 
-/* ======================================================================
-   M�?LL�M B�LM?S� (functions defined outside IIFE so onclick works)
-====================================================================== */
+/* ══════════════════════════════════════════════════════════════════════
+   MÜƏLLİM BÖLMƏSİ (functions defined outside IIFE so onclick works)
+══════════════════════════════════════════════════════════════════════ */
 function renderTeacherSection(u) {
     document.getElementById('teacherSection').style.display = 'block';
 
@@ -676,15 +681,15 @@ function renderTeacherSection(u) {
         const btn   = document.getElementById('requestAccessBtn');
 
         if (u.testAccessRequested) {
-            if (badge) { badge.className = 'access-badge badge-pending'; badge.innerHTML = '<i class="fas fa-clock"></i> G�zl?nilir'; }
-            if (title) title.textContent = 'M�raci?tiniz �cmalda';
-            if (desc)  desc.textContent  = 'Admin m�raci?tinizi n?z?rd?n ke�irir.';
-            if (btn)   { btn.disabled = true; btn.innerHTML = '<i class="fas fa-clock"></i> G�zl?nilir'; btn.style.opacity = '.6'; }
+            if (badge) { badge.className = 'access-badge badge-pending'; badge.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; }
+            if (title) title.textContent = 'Müraciətiniz İcmalda';
+            if (desc)  desc.textContent  = 'Admin müraciətinizi nəzərdən keçirir.';
+            if (btn)   { btn.disabled = true; btn.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; btn.style.opacity = '.6'; }
         } else {
-            if (badge) { badge.className = 'access-badge badge-none'; badge.innerHTML = '<i class="fas fa-lock"></i> �caz?siz'; }
-            if (title) title.textContent = 'S�naq ?lav?etm? �caz?si';
-            if (desc)  desc.textContent  = 'Sayta s�naq ?lav? etm?k ���n admin icaz?si t?l?b olunur.';
-            if (btn)   { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> �caz? �st?'; btn.style.opacity = '1'; }
+            if (badge) { badge.className = 'access-badge badge-none'; badge.innerHTML = '<i class="fas fa-lock"></i> İcazəsiz'; }
+            if (title) title.textContent = 'Sınaq Əlavəetmə İcazəsi';
+            if (desc)  desc.textContent  = 'Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.';
+            if (btn)   { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə'; btn.style.opacity = '1'; }
         }
     }
 }
@@ -692,18 +697,18 @@ function renderTeacherSection(u) {
 async function requestTestAccess() {
     try {
         await API.teacherTests.submit({ title: '_access_request_', questions: [], duration: 0 })
-            .catch(() => {}); // ignore � just flag the user
+            .catch(() => {}); // ignore — just flag the user
         // Mark user as having requested access via update endpoint
         await API.users.update(user.id, { testAccessRequested: true });
         user.testAccessRequested = true;
-        showNotification('M�raci?tiniz g�nd?rildi. Admin yoxlayacaq.', 'success');
+        showNotification('Müraciətiniz göndərildi. Admin yoxlayacaq.', 'success');
         renderTeacherSection(user);
     } catch(e) {
-        showNotification(e.message || 'X?ta ba� verdi', 'error');
+        showNotification(e.message || 'Xəta baş verdi', 'error');
     }
 }
 
-/* �� Question builder �� */
+/* ── Question builder ── */
 let qCount = 0;
 
 function addQuestion() {
@@ -719,14 +724,14 @@ function addQuestion() {
             <i class="fas fa-times"></i>
         </button>
         <div style="margin:10px 0 8px;">
-            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual m?tnini daxil edin *" required style="font-size:13px;">
+            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual mətnini daxil edin *" required style="font-size:13px;">
         </div>
-        <p style="font-size:11px;color:#6b7280;margin-bottom:6px;">D�zg�n cavab� radio il? se�in:</p>
+        <p style="font-size:11px;color:#6b7280;margin-bottom:6px;">Düzgün cavabı radio ilə seçin:</p>
         <div class="options-2col">
             ${[0,1,2,3].map(i=>`
             <div class="opt-row">
-                <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="D�zg�n cavab">
-                <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variant�" required>
+                <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
+                <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variantı" required>
             </div>`).join('')}
         </div>`;
     document.getElementById('questionsContainer').appendChild(div);
@@ -737,7 +742,7 @@ function removeQ(n) {
     if (el) el.remove();
 }
 
-/* �� Submit test �� */
+/* ── Submit test ── */
 async function submitTest(e) {
     e.preventDefault();
 
@@ -751,7 +756,7 @@ async function submitTest(e) {
     const qRows = document.querySelectorAll('.question-row');
     if (qRows.length === 0) {
         document.getElementById('addTestAlert').innerHTML =
-            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> ?n az 1 sual ?lav? edin.</div>';
+            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> Ən az 1 sual əlavə edin.</div>';
         return;
     }
 
@@ -769,14 +774,14 @@ async function submitTest(e) {
 
     if (!valid) {
         document.getElementById('addTestAlert').innerHTML =
-            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> B�t�n sual v? variantlar� doldurun.</div>';
+            '<div class="alert alert-error" style="margin-bottom:12px;"><i class="fas fa-exclamation-circle"></i> Bütün sual və variantları doldurun.</div>';
         return;
     }
 
     try {
         await API.teacherTests.submit({ title, emoji, difficulty, duration, isPremium, description: desc, questions });
         document.getElementById('addTestAlert').innerHTML =
-            '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> S�naq admin yoxlamas�na g�nd?rildi!</div>';
+            '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> Sınaq admin yoxlamasına göndərildi!</div>';
         resetTestForm();
         loadMyTests(user);
         setTimeout(() => { document.getElementById('addTestAlert').innerHTML = ''; }, 4000);
@@ -793,7 +798,7 @@ function resetTestForm() {
     addQuestion();
 }
 
-/* �� My submitted tests �� */
+/* ── My submitted tests ── */
 async function loadMyTests(u) {
     const cont = document.getElementById('myTestsList');
     if (!cont) return;
@@ -801,19 +806,19 @@ async function loadMyTests(u) {
         const tests = await API.teacherTests.list();
         const mine  = tests.filter(t => String(t.teacherId) === String(u.id));
         if (!mine.length) {
-            cont.innerHTML = '<p style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">H?l? s�naq g�nd?rm?misiniz.</p>';
+            cont.innerHTML = '<p style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Hələ sınaq göndərməmisiniz.</p>';
             return;
         }
-        const statusMap = { pending:['badge-pending','? G�zl?nilir'], approved:['badge-approved','? T?sdiql?ndi'], rejected:['badge-rejected','? R?dd Edildi'] };
+        const statusMap = { pending:['badge-pending','⏳ Gözlənilir'], approved:['badge-approved','✅ Təsdiqləndi'], rejected:['badge-rejected','❌ Rədd Edildi'] };
         cont.innerHTML = mine.map(t => {
             const d = new Date(t.submittedAt);
             const [cls, lbl] = statusMap[t.status] || statusMap.pending;
             const ds = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
             return `<div class="ti-item">
-                <div class="ti-emoji">${t.emoji||'??'}</div>
+                <div class="ti-emoji">${t.emoji||'📝'}</div>
                 <div class="ti-info" style="flex:1;">
                     <h5>${t.title}</h5>
-                    <span>${t.questions?.length||0} sual � ${t.duration} d?q � ${t.difficulty} � ${ds}</span>
+                    <span>${t.questions?.length||0} sual · ${t.duration} dəq · ${t.difficulty} · ${ds}</span>
                     ${t.adminNote?`<br><span style="color:#ef4444;font-size:11px;"><i class="fas fa-comment"></i> ${t.adminNote}</span>`:''}
                 </div>
                 <span class="ti-badge ${cls}">${lbl}</span>
@@ -824,11 +829,11 @@ async function loadMyTests(u) {
     }
 }
 
-/* �� Premium request �� */
+/* ── Premium request ── */
 async function sendPremiumRequest(packageType = 'monthly') {
     try {
         await API.premium.request(packageType);
-        showNotification('Premium m�raci?tiniz g�nd?rildi! Admin tezlikl? aktivl?�dir?c?k.', 'success');
+        showNotification('Premium müraciətiniz göndərildi! Admin tezliklə aktivləşdirəcək.', 'success');
         setTimeout(() => location.reload(), 1500);
     } catch(e) {
         showNotification(e.data?.error || e.message, 'error');
@@ -842,6 +847,7 @@ async function sendPremiumRequest(packageType = 'monthly') {
     <script src="js/notifications.js"></script>
 
 
+<script src="js/notifications.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/app.js"></script>
 </body>

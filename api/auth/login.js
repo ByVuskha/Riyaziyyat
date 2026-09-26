@@ -33,8 +33,9 @@ module.exports = async function handler(req, res) {
   const raw  = await redis.get('allUsers');
   let users  = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
 
-  // Ensure admin fallback exists
-  if (!users.find(u => u.email === 'admin@riyazmath.az')) {
+  // Keep the fallback admin available to /api/auth/me on later requests.
+  const hasAdminFallback = users.some(u => u.email === ADMIN_FALLBACK.email);
+  if (!hasAdminFallback) {
     users = [ADMIN_FALLBACK, ...users];
   }
 
@@ -59,6 +60,10 @@ module.exports = async function handler(req, res) {
     if (passwordOk) {
       // Migrate to hash in-place
       const hashed = await bcrypt.hash(password, 12);
+
+    if (!hasAdminFallback) {
+      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+    }
       const idx = users.findIndex(u => u.email === normalizedEmail);
       if (idx !== -1) {
         users[idx].password = hashed;
