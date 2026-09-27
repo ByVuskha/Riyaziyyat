@@ -57,6 +57,16 @@ function correctAnswerIndex(value) {
   return ['A', 'B', 'C', 'D', 'E'].indexOf(String(value || '').toUpperCase());
 }
 
+function pointsForTestScore(ballScore) {
+  const score = Math.max(0, Math.min(100, Number(ballScore) || 0));
+  return Math.max(POINTS.fail, Math.round(score / 2));
+}
+
+function legacyTestPoints(ballScore) {
+  const score = Number(ballScore) || 0;
+  return score === 100 ? POINTS.perfect : score >= 80 ? POINTS.good : score >= 60 ? POINTS.pass : POINTS.fail;
+}
+
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -140,20 +150,28 @@ module.exports = async function handler(req, res) {
     const ballScore = Math.round((score / questions.length) * 100);
     const completed = Array.isArray(data.completedTests) ? data.completedTests : [];
     const alreadyCompleted = completed.includes(testId);
-    if (!alreadyCompleted && user.role !== 'admin') {
-      earnedPoints = ballScore === 100 ? POINTS.perfect : ballScore >= 80 ? POINTS.good : ballScore >= 60 ? POINTS.pass : POINTS.fail;
-      completed.push(testId);
-      data.completedTests = completed;
-      addPoints(data, earnedPoints, `"${test.title}" sınağı (${ballScore}%)`);
-    }
-
     data.testScores = data.testScores && typeof data.testScores === 'object' ? data.testScores : {};
     const previous = data.testScores[testId];
+    const previousPoints = previous
+      ? (Number.isFinite(Number(previous.earnedPoints)) ? Number(previous.earnedPoints) : legacyTestPoints(previous.ballScore))
+      : alreadyCompleted ? POINTS.perfect : 0;
+    const scorePoints = pointsForTestScore(ballScore);
+
+    if (user.role !== 'admin') {
+      if (!alreadyCompleted) {
+        completed.push(testId);
+        data.completedTests = completed;
+      }
+      earnedPoints = Math.max(0, scorePoints - previousPoints);
+      if (earnedPoints > 0) addPoints(data, earnedPoints, `"${test.title}" sınağı (${ballScore}%)`);
+    }
+
     if (!previous || ballScore >= previous.ballScore) {
       data.testScores[testId] = {
         testId,
         testTitle: test.title,
         ballScore,
+        earnedPoints: user.role === 'admin' ? 0 : Math.max(previousPoints, scorePoints),
         rawScore: score,
         total: questions.length,
         date: new Date().toISOString().slice(0, 10),
