@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadPremiumRequests(),
         loadPointsLeaderboard(),
         loadActiveUsers(),
-        loadDevicesSection(),
         loadSuspiciousActivities(),
         loadTeacherTestsSection(),
     ]);
@@ -84,7 +83,6 @@ function showSection(section) {
         leaderboard:  () => loadPointsLeaderboard(),
         activeUsers:  () => loadActiveUsers(),
         suspicious:   () => loadSuspiciousActivities(),
-        devices:      () => loadDevicesSection(),
     };
     if (loaders[section]) loaders[section]();
 }
@@ -779,54 +777,6 @@ async function loadActiveUsers() {
     }
 }
 
-async function loadDevicesSection() {
-    const container = document.getElementById('devicesContainer');
-    if (!container) return;
-    try {
-        const { data: users } = await API.users.list({ limit: 200 });
-        const devices = normalizeArray(users)
-            .filter(user => user.role !== 'admin')
-            .map(user => ({
-                user: user.name || 'İstifadəçi',
-                email: user.email || '',
-                status: user.deviceStatus || 'approved',
-                lastSeen: user.deviceLastSeenAt || user.updatedAt || user.registeredAt || new Date().toISOString(),
-                type: user.userType === 'teacher' ? 'Müəllim' : 'Şagird',
-                deviceId: user.deviceId || 'Yazılmayıb',
-                knownDevices: Array.isArray(user.knownDevices) && user.knownDevices.length ? user.knownDevices : (user.deviceId ? [user.deviceId] : []),
-                frozen: Boolean(user.frozen),
-            }));
-
-        if (!devices.length) {
-            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray);">Cihaz məlumatı yoxdur.</div>';
-            return;
-        }
-
-        container.innerHTML = devices.map(item => `
-            <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;">
-                <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-                    <div>
-                        <strong>${escapeHtml(item.user)}</strong><br>
-                        <small style="color:#64748b;">${escapeHtml(item.email)}</small>
-                    </div>
-                    <span class="badge badge-${item.status === 'blocked' ? 'danger' : item.status === 'warning' ? 'warning' : 'primary'}">${item.status === 'blocked' ? 'Blok' : item.status === 'warning' ? 'Xəbərdarlıq' : 'Təsdiqlənib'}</span>
-                </div>
-                <div style="margin-top:12px;font-size:12px;color:#64748b; display:grid; gap:8px;">
-                    <div><strong style="color:#111827;">Active cihaz:</strong> ${escapeHtml(item.deviceId.slice(0, 18) || 'Yazılmayıb')}...</div>
-                    <div><strong style="color:#111827;">Qeyd olunmuş cihazlar:</strong> ${item.knownDevices.map(device => escapeHtml(device.slice(0, 18))).join(', ') || 'Heç biri'}</div>
-                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                        <span>${escapeHtml(item.type)}</span>
-                        <span>${formatDate(item.lastSeen)}</span>
-                    </div>
-                    ${item.frozen ? '<div style="color:#dc2626; font-weight:700;">Hesab bloklanıb</div>' : ''}
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        container.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${escapeHtml(error.message || 'Cihaz məlumatı yüklənmədi.')}</div>`;
-    }
-}
-
 async function loadSuspiciousActivities() {
     const suspiciousTable = document.getElementById('suspiciousActivitiesTable');
     const frozenTable = document.getElementById('frozenAccountsTable');
@@ -834,7 +784,7 @@ async function loadSuspiciousActivities() {
     try {
         const { data: users } = await API.users.list({ limit: 200 });
         const allUsers = normalizeArray(users).filter(user => user.role !== 'admin');
-        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt || user.deviceStatus === 'warning' || user.deviceStatus === 'blocked');
+        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt);
         const frozen = allUsers.filter(user => user.frozen);
 
         suspiciousTable.innerHTML = suspicious.length
@@ -842,14 +792,13 @@ async function loadSuspiciousActivities() {
                 <tr>
                     <td>${escapeHtml(String(user.id || '—')).slice(0, 10)}</td>
                     <td>${escapeHtml(user.name || 'İstifadəçi')}<br><small>${escapeHtml(user.email || '')}</small></td>
-                    <td>${user.frozen ? 'Blok' : user.deviceStatus === 'warning' ? 'Fərqli cihaz' : user.testAccessRequested ? 'İcazə müraciəti' : 'Premium müraciəti'}</td>
-                    <td>${user.deviceMismatchCount || (user.frozen ? '1' : user.testAccessRequested ? '1' : user.premiumRequestedAt ? '1' : '—')}</td>
-                    <td>${escapeHtml(user.deviceId || 'Web')}</td>
+                    <td>${user.frozen ? 'Blok' : user.testAccessRequested ? 'İcazə müraciəti' : 'Premium müraciəti'}</td>
+                    <td>${user.frozen ? '1' : user.testAccessRequested ? '1' : user.premiumRequestedAt ? '1' : '—'}</td>
+                    <td>Web</td>
                     <td>${formatDate(user.updatedAt || user.registeredAt)}</td>
                     <td>
                         <div class="action-btns" style="display:flex;gap:6px;">
                             <button class="btn-icon btn-view" onclick="viewUser('${user.id}')" title="Bax"><i class="fas fa-eye"></i></button>
-                            ${(user.frozen || user.deviceStatus === 'warning' || user.deviceStatus === 'blocked') ? `<button class="btn-icon btn-success" onclick="allowDeviceAccess('${user.id}')" title="Cihaza icazə ver"><i class="fas fa-unlock"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>`).join('')
@@ -869,30 +818,6 @@ async function loadSuspiciousActivities() {
     } catch (error) {
         suspiciousTable.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Şübhəli məlumatlar yüklənmədi.')}</td></tr>`;
         frozenTable.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Şübhəli məlumatlar yüklənmədi.')}</td></tr>`;
-    }
-}
-
-async function allowDeviceAccess(userId) {
-    try {
-        const { data: users } = await API.users.list({ limit: 200 });
-        const user = normalizeArray(users).find(item => String(item.id) === String(userId));
-        const known = Array.isArray(user?.knownDevices) ? user.knownDevices.filter(Boolean).map(String) : [];
-        const fallback = user?.deviceId ? [user.deviceId] : [];
-        const approvedList = known.length ? known : fallback;
-
-        await API.users.update(userId, {
-            frozen: false,
-            frozenReason: 'Admin fərqli cihaz üçün icazə verdi.',
-            deviceStatus: 'approved',
-            deviceMismatchCount: 0,
-            knownDevices: approvedList,
-            deviceId: approvedList[0] || user?.deviceId || null,
-        });
-        showNotification('Fərqli cihaz üçün icazə verildi.', 'success');
-        loadDevicesSection();
-        loadSuspiciousActivities();
-    } catch (error) {
-        showNotification(error.message || 'İcazə verilmədi.', 'error');
     }
 }
 

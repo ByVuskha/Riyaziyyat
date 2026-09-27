@@ -32,21 +32,6 @@ function parseUsers(value) {
   return [];
 }
 
-function normalizeKnownDevices(value) {
-  const items = Array.isArray(value) ? value : (value ? [value] : []);
-  return Array.from(new Set(items.filter(Boolean).map(String)));
-}
-
-function buildDeviceFingerprint(req) {
-  const headers = req.headers || {};
-  const ua = String(headers['user-agent'] || '').trim();
-  const language = String(headers['accept-language'] || '').trim();
-  const forwarded = String(headers['x-forwarded-for'] || headers['cf-connecting-ip'] || headers['x-real-ip'] || '').trim();
-  const ip = forwarded.split(',')[0].trim();
-  const raw = [ua, language, ip].join('|');
-  return crypto.createHash('sha256').update(raw).digest('hex');
-}
-
 async function login(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { email, password } = req.body || {};
@@ -81,38 +66,14 @@ async function login(req, res) {
   }
   if (!passwordOk) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
 
-  if (user.role !== 'admin') {
-    const currentDeviceId = buildDeviceFingerprint(req);
-    const approvedDeviceId = user.deviceId || null;
-    const knownDevices = normalizeKnownDevices(user.knownDevices || (approvedDeviceId ? [approvedDeviceId] : []));
-    const isAllowedDevice = !!approvedDeviceId && currentDeviceId === approvedDeviceId;
-    const isKnownDevice = knownDevices.includes(currentDeviceId);
-    const mismatch = !isAllowedDevice && !isKnownDevice && !!approvedDeviceId;
-    const mismatchCount = Number(user.deviceMismatchCount || 0);
-
-    if (mismatch) {
-      const nextMismatch = mismatchCount + 1;
-      user.deviceMismatchCount = nextMismatch;
-      user.deviceStatus = 'warning';
-      user.deviceLastMismatchAt = new Date().toISOString();
-      user.deviceLastWarning = new Date().toISOString();
-      user.frozen = false;
-      user.frozenReason = 'Fərqli cihazdan giriş aşkarlandı, lakin icazə verildi.';
-      await redis.set('allUsers', JSON.stringify(users));
-    }
-  }
-
   await redis.persist('allUsers');
   if (!hasAdminFallback || passwordMigrated) {
     await redis.set('allUsers', JSON.stringify(users));
   }
 
-  const currentDeviceId = buildDeviceFingerprint(req);
   const userIndex = users.findIndex(item => item.email === normalizedEmail);
   if (userIndex >= 0) {
-    const knownDevices = normalizeKnownDevices(users[userIndex].knownDevices);
-    users[userIndex].knownDevices = Array.from(new Set([...knownDevices, currentDeviceId]));
-    users[userIndex].deviceId = currentDeviceId;
+    users[userIndex].deviceId = users[userIndex].deviceId || null;
     users[userIndex].deviceStatus = 'approved';
     users[userIndex].deviceMismatchCount = 0;
     users[userIndex].deviceLastSeenAt = new Date().toISOString();
