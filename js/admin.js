@@ -44,8 +44,7 @@ function showSection(section) {
     const titles = {
         dashboard:'Dashboard', users:'İstifadəçilər', teachers:'Müəllimlər',
         teacherTests:'Müəllim Sınaqları', videos:'Video Dərslər', tests:'Sınaqlar',
-        testResults:'Sınaq Nəticələri', news:'Xəbərlər', payments:'Ödənişlər',
-        settings:'Tənzimləmələr',
+        testResults:'Sınaq Nəticələri', news:'Xəbərlər', notifications:'Bildirişlər', payments:'Ödənişlər',
         leaderboard:'Xal Liderliyi', devices:'Cihaz İdarəetməsi',
         suspicious:'Şübhəli Fəaliyyətlər', activeUsers:'Aktiv İstifadəçilər',
     };
@@ -57,10 +56,10 @@ function showSection(section) {
         teachers:     () => loadTeachers(),
         tests:        () => loadTests(),
         news:         () => loadNews(),
+        notifications:() => loadNotificationsSection(),
         payments:     () => loadPayments(),
         teacherTests: () => { loadTeacherTestsSection(); _updateTeacherTestsBadge(); },
         testResults:  () => loadTestResults(),
-        settings:     () => loadSiteSettings(),
         premium:      () => loadPremiumRequests(),
         leaderboard:  () => loadLeaderboard(),
     };
@@ -307,6 +306,64 @@ async function toggleTeacherAccess(id, grant) {
 }
 
 // ════════════════════════════════════════════════════════
+//  Notifications
+// ════════════════════════════════════════════════════════
+async function loadNotificationsSection() {
+    const list = document.getElementById('notificationsList');
+    const target = document.getElementById('notificationTarget');
+    if (!list) return;
+    try {
+        const [{ data: users }, { data: items }] = await Promise.all([
+            API.users.list({ limit: 200 }),
+            API.notifications.list()
+        ]);
+        if (target) {
+            target.innerHTML = '<option value="all">Hamısına</option>' + users.map(user => `
+                <option value="${user.id}">${escapeHtml(user.name)} (${escapeHtml(user.email)})</option>
+            `).join('');
+        }
+        if (!items.length) {
+            list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray);">Hələ bildiriş yoxdur.</div>';
+            return;
+        }
+        list.innerHTML = items.map(n => `
+            <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:${n.type === 'warning' ? '#fff7ed' : n.type === 'success' ? '#ecfdf5' : '#f8fafc'};">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <strong>${escapeHtml(n.title || 'Yeni bildiriş')}</strong>
+                    <span style="font-size:12px;color:#64748b;">${formatDate(n.createdAt)}</span>
+                </div>
+                <p style="margin:8px 0 0;color:#475569;line-height:1.6;">${escapeHtml(n.message || '')}</p>
+                <div style="margin-top:8px;font-size:12px;color:#64748b;">
+                    ${n.userId ? `Hədəf: ${escapeHtml(n.userName || 'İstifadəçi')}` : 'Bütün istifadəçilər'} · ${n.senderName ? `Göndərən: ${escapeHtml(n.senderName)}` : 'Sistem'}
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        list.innerHTML = `<div style="padding:40px;text-align:center;color:#ef4444;">${escapeHtml(error.message || 'Bildirişlər yüklənmədi.')}</div>`;
+    }
+}
+
+async function sendAdminNotification() {
+    const title = document.getElementById('notificationTitle')?.value?.trim() || '';
+    const message = document.getElementById('notificationMessage')?.value?.trim() || '';
+    const target = document.getElementById('notificationTarget')?.value || 'all';
+    if (!title || !message) {
+        showNotification('Başlıq və mesajı doldurun.', 'warning');
+        return;
+    }
+    try {
+        const payload = { title, message, audience: target === 'all' ? 'all' : 'user', userId: target === 'all' ? null : target };
+        await API.notifications.send(payload);
+        showNotification('Bildiriş göndərildi!', 'success');
+        document.getElementById('notificationTitle').value = '';
+        document.getElementById('notificationMessage').value = '';
+        loadNotificationsSection();
+    } catch (error) {
+        showNotification(error.message || 'Bildiriş göndərilmədi.', 'error');
+    }
+}
+
+// ════════════════════════════════════════════════════════
 //  Payments (stored via /api/users balance changes)
 // ════════════════════════════════════════════════════════
 async function loadPayments() {
@@ -539,99 +596,6 @@ function exportTestResults() {
     URL.revokeObjectURL(link.href);
 }
 
-const SITE_SETTING_FIELDS = {
-    branding: { siteName: 'name', logoShort: 'logoShort', siteSlogan: 'slogan', metaDescription: 'metaDescription' },
-    colors: { colorPrimary: 'primary', colorSecondary: 'secondary', colorSuccess: 'success', colorWarning: 'warning', colorDanger: 'danger', colorDark: 'dark' },
-    typography: { fontFamily: 'fontFamily', fontSize: 'fontSize', headingFont: 'headingFont', lineHeight: 'lineHeight' },
-    content: { heroTitle: 'heroTitle', heroSubtitle: 'heroSubtitle', ctaButton1: 'ctaButton1', ctaButton2: 'ctaButton2' },
-    footer: { footerEmail: 'email', footerPhone: 'phone', footerInstagram: 'instagram', footerTelegram: 'telegram', footerCopyright: 'copyright', footerDescription: 'description' },
-};
-
-async function loadSiteSettings() {
-    try {
-        const settings = await API.settings.get();
-        for (const [section, fields] of Object.entries(SITE_SETTING_FIELDS)) {
-            for (const [fieldId, key] of Object.entries(fields)) {
-                const input = document.getElementById(fieldId);
-                if (input && settings[section]?.[key] !== undefined) input.value = settings[section][key];
-            }
-        }
-        updateSettingRangeLabels();
-    } catch (error) {
-        showNotification(error.message || 'Sayt tənzimləmələrini yükləmək mümkün olmadı.', 'error');
-    }
-}
-
-function collectSiteSettings() {
-    const settings = {};
-    for (const [section, fields] of Object.entries(SITE_SETTING_FIELDS)) {
-        settings[section] = {};
-        for (const [fieldId, key] of Object.entries(fields)) {
-            const input = document.getElementById(fieldId);
-            if (!input) continue;
-            settings[section][key] = ['fontSize', 'lineHeight'].includes(key) ? Number(input.value) : input.value.trim();
-        }
-    }
-    return settings;
-}
-
-function updateSettingRangeLabels() {
-    const fontSize = document.getElementById('fontSize');
-    const fontSizeValue = document.getElementById('fontSizeValue');
-    const lineHeight = document.getElementById('lineHeight');
-    const lineHeightValue = document.getElementById('lineHeightValue');
-    if (fontSize && fontSizeValue) fontSizeValue.textContent = `${fontSize.value}px`;
-    if (lineHeight && lineHeightValue) lineHeightValue.textContent = lineHeight.value;
-}
-
-async function saveSiteSettings() {
-    try {
-        await API.settings.save(collectSiteSettings());
-        showNotification('Sayt tənzimləmələri online saxlanıldı.', 'success');
-    } catch (error) {
-        showNotification(error.message || 'Tənzimləmələri saxlamaq mümkün olmadı.', 'error');
-    }
-}
-
-function switchEditorTab(name) {
-    const contentId = `editor${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-    const content = document.getElementById(contentId);
-    if (!content) return;
-    document.querySelectorAll('.editor-content').forEach(section => { section.style.display = 'none'; });
-    content.style.display = 'block';
-    document.querySelectorAll('.editor-tab').forEach(button => {
-        button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${name}'`));
-    });
-}
-
-function previewSite() {
-    const settings = collectSiteSettings();
-    for (const [key, value] of Object.entries(settings.colors || {})) {
-        document.documentElement.style.setProperty(`--${key}`, value);
-    }
-    showNotification('Rəng önizləməsi cari admin səhifəsində tətbiq edildi.', 'info');
-}
-
-function resetSiteSettings() {
-    showConfirm('Sayt tənzimləmələrini standart vəziyyətə qaytarmaq istəyirsiniz?', async () => {
-        try {
-            await API.settings.save({});
-            document.querySelectorAll('#siteEditor input, #siteEditor textarea, #siteEditor select').forEach(input => {
-                if (input.type === 'checkbox' || input.type === 'radio') input.checked = input.defaultChecked;
-                else if (input.tagName === 'SELECT') input.selectedIndex = [...input.options].findIndex(option => option.defaultSelected);
-                else input.value = input.defaultValue;
-            });
-            updateSettingRangeLabels();
-            ['--primary', '--secondary', '--success', '--warning', '--danger', '--dark'].forEach(name => {
-                document.documentElement.style.removeProperty(name);
-            });
-            showNotification('Standart tənzimləmələr bərpa edildi.', 'success');
-        } catch (error) {
-            showNotification(error.message || 'Tənzimləmələri sıfırlamaq mümkün olmadı.', 'error');
-        }
-    });
-}
-
 // ── Render admin name/avatar from session ────────────────────────────────
 (async function renderAdminIdentity() {
     try {
@@ -665,13 +629,6 @@ async function loadLeaderboard() {
                 <div style="font-weight:800;font-size:18px;color:var(--primary);">${u.points||0} xal</div>
             </div>`).join('');
     } catch(e) { showError(container, e.message); }
-}
-
-// ════════════════════════════════════════════════════════
-//  Settings
-// ════════════════════════════════════════════════════════
-function saveSettings() {
-    showNotification('Tənzimləmələr yadda saxlanıldı!', 'success');
 }
 
 // ════════════════════════════════════════════════════════

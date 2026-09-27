@@ -381,6 +381,11 @@ const API = (() => {
     async awardDailyLogin() { return req('POST', '/api/points', { type: 'daily-login' }); },
   };
 
+  const notifications = {
+    async list(params = {}) { return req('GET', '/api/notifications?' + new URLSearchParams(params)); },
+    async send(data) { return req('POST', '/api/notifications', data); },
+  };
+
   let _currentUser = (() => {
     try {
       const saved = JSON.parse(localStorage.getItem('currentUser') || 'null');
@@ -427,7 +432,7 @@ const API = (() => {
     }
   }
 
-  return { auth, tests, videos, media, settings, teachers, news, users, teacherTests, premium, stats, payments, points, getCurrentUser, getCachedUser: () => _currentUser, setCachedUser, clearUserCache, logout, notify };
+  return { auth, tests, videos, media, settings, teachers, news, users, teacherTests, premium, stats, payments, points, notifications, getCurrentUser, getCachedUser: () => _currentUser, setCachedUser, clearUserCache, logout, notify };
 })();
 
 window.API = API;

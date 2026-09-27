@@ -2,7 +2,7 @@ const redis = require('../lib/redis');
 const { getUserFromRequest, requireAuth, setCommonHeaders } = require('../lib/auth');
 const { allowMethods } = require('../lib/helpers');
 
-const POINTS = { perfect: 50, good: 30, pass: 15, fail: 5, dailyLogin: 2 };
+const POINTS = { perfect: 50, good: 30, pass: 15, fail: 5, dailyLogin: 10 };
 
 function parseList(value) {
   return Array.isArray(value) ? value : (value ? JSON.parse(value) : []);

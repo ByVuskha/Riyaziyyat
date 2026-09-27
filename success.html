@@ -235,7 +235,7 @@
 <div class="hero">
     <div class="container hero-inner">
         <h1>🏆 Uğurlar</h1>
-        <p>Video izləmə və sınaq nəticələri ümumi xalına təsir edir.</p>
+        <p>Gündəlik giriş və sınaq nəticələri ümumi xalla əlaqələndirilir.</p>
         <div class="hero-stats">
             <div class="hero-stat">
                 <span class="n" id="heroParticipants">—</span>
@@ -382,7 +382,7 @@ async function renderAll() {
         const idx  = _lb.findIndex(e => String(e.userId) === String(me.id));
         const myE  = _myPoints ? {
             total:   _myPoints.total || 0,
-            videos:  (_myPoints.watchedVideos || []).length,
+            videos:  0,
             tests:   (_myPoints.completedTests || []).length,
         } : (_lb[idx] || null);
         const card = document.getElementById('myCard');
@@ -392,7 +392,7 @@ async function renderAll() {
             document.getElementById('mcName').textContent   = me.name;
             document.getElementById('mcDesc').textContent   = `${_lb.length} iştirakçı arasında`;
             document.getElementById('mcPoints').textContent = myE.total.toLocaleString();
-            document.getElementById('mcVideos').textContent = myE.videos;
+            document.getElementById('mcVideos').textContent = 0;
             document.getElementById('mcTests').textContent  = myE.tests;
             card.style.display = 'flex';
         } else {
@@ -400,9 +400,9 @@ async function renderAll() {
                 <div style="font-size:36px;">🎯</div>
                 <div class="info">
                     <h3 style="margin:0 0 4px;">Hələ sıralamada deyilsiniz</h3>
-                    <p style="margin:0;opacity:.8;font-size:13px;">Video izləyin, sınaqlar həll edin — xal qazanın!</p>
+                    <p style="margin:0;opacity:.8;font-size:13px;">Günlük giriş edin və sınaqlar həll edin — xal qazanın!</p>
                 </div>
-                <a href="videos.html" class="go-btn">Başla →</a>
+                <a href="tests.html" class="go-btn">Sınaqla →</a>
             `;
             card.style.display = 'flex';
         }
@@ -430,7 +430,7 @@ function renderPodium(me) {
             <div class="empty" style="grid-column:1/-1;">
                 <i class="fas fa-trophy"></i>
                 <p>Hələ heç kim xal qazanmayıb. İlk siz olun!</p>
-                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
+                <a href="tests.html" class="btn btn-primary">Sınaq Həll Et</a>
             </div>`;
         return;
     }
@@ -455,7 +455,6 @@ function renderPodium(me) {
             <div class="podium-score">${e.total.toLocaleString()}</div>
             <div class="podium-unit">xal</div>
             <div class="podium-chips">
-                <span class="chip"><i class="fas fa-play" style="font-size:9px;"></i> ${e.videos}</span>
                 <span class="chip purple-chip"><i class="fas fa-pen" style="font-size:9px;"></i> ${e.tests}</span>
                 ${e.premium ? '<span class="chip gold-chip">👑 Premium</span>' : ''}
             </div>
@@ -506,7 +505,7 @@ function renderLeaderboard() {
                         ${typeIcon} ${escapeHtml(e.name)}
                         ${isMe ? '<span style="color:#667eea;font-size:10px;"> (Siz)</span>' : ''}
                     </div>
-                    <div class="lb-sub">${e.videos} video · ${e.tests} sınaq</div>
+                    <div class="lb-sub">${e.tests} sınaq</div>
                 </div>
                 <div class="lb-badge-cell">${e.premium ? '👑' : ''}</div>
                 <div class="lb-score-cell">${e.total.toLocaleString()} xal</div>
@@ -578,7 +577,7 @@ async function renderHistory() {
             <div class="empty">
                 <i class="fas fa-history"></i>
                 <p>Hələ xal qazanmamısınız</p>
-                <a href="videos.html" class="btn btn-primary">Video İzlə</a>
+                <a href="tests.html" class="btn btn-primary">Sınaq Həll Et</a>
             </div>`;
         return;
     }

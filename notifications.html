@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bildirişlər — Bizim Riyaziyyat</title>
+    <meta name="description" content="Platformadakı bütün bildirişlər və elanlar burada toplanır.">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .notify-page { padding: 48px 0 80px; }
+        .notify-shell { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); overflow: hidden; }
+        .notify-header { background: linear-gradient(135deg, #1e293b, #4338ca); color: white; padding: 28px 30px; }
+        .notify-header h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); }
+        .notify-body { padding: 30px; }
+        .notify-card { border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; background: #f8fafc; }
+        .notify-card.info { background: #f8fafc; }
+        .notify-card.success { background: #ecfdf5; }
+        .notify-card.warning { background: #fff7ed; }
+        .notify-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: #64748b; font-size: 12px; margin-bottom: 8px; }
+        .notify-card h3 { margin: 0 0 8px; font-size: 18px; color: #111827; }
+        .notify-card p { margin: 0; color: #475569; line-height: 1.7; }
+        .notify-empty { text-align: center; color: #64748b; padding: 60px 20px; }
+        @media (max-width: 640px) { .notify-body { padding: 18px; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-inner">
+                <a href="index.html" class="navbar-logo"><span>BR</span> Bizim Riyaziyyat</a>
+                <div class="navbar-menu">
+                    <a href="index.html">Ana Səhifə</a>
+                    <a href="videos.html">Dərslər</a>
+                    <a href="tests.html">Sınaqlar</a>
+                    <a href="teachers.html">Müəllimlər</a>
+                    <a href="success.html">Uğurlar</a>
+                    <a href="notifications.html" class="active">Bildirişlər</a>
+                    <a href="news.html">Xəbərlər</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="navbar-actions">
+                    <button class="hamburger-btn" aria-label="Menyu" aria-expanded="false"><i class="fas fa-bars"></i></button>
+                    <div id="guestButtons">
+                        <a href="login.html" class="btn btn-secondary btn-sm">Giriş</a>
+                        <a href="register.html" class="btn btn-primary btn-sm">Qeydiyyat</a>
+                    </div>
+                    <div id="userButtons" style="display:none;">
+                        <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-user"></i> <span id="navUserName"></span>
+                        </a>
+                        <button onclick="logout()" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="notify-page">
+        <div class="container">
+            <div class="notify-shell">
+                <div class="notify-header">
+                    <h1><i class="fas fa-bell"></i> Bildirişlər</h1>
+                </div>
+                <div class="notify-body">
+                    <div id="notificationsFeed">
+                        <div class="notify-empty"><i class="fas fa-spinner fa-spin"></i><br>Bildirişlər yüklənir...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.</p>
+            </div>
+        </div>
+    </footer>
+
+    <canvas id="mathCanvas"></canvas>
+    <script src="js/confetti.js"></script>
+    <script src="js/math-bg.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/api-client.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        async function loadNotificationsFeed() {
+            const feed = document.getElementById('notificationsFeed');
+            try {
+                const { data = [] } = await API.notifications.list();
+                if (!data.length) {
+                    feed.innerHTML = '<div class="notify-empty"><i class="fas fa-bell-slash"></i><br>Hələ heç bir bildiriş yoxdur.</div>';
+                    return;
+                }
+
+                feed.innerHTML = data.map(item => `
+                    <article class="notify-card ${item.type || 'info'}">
+                        <div class="notify-meta">
+                            <span><i class="fas fa-clock"></i> ${new Date(item.createdAt).toLocaleString('az-AZ')}</span>
+                            <span>${item.userId ? 'Şəxsi' : 'Hamıya'}</span>
+                        </div>
+                        <h3>${item.title || 'Yeni bildiriş'}</h3>
+                        <p>${String(item.message || '').replace(/\n/g, '<br>')}</p>
+                    </article>
+                `).join('');
+            } catch (error) {
+                feed.innerHTML = `<div class="notify-empty"><i class="fas fa-exclamation-triangle"></i><br>${error.message || 'Bildirişlər yüklənmədi.'}</div>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            updateNavbar();
+            loadNotificationsFeed();
+        });
+    </script>
+</body>
+</html>

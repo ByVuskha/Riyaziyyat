@@ -215,32 +215,6 @@
             gap: 20px;
         }
         
-        /* Editor Tabs */
-        .editor-tab {
-            padding: 12px 20px;
-            border: none;
-            background: transparent;
-            color: var(--gray);
-            cursor: pointer;
-            font-weight: 600;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
-        .editor-tab:hover {
-            color: var(--primary);
-        }
-        .editor-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        .editor-content {
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
         /* Charts */
         .chart-container {
             height: 300px;
@@ -321,6 +295,10 @@
                 <i class="fas fa-newspaper"></i>
                 <span>Xəbərlər</span>
             </div>
+            <div class="admin-menu-item" onclick="showSection('notifications')">
+                <i class="fas fa-bell"></i>
+                <span>Bildirişlər</span>
+            </div>
 
             <div class="admin-menu-divider"></div>
             <div class="admin-menu-group-label">Müəllimlər</div>
@@ -361,14 +339,6 @@
             <div class="admin-menu-item" onclick="showSection('devices')">
                 <i class="fas fa-mobile-alt" style="color:#8b5cf6;"></i>
                 <span>Cihaz İdarəetməsi</span>
-            </div>
-            <div class="admin-menu-item" onclick="showSection('siteEditor')">
-                <i class="fas fa-paint-brush"></i>
-                <span>Sayt Redaktoru</span>
-            </div>
-            <div class="admin-menu-item" onclick="showSection('settings')">
-                <i class="fas fa-cog"></i>
-                <span>Tənzimləmələr</span>
             </div>
 
             <div class="admin-menu-divider"></div>
@@ -842,196 +812,45 @@
             </div>
         </div>
 
-        <!-- Site Editor Section -->
-        <div id="siteEditor" class="admin-section" style="display:none;">
-            <h2>🎨 Sayt Redaktoru</h2>
-            <p style="color:var(--gray);margin-bottom:30px;">Saytın görünüşünü və mətnlərini buradan idarə edin. Dəyişikliklər dərhal tətbiq olunur.</p>
-            
-            <!-- Tabs -->
-            <div style="display:flex;gap:10px;margin-bottom:25px;border-bottom:2px solid var(--border);">
-                <button class="editor-tab active" onclick="switchEditorTab('branding')">
-                    <i class="fas fa-palette"></i> Branding
-                </button>
-                <button class="editor-tab" onclick="switchEditorTab('colors')">
-                    <i class="fas fa-fill-drip"></i> Rənglər
-                </button>
-                <button class="editor-tab" onclick="switchEditorTab('typography')">
-                    <i class="fas fa-font"></i> Şrift
-                </button>
-                <button class="editor-tab" onclick="switchEditorTab('content')">
-                    <i class="fas fa-file-alt"></i> Mətnlər
-                </button>
-                <button class="editor-tab" onclick="switchEditorTab('footer')">
-                    <i class="fas fa-shoe-prints"></i> Footer
+        <!-- Notifications Section -->
+        <div id="notifications" class="admin-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="margin:0;border:none;padding:0;">🔔 Bildirişlər</h2>
+                <button class="btn btn-primary btn-sm" onclick="loadNotificationsSection()">
+                    <i class="fas fa-sync"></i> Yenilə
                 </button>
             </div>
-            
-            <!-- Branding Tab -->
-            <div id="editorBranding" class="editor-content">
-                <div class="card">
-                    <h3 style="margin-bottom:20px;">Logo və Branding</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Sayt Adı</label>
-                            <input type="text" class="form-control" id="siteName" value="Bizim Riyaziyyat">
-                        </div>
-                        <div class="form-group">
-                            <label>Logo Qısaltması</label>
-                            <input type="text" class="form-control" id="logoShort" value="BR" maxlength="3">
-                        </div>
-                        <div class="form-group">
-                            <label>Slogan</label>
-                            <input type="text" class="form-control" id="siteSlogan" value="Riyaziyyatı Asan Öyrən">
-                        </div>
-                        <div class="form-group">
-                            <label>Meta Təsvir</label>
-                            <textarea class="form-control" id="metaDescription" rows="2">Azərbaycanın ən böyük riyaziyyat öyrənmə platforması</textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Colors Tab -->
-            <div id="editorColors" class="editor-content" style="display:none;">
-                <div class="card">
-                    <h3 style="margin-bottom:20px;">Rəng Sxemi</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Əsas Rəng (Primary)</label>
-                            <input type="color" class="form-control" id="colorPrimary" value="#3b82f6">
-                            <small style="color:var(--gray);">Düymələr, linklər</small>
-                        </div>
-                        <div class="form-group">
-                            <label>İkinci Rəng (Secondary)</label>
-                            <input type="color" class="form-control" id="colorSecondary" value="#8b5cf6">
-                            <small style="color:var(--gray);">Aksentlər</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Uğur Rəngi (Success)</label>
-                            <input type="color" class="form-control" id="colorSuccess" value="#10b981">
-                        </div>
-                        <div class="form-group">
-                            <label>Xəbərdarlıq (Warning)</label>
-                            <input type="color" class="form-control" id="colorWarning" value="#f59e0b">
-                        </div>
-                        <div class="form-group">
-                            <label>Xəta (Danger)</label>
-                            <input type="color" class="form-control" id="colorDanger" value="#ef4444">
-                        </div>
-                        <div class="form-group">
-                            <label>Tünd Rəng (Dark)</label>
-                            <input type="color" class="form-control" id="colorDark" value="#1e293b">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Typography Tab -->
-            <div id="editorTypography" class="editor-content" style="display:none;">
-                <div class="card">
-                    <h3 style="margin-bottom:20px;">Şrift Tənzimləmələri</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Əsas Şrift</label>
-                            <select class="form-control" id="fontFamily">
-                                <option value="'Inter', sans-serif">Inter (Default)</option>
-                                <option value="'Roboto', sans-serif">Roboto</option>
-                                <option value="'Open Sans', sans-serif">Open Sans</option>
-                                <option value="'Poppins', sans-serif">Poppins</option>
-                                <option value="'Montserrat', sans-serif">Montserrat</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Əsas Şrift Ölçüsü</label>
-                            <input type="range" class="form-control" id="fontSize" min="14" max="18" value="16">
-                            <small id="fontSizeValue">16px</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Başlıq Şrifti</label>
-                            <select class="form-control" id="headingFont">
-                                <option value="'Inter', sans-serif">Inter (Default)</option>
-                                <option value="'Roboto', sans-serif">Roboto</option>
-                                <option value="'Poppins', sans-serif">Poppins</option>
-                                <option value="'Montserrat', sans-serif">Montserrat</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Sətir Hündürlüyü</label>
-                            <input type="range" class="form-control" id="lineHeight" min="1.4" max="2" step="0.1" value="1.6">
-                            <small id="lineHeightValue">1.6</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Content Tab -->
-            <div id="editorContent" class="editor-content" style="display:none;">
-                <div class="card">
-                    <h3 style="margin-bottom:20px;">Ana Səhifə Mətnləri</h3>
+
+            <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);margin-bottom:25px;">
+                <h3 style="margin-bottom:15px;">Yeni bildiriş göndər</h3>
+                <div class="form-grid">
                     <div class="form-group">
-                        <label>Hero Başlıq</label>
-                        <input type="text" class="form-control" id="heroTitle" value="Riyaziyyatı Asan Öyrən">
+                        <label>Hədəf</label>
+                        <select class="form-control" id="notificationTarget">
+                            <option value="all">Hamısına</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>Hero Alt Başlıq</label>
-                        <textarea class="form-control" id="heroSubtitle" rows="2">Peşəkar müəllimlərdən video dərslər, sınaqlar və interaktiv tapşırıqlarla riyaziyyatı mənimsə.</textarea>
+                        <label>Başlıq</label>
+                        <input type="text" class="form-control" id="notificationTitle" placeholder="Məs.: Yeni dərslər yükləndi" maxlength="120">
                     </div>
-                    <div class="form-group">
-                        <label>Düymə Mətni 1</label>
-                        <input type="text" class="form-control" id="ctaButton1" value="İndi Başla">
-                    </div>
-                    <div class="form-group">
-                        <label>Düymə Mətni 2</label>
-                        <input type="text" class="form-control" id="ctaButton2" value="Pulsuz Sınaq">
+                    <div class="form-group" style="grid-column:1 / -1;">
+                        <label>Mesaj</label>
+                        <textarea class="form-control" id="notificationMessage" rows="4" placeholder="Bildiriş mətni..."></textarea>
                     </div>
                 </div>
-                
-            </div>
-            
-            <!-- Footer Tab -->
-            <div id="editorFooter" class="editor-content" style="display:none;">
-                <div class="card">
-                    <h3 style="margin-bottom:20px;">Footer Məlumatları</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" class="form-control" id="footerEmail" value="info@bizimriyaziyyat.az">
-                        </div>
-                        <div class="form-group">
-                            <label>Telefon</label>
-                            <input type="tel" class="form-control" id="footerPhone" value="+994 50 123 45 67">
-                        </div>
-                        <div class="form-group">
-                            <label>Instagram</label>
-                            <input type="text" class="form-control" id="footerInstagram" value="@bizimriyaziyyat">
-                        </div>
-                        <div class="form-group">
-                            <label>Telegram</label>
-                            <input type="text" class="form-control" id="footerTelegram" value="@bizimriyaziyyat">
-                        </div>
-                        <div class="form-group">
-                            <label>Copyright Mətni</label>
-                            <input type="text" class="form-control" id="footerCopyright" value="© 2026 Bizim Riyaziyyat. Bütün hüquqlar qorunur.">
-                        </div>
-                        <div class="form-group">
-                            <label>Footer Təsvir</label>
-                            <textarea class="form-control" id="footerDescription" rows="2">Azərbaycanın ən böyük riyaziyyat öyrənmə platforması. Hər yaşdan tələbə üçün.</textarea>
-                        </div>
-                    </div>
+                <div style="margin-top:18px;">
+                    <button class="btn btn-primary" onclick="sendAdminNotification()">
+                        <i class="fas fa-paper-plane"></i> Göndər
+                    </button>
                 </div>
             </div>
-            
-            <!-- Action Buttons -->
-            <div style="display:flex;gap:15px;margin-top:30px;">
-                <button class="btn btn-primary" onclick="saveSiteSettings()">
-                    <i class="fas fa-save"></i> Dəyişiklikləri Saxla
-                </button>
-                <button class="btn btn-secondary" onclick="previewSite()">
-                    <i class="fas fa-eye"></i> Önizləmə
-                </button>
-                <button class="btn" style="background:#fef2f2;color:#dc2626;" onclick="resetSiteSettings()">
-                    <i class="fas fa-undo"></i> Sıfırla
-                </button>
+
+            <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);">
+                <h3 style="margin-bottom:15px;">Son bildirişlər</h3>
+                <div id="notificationsList">
+                    <div style="text-align:center;color:var(--gray);padding:30px;">Yüklənir...</div>
+                </div>
             </div>
         </div>
 
@@ -1217,57 +1036,6 @@
             </div>
         </div>
 
-        <!-- Settings Section -->
-        <div id="settings" class="admin-section">
-            <h2>Tənzimləmələr</h2>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Sayt Adı</label>
-                    <input type="text" class="form-control" value="Bizim Riyaziyyat" id="siteName">
-                </div>
-                <div class="form-group">
-                    <label>Domen</label>
-                    <input type="text" class="form-control" value="bizimriyaziyyat.work.gd" id="siteDomain">
-                </div>
-                <div class="form-group">
-                    <label>Test Qiyməti (₼)</label>
-                    <input type="number" class="form-control" value="5" id="testPrice">
-                </div>
-                <div class="form-group">
-                    <label>Demo Test Sayı</label>
-                    <input type="number" class="form-control" value="3" id="demoTests">
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" class="form-control" value="info@riyazmath.az" id="siteEmail">
-                </div>
-                <div class="form-group">
-                    <label>Telefon</label>
-                    <input type="tel" class="form-control" value="+994 XX XXX XX XX" id="sitePhone">
-                </div>
-            </div>
-            
-            <div style="margin-top:30px;padding-top:30px;border-top:2px solid var(--border);">
-                <h3 style="margin-bottom:20px;">🔒 Təhlükəsizlik və Sessiyalar</h3>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;">
-                    <button class="btn btn-primary" onclick="viewUserSessions()" style="width:100%;">
-                        <i class="fas fa-mobile-alt"></i> Aktiv Sessiyalar
-                    </button>
-                    <button class="btn btn-danger" onclick="clearAllSessions()" style="width:100%;">
-                        <i class="fas fa-sign-out-alt"></i> Hamısını Çıxış Et
-                    </button>
-                </div>
-                <p style="margin-top:15px;color:var(--gray);font-size:13px;">
-                    <i class="fas fa-info-circle"></i> Hər istifadəçi yalnız bir cihazda aktiv ola bilər. Yeni cihazdan giriş edildikdə köhnə cihazdan avtomatik çıxış edilir.
-                </p>
-            </div>
-            
-            <div style="margin-top:20px;">
-                <button class="btn btn-primary" onclick="saveSettings()">
-                    <i class="fas fa-save"></i> Yadda Saxla
-                </button>
-            </div>
-        </div>
         <!-- Teacher Test Requests Section -->
         <div id="teacherTests" class="admin-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
