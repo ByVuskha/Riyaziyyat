@@ -196,11 +196,16 @@
             setTimeout(() => window.location.href = redirect, 700);
         } catch (err) {
             const msg = err.data?.error || err.message || 'Giriş mümkün olmadı';
-            if (err.status === 403) {
-                showAlert('Hesabınız bloklanıb. Dəstək xidməti ilə əlaqə saxlayın.', 'error');
+            const isDeviceIssue = /(cihaz|device|bloklan|dondurul|icazə|fərqli)/i.test(msg);
+
+            if (err.status === 403 || isDeviceIssue) {
+                showAlert(msg, 'warning');
+            } else if (err.status === 401) {
+                showAlert('Email və ya şifrə yanlışdır.', 'error');
             } else {
-                showAlert(msg);
+                showAlert(msg, 'error');
             }
+
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
         }

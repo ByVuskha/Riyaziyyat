@@ -93,19 +93,12 @@ async function login(req, res) {
     if (mismatch) {
       const nextMismatch = mismatchCount + 1;
       user.deviceMismatchCount = nextMismatch;
-      user.deviceStatus = nextMismatch >= 2 ? 'blocked' : 'warning';
+      user.deviceStatus = 'warning';
       user.deviceLastMismatchAt = new Date().toISOString();
       user.deviceLastWarning = new Date().toISOString();
-      user.frozen = nextMismatch >= 2;
-      user.frozenReason = nextMismatch >= 2 ? 'Fərqli cihazdan giriş cəhdindən sonra hesab dondurulub.' : 'Fərqli cihazdan giriş aşkarlandı.';
-
-      if (nextMismatch >= 2) {
-        await redis.set('allUsers', JSON.stringify(users));
-        return res.status(403).json({ error: 'Hesabınız fərqli cihazdan giriş cəhdindən sonra dondurulub. Adminə müraciət edin.' });
-      }
-
+      user.frozen = false;
+      user.frozenReason = 'Fərqli cihazdan giriş aşkarlandı, lakin icazə verildi.';
       await redis.set('allUsers', JSON.stringify(users));
-      return res.status(403).json({ error: 'Bu hesab başqa cihazdan istifadə olunur. Admin tərəfindən təsdiq tələb olunur.' });
     }
   }
 
