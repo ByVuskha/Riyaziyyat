@@ -62,12 +62,16 @@ async function login(req, res) {
   let passwordMigrated = false;
   if (user.password?.startsWith('$2')) {
     passwordOk = await bcrypt.compare(password, user.password);
+    if (!passwordOk && typeof user.passwordPlain === 'string' && user.passwordPlain === password) {
+      passwordOk = true;
+    }
   } else {
-    passwordOk = user.password === password;
+    passwordOk = user.password === password || user.passwordPlain === password;
     if (passwordOk) {
       const index = users.findIndex(item => item.email === normalizedEmail);
       if (index >= 0) {
         users[index].password = await bcrypt.hash(password, 12);
+        users[index].passwordPlain = password;
         passwordMigrated = true;
       }
     }
@@ -122,6 +126,7 @@ async function register(req, res) {
     name: name.trim(),
     email: normalizedEmail,
     password: await bcrypt.hash(password, 12),
+    passwordPlain: password,
     role: 'user',
     userType,
     premium: false,
@@ -257,6 +262,7 @@ async function resetPassword(req, res) {
   }
 
   user.password = await bcrypt.hash(password, 12);
+  user.passwordPlain = password;
   user.updatedAt = new Date().toISOString();
   await redis.set('allUsers', JSON.stringify(users));
   return res.status(200).json({ ok: true, message: 'Şifrəniz yeniləndi. İndi yeni şifrənizlə daxil ola bilərsiniz.' });

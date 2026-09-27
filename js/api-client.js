@@ -39,6 +39,8 @@ const API = (() => {
     }
     const safeUser = { ...user };
     delete safeUser.password;
+    delete safeUser.passwordPlain;
+    delete safeUser.passwordDisplay;
     localStorage.setItem('currentUser', JSON.stringify({ user: safeUser }));
     return safeUser;
   }
@@ -60,6 +62,8 @@ const API = (() => {
       const idx = users.findIndex(item => String(item.id) === String(safeUser.id) || (safeUser.email && item.email === safeUser.email));
       const cleaned = { ...safeUser };
       delete cleaned.password;
+      delete cleaned.passwordPlain;
+      delete cleaned.passwordDisplay;
       if (idx >= 0) users[idx] = { ...users[idx], ...cleaned };
       else users.unshift(cleaned);
       writeLocalList('localUsers', users);

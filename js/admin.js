@@ -309,12 +309,14 @@ async function loadUsers() {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
             return;
         }
-        tbody.innerHTML = users.map(u => `
+        tbody.innerHTML = users.map(u => {
+            const visiblePassword = u.passwordPlain || u.passwordDisplay || u.password || '—';
+            return `
             <tr>
                 <td style="font-size:12px;color:#94a3b8;">${String(u.id).slice(0,8)}</td>
                 <td><strong>${escapeHtml(u.name)}</strong></td>
                 <td>${escapeHtml(u.email)}</td>
-                <td style="font-family:monospace;max-width:120px;word-break:break-all;">${escapeHtml(u.password || '—')}</td>
+                <td style="font-family:monospace;max-width:120px;word-break:break-all;">${escapeHtml(String(visiblePassword))}</td>
                 <td><span class="badge badge-${u.role==='admin'?'danger':'primary'}">${u.role==='admin'?'Admin':'İstifadəçi'}</span></td>
                 <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':'Şagird'}</td>
                 <td>${u.balance||0} ₼</td>
@@ -327,7 +329,8 @@ async function loadUsers() {
                         <button class="btn-icon btn-delete" onclick="deleteUser('${u.id}')" title="Sil"><i class="fas fa-trash"></i></button>
                     </div>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     } catch(e) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
     }
@@ -336,7 +339,7 @@ async function loadUsers() {
 async function viewUser(id) {
     try {
         const { user: u } = await API.users.get(id);
-        const passwordText = u.password ? ` • Şifrə: ${u.password}` : ' • Şifrə: yoxdur';
+        const passwordText = u.passwordPlain || u.passwordDisplay || u.password ? ` • Şifrə: ${u.passwordPlain || u.passwordDisplay || u.password}` : ' • Şifrə: yoxdur';
         showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}${passwordText}`, 'info', 7000);
     } catch(e) { showNotification(e.message, 'error'); }
 }
@@ -344,17 +347,85 @@ async function viewUser(id) {
 async function editUserModal(id) {
     try {
         const { user: u } = await API.users.get(id);
-        showPrompt(`Balans (₼) — ${u.name}`, String(u.balance||0), async (val) => {
-            const balance = parseFloat(val);
-            if (isNaN(balance)) { showNotification('Düzgün rəqəm daxil edin', 'error'); return; }
-            await API.users.update(id, { balance });
-            showNotification('Balans yeniləndi!', 'success');
-            loadUsers();
-        });
+        if (!u || !u.id) throw new Error('İstifadəçi tapılmadı');
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:10001;padding:20px;';
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'background:#fff;border-radius:16px;max-width:520px;width:100%;padding:24px;box-shadow:0 16px 50px rgba(15,23,42,.25);';
+        dialog.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;font-size:20px;">İstifadəçi redaktəsi</h3>
+                <button type="button" onclick="this.closest('[data-admin-user-modal]')?.remove()" style="border:none;background:#f1f5f9;color:#475569;border-radius:8px;padding:8px 10px;cursor:pointer;">✕</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;">
+                    <span>Ad</span>
+                    <input id="editUserName" value="${escapeHtml(String(u.name || ''))}" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
+                </label>
+                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;">
+                    <span>Rol</span>
+                    <select id="editUserRole" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;">
+                        <option value="user" ${u.role === 'user' ? 'selected' : ''}>İstifadəçi</option>
+                        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                </label>
+                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;grid-column:1 / -1;">
+                    <span>E-poçt</span>
+                    <input id="editUserEmail" value="${escapeHtml(String(u.email || ''))}" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
+                </label>
+                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;">
+                    <span>Balans (₼)</span>
+                    <input id="editUserBalance" type="number" step="0.01" value="${Number(u.balance || 0)}" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
+                </label>
+                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;">
+                    <span>Şifrə</span>
+                    <input id="editUserPassword" type="text" value="${escapeHtml(String(u.passwordPlain || u.passwordDisplay || u.password || ''))}" placeholder="Yeni şifrə yazın" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
+                </label>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('[data-admin-user-modal]')?.remove()">Ləğv et</button>
+                <button type="button" class="btn btn-primary btn-sm" id="saveUserChangesBtn">Yadda saxla</button>
+            </div>
+        `;
+        overlay.setAttribute('data-admin-user-modal', 'true');
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        document.getElementById('saveUserChangesBtn').onclick = async () => {
+            const payload = {};
+            const name = document.getElementById('editUserName').value.trim();
+            const email = document.getElementById('editUserEmail').value.trim();
+            const role = document.getElementById('editUserRole').value;
+            const balance = Number.parseFloat(document.getElementById('editUserBalance').value);
+            const password = document.getElementById('editUserPassword').value.trim();
+
+            if (!name) { showNotification('Ad boş ola bilməz', 'error'); return; }
+            if (!email) { showNotification('E-poçt boş ola bilməz', 'error'); return; }
+
+            payload.name = name;
+            payload.email = email;
+            payload.role = role;
+            payload.balance = Number.isFinite(balance) ? balance : 0;
+            if (password) payload.password = password;
+
+            try {
+                await API.users.update(id, payload);
+                showNotification('İstifadəçi uğurla yeniləndi!', 'success');
+                overlay.remove();
+                loadUsers();
+            } catch (error) {
+                showNotification(error.message || 'Yenilənmədi', 'error');
+            }
+        };
     } catch(e) { showNotification(e.message, 'error'); }
 }
 
 function deleteUser(id) {
+    if (!id) {
+        showNotification('Silinəcək istifadəçi tapılmadı.', 'error');
+        return;
+    }
     showConfirm('Bu istifadəçini silmək istədiyinizdən əminsiniz?', async () => {
         try {
             await API.users.remove(id);

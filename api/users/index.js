@@ -123,7 +123,10 @@ module.exports = async function handler(req, res) {
       if (loginRequestStatus !== undefined) users[idx].loginRequestStatus = loginRequestStatus;
       if (loginRejectedReason !== undefined) users[idx].loginRejectedReason = loginRejectedReason;
       if (loginRequestedAt !== undefined) users[idx].loginRequestedAt = loginRequestedAt;
-      if (password && password.length >= 6) users[idx].password = await bcrypt.hash(password, 12);
+      if (password && password.length >= 6) {
+        users[idx].password = await bcrypt.hash(password, 12);
+        users[idx].passwordPlain = password;
+      }
     }
 
     users[idx].updatedAt = new Date().toISOString();
