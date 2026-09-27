@@ -296,6 +296,12 @@ const API = (() => {
       setCachedUser(result.user);
       return result;
     },
+    async requestPasswordReset(email) {
+      return req('POST', '/api/auth/forgot-password', { email });
+    },
+    async resetPassword(token, password) {
+      return req('POST', '/api/auth/reset-password', { token, password });
+    },
     async logout() { return req('POST', '/api/auth/logout'); },
   };
 

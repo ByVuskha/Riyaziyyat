@@ -15,7 +15,7 @@ RiyazMath - Azərbaycan dilində riyaziyyat təhsili üçün müasir onlayn plat
 - 🎁 **Demo Sınaqlar** - Pulsuz sınaq imkanı
 - 📊 **Şəxsi Kabinet** - Tərəqqinizi izləyin
 - 📰 **Xəbərlər** - Son yeniliklər
-- 📧 **Email Doğrulama** - EmailJS inteqrasiyası
+- 🔐 **Şifrə Bərpası** - EmailJS ilə müddətli bərpa linki
 - 🔒 **Cihaz Məhdudiyyəti** - Bir cihazda giriş
 - 🎨 **Animasiyalar** - Müasir vizual effektlər
 - 📱 **Mobil Menyu** - Responsive naviqasiya
@@ -51,6 +51,7 @@ Email: admin@riyazmath.az
 riyaziyyat-sayt/
 ├── index.html              # Ana səhifə
 ├── login.html              # Giriş
+├── reset-password.html     # Şifrəni yenilə
 ├── register.html           # Qeydiyyat
 ├── dashboard.html          # İstifadəçi kabineti
 ├── admin.html              # Admin paneli
@@ -71,7 +72,6 @@ riyaziyyat-sayt/
 └── js/
     ├── auth.js             # Autentifikasiya + cihaz məhdudiyyəti
     ├── admin.js            # Admin funksiyaları + inline editing
-    ├── email-service.js    # EmailJS inteqrasiyası
     ├── storage-wrapper.js  # Upstash + LocalStorage
     ├── mobile-menu.js      # Mobil naviqasiya
     └── upstash.js          # Upstash konfiqurasiyası
@@ -124,12 +124,8 @@ Bütün cihazlarda mükəmməl işləyir:
 
 ## 🔄 Konfiqurasiya
 
-### EmailJS Quraşdırma
-Real email göndərmə üçün:
-1. [EmailJS](https://www.emailjs.com) hesabı yaradın
-2. Service və Template yaradın
-3. `js/email-service.js` faylında konfiqurasiya edin
-4. Ətraflı təlimat: `EMAILJS-QURASDIRMA.md`
+### Şifrə Bərpası EmailJS
+Giriş səhifəsindəki şifrə bərpa linki üçün EmailJS Service ID, reset template ID və Public Key-i Vercel Environment Variables-da konfiqurasiya edin. Addımlar: `EMAILJS-QURASDIRMA.md` və `DEPLOYMENT.md`.
 
 ### Upstash Quraşdırma
 Cloud storage üçün:

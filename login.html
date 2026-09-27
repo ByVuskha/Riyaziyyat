@@ -49,6 +49,8 @@
         .input-icon .form-control { padding-left: 42px; }
         .auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--gray); }
         .auth-footer a { color: var(--primary); font-weight: 600; }
+        .forgot-password-link { display: block; margin: 12px auto 0; padding: 4px; border: 0; background: none; color: var(--primary); font: inherit; font-size: 14px; cursor: pointer; }
+        .forgot-password-link:hover { text-decoration: underline; }
         .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .alert-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
@@ -89,6 +91,23 @@
             </button>
         </form>
 
+        <button type="button" class="forgot-password-link" id="forgotPasswordBtn">Şifrəmi unutdum?</button>
+
+        <form id="forgotPasswordForm" novalidate hidden>
+            <div class="form-group">
+                <label for="resetEmail">Hesab email-i</label>
+                <div class="input-icon">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" class="form-control" id="resetEmail"
+                           placeholder="email@example.com" autocomplete="email" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="resetRequestBtn">
+                <i class="fas fa-paper-plane"></i> Bərpa linki göndər
+            </button>
+            <button type="button" class="forgot-password-link" id="backToLoginBtn">Girişə qayıt</button>
+        </form>
+
         <div class="auth-footer">
             Hesabınız yoxdur? <a href="register.html">Qeydiyyat</a>
         </div>
@@ -110,10 +129,48 @@
     const form    = document.getElementById('loginForm');
     const btn     = document.getElementById('submitBtn');
     const alertBox = document.getElementById('alertBox');
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const forgotBtn = document.getElementById('forgotPasswordBtn');
+    const resetBtn = document.getElementById('resetRequestBtn');
 
     function showAlert(msg, type = 'error') {
         alertBox.innerHTML = `<div class="alert alert-${type}"><i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}</div>`;
     }
+
+    forgotBtn.addEventListener('click', () => {
+        document.getElementById('resetEmail').value = document.getElementById('email').value.trim();
+        form.hidden = true;
+        forgotBtn.hidden = true;
+        forgotForm.hidden = false;
+        alertBox.innerHTML = '';
+        document.getElementById('resetEmail').focus();
+    });
+
+    document.getElementById('backToLoginBtn').addEventListener('click', () => {
+        forgotForm.hidden = true;
+        form.hidden = false;
+        forgotBtn.hidden = false;
+        alertBox.innerHTML = '';
+    });
+
+    forgotForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const email = document.getElementById('resetEmail').value.trim();
+        if (!email) { showAlert('Email daxil edin'); return; }
+
+        resetBtn.disabled = true;
+        resetBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Göndərilir...';
+        alertBox.innerHTML = '';
+        try {
+            const result = await API.auth.requestPasswordReset(email);
+            showAlert(result.message || 'Əgər bu email qeydiyyatlıdırsa, bərpa linki göndərildi.', 'success');
+        } catch (error) {
+            showAlert(error.data?.error || error.message || 'Bərpa linkini göndərmək mümkün olmadı');
+        } finally {
+            resetBtn.disabled = false;
+            resetBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Bərpa linki göndər';
+        }
+    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

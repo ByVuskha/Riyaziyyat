@@ -1,8 +1,8 @@
 # EmailJS Quraşdırma Təlimatı
 
-## 📧 Real Email Göndərmə Sistemi
+## Şifrə Bərpa Emaili
 
-Bu təlimat sizə EmailJS vasitəsilə real email göndərmə sistemini quraşdırmağa kömək edəcək.
+EmailJS hazırda yalnız şifrə bərpa linklərini göndərmək üçün istifadə olunur. Qeydiyyat zamanı email doğrulaması tətbiq edilməyib.
 
 ## 🚀 Addımlar
 
@@ -20,132 +20,36 @@ Bu təlimat sizə EmailJS vasitəsilə real email göndərmə sistemini quraşd�
 4. Email hesabınızı qoşun və təsdiqləyin
 5. **Service ID**-ni kopyalayın (məsələn: `service_abc123`)
 
-### 3. Email Template Yaradın
+### 3. Şifrə bərpa template-i yaradın
 
-#### Verification Email Template
+EmailJS Dashboard-da **Email Templates → Create New Template** seçin. "To Email" sahəsini `{{to_email}}` edin.
 
-1. "Email Templates" bölməsinə keçin
-2. "Create New Template" düyməsinə klikləyin
-3. Template adı: `verification_email`
-4. **ÖNƏMLİ:** "To Email" sahəsində `{{to_email}}` və ya `{{user_email}}` yazın
-5. Aşağıdakı məzmunu əlavə edin:
+**Subject:** `{{site_name}} — Şifrəni yenilə`
 
-**To Email (Alıcı):**
-```
-{{to_email}}
-```
+**Email məzmunu:** `{{reset_url}}` linkini daxil edin və linkin 15 dəqiqə ərzində bitdiyini, bir dəfə istifadə oluna bildiyini yazın.
 
-**From Name:**
-```
-Bizim Riyaziyyat
-```
+Template ID-ni kopyalayın.
 
-**Subject:**
-```
-{{site_name}} - Email Doğrulama Kodu
-```
+### 4. Public Key əldə edin
 
-**Content:**
-```html
-Salam {{to_name}},
+EmailJS **Account → API Keys** bölməsindən Public Key-i götürün. Private key lazım deyil.
 
-{{site_name}} platformasında qeydiyyatınızı tamamlamaq üçün aşağıdakı doğrulama kodundan istifadə edin:
+### 5. Vercel-də konfiqurasiya edin
 
-🔑 Doğrulama Kodu: {{verification_code}}
+Layihədə **Settings → Environment Variables** açın və Production üçün bu dəyərləri əlavə edin:
 
-Bu kod 10 dəqiqə ərzində etibarlıdır.
+- `EMAILJS_SERVICE_ID` — EmailJS service ID
+- `EMAILJS_RESET_TEMPLATE_ID` — yuxarıda yaratdığınız template ID
+- `EMAILJS_PUBLIC_KEY` — EmailJS Public Key
+- `APP_URL` — `https://bizimriyaziyyat.vercel.app`
 
-Əgər bu qeydiyyatı siz etməmisinizsə, bu emaili nəzərə almayın.
+Sonra Production deployment-i redeploy edin. Bu dəyərlər frontend koduna və Git-ə yazılmamalıdır.
 
-Hörmətlə,
-{{site_name}} Komandası
+### 6. Yoxlama
 
----
-{{site_url}}
-```
+Giriş səhifəsində **Şifrəmi unutdum?** seçin, qeydiyyatlı email ünvanını daxil edin və məktubdakı linki açın. Yeni şifrə yaratdıqdan sonra həmin şifrə ilə giriş edin.
 
-**⚠️ ÇOX ÖNƏMLİ:** 
-- Template-də "Settings" tab-ına keçin
-- "To Email" sahəsində `{{to_email}}` yazın (mötərizələrlə birlikdə)
-- Bu olmadan email göndərilməyəcək!
-
-6. **Template ID**-ni kopyalayın (məsələn: `template_xyz789`)
-
-#### Welcome Email Template (İstəyə bağlı)
-
-1. Yeni template yaradın: `welcome_template`
-2. Subject: `{{site_name}}-a Xoş Gəldiniz!`
-3. Content:
-```html
-Salam {{to_name}},
-
-{{site_name}} ailəsinə xoş gəldiniz! 🎉
-
-Hesabınız uğurla yaradıldı və artıq platformamızdan istifadə edə bilərsiniz.
-
-Dashboard: {{dashboard_url}}
-
-Platformamızda:
-✅ Video dərslər
-✅ İnteraktiv testlər
-✅ Peşəkar müəllimlər
-✅ Şəxsi statistika
-
-və daha çox imkanlar sizi gözləyir!
-
-Uğurlar,
-{{site_name}} Komandası
-
----
-{{site_url}}
-```
-
-### 4. Public Key Əldə Edin
-
-1. "Account" bölməsinə keçin
-2. "API Keys" tab-ına keçin
-3. **Public Key**-i kopyalayın (məsələn: `user_abc123xyz`)
-
-### 5. Konfiqurasiya Edin
-
-`js/email-service.js` faylını açın və aşağıdakı məlumatları daxil edin:
-
-```javascript
-const EMAILJS_CONFIG = {
-    serviceId: 'service_abc123',      // Sizin Service ID
-    templateId: 'template_xyz789',    // Sizin Template ID
-    publicKey: 'user_abc123xyz'       // Sizin Public Key
-};
-```
-
-### 6. Test Edin
-
-1. Saytınızı açın
-2. Qeydiyyat səhifəsinə keçin
-3. Real email ünvanınızla qeydiyyatdan keçin
-4. Email qutunuzu yoxlayın - doğrulama kodu gəlməlidir
-
-## ✅ Uğurlu Quraşdırma
-
-Əgər hər şey düzgün quraşdırılıbsa:
-- ✅ Real email göndəriləcək
-- ✅ "Demo rejimi" mesajı görünməyəcək
-- ✅ İstifadəçilər real doğrulama kodu alacaq
-
-## ⚠️ Problemlər
-
-### Email gəlmir?
-
-1. **Spam qovluğunu yoxlayın**
-2. **EmailJS Dashboard-da "Logs" bölməsinə baxın**
-3. **Service ID, Template ID və Public Key-in düzgün olduğunu yoxlayın**
-4. **Gmail istifadə edirsinizsə, "Less secure app access" aktiv olmalıdır**
-
-### "Demo rejimi" hələ də görünür?
-
-1. `js/email-service.js` faylında konfiqurasiyanı yoxlayın
-2. Browser cache-ni təmizləyin (Ctrl+Shift+R)
-3. Console-da xəta mesajlarını yoxlayın (F12)
+EmailJS dəyişənləri konfiqurasiya edilməyibsə API `503` qaytaracaq. EmailJS maili rədd edərsə `502` görünəcək; EmailJS Dashboard-dakı Logs bölməsini yoxlayın.
 
 ## 💰 Qiymətlər
 
@@ -153,12 +57,12 @@ const EMAILJS_CONFIG = {
 - **Personal Plan**: $7/ay - 1000 email/ay
 - **Professional Plan**: $15/ay - 10000 email/ay
 
-## 🔒 Təhlükəsizlik
+## Təhlükəsizlik
 
-- ✅ Public Key frontend-də istifadə oluna bilər
-- ✅ Private Key heç vaxt frontend-də istifadə etməyin
-- ✅ EmailJS spam və abuse-dan qoruyur
-- ✅ Rate limiting avtomatik tətbiq olunur
+- Bərpa tokeninin özü Redis-də saxlanmır; yalnız SHA-256 hash-i saxlanır.
+- Link 15 dəqiqədən sonra bitir və uğurlu istifadədən sonra silinir.
+- Eyni email üçün sorğular arasında rate limit tətbiq olunur.
+- Şifrə yalnız bcrypt hash-i kimi saxlanır; email-ə göndərilmir.
 
 ## 📚 Əlavə Resurslar
 
@@ -177,4 +81,4 @@ const EMAILJS_CONFIG = {
 
 ---
 
-**Qeyd:** Demo rejimi EmailJS konfiqurasiya olunmadıqda avtomatik işləyir. Real email göndərmək üçün yuxarıdakı addımları tamamlayın.
+**Qeyd:** EmailJS xidməti qoşulmayınca şifrə bərpa emaili göndərilməyəcək.

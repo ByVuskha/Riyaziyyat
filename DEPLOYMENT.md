@@ -10,6 +10,8 @@ Deploy the repository root to Vercel and configure these project environment var
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `JWT_SECRET` (use a newly generated random secret)
+- `EMAILJS_SERVICE_ID`, `EMAILJS_RESET_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY` (required for password-reset email)
+- `APP_URL` (public site origin used to construct reset links)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required only for direct video-file uploads)
 
 In Vercel, open **Project Settings → Environment Variables**, add `JWT_SECRET`, select the Production environment (and Preview/Development if used), and set its value to a newly generated random secret. With Node.js, generate one using `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. On Windows PowerShell, generate one with:
@@ -24,6 +26,8 @@ $rng.GetBytes($bytes)
 Save the variable and redeploy so the serverless functions receive it. Do not put the real value in this repository or in client-side code.
 
 Registration stores users in Upstash Redis (`allUsers`) with bcrypt-hashed passwords, and login verifies the submitted password against that record. Keep `JWT_SECRET` separate from the database: it signs session cookies and must remain a Vercel environment variable.
+
+Password reset requires an EmailJS service and a template with `to_email`, `reset_url`, and `site_name` parameters. Add the three EmailJS values above to Vercel and redeploy. Reset links expire after 15 minutes and can be used once.
 
 YouTube video links and all other API-backed content use the Vercel/Upstash backend. Video-file uploads remain unavailable until Cloudinary is configured. Card payments are intentionally disabled until a real payment provider and its verified callback are integrated; the app must not credit balances based on a browser-only success screen.
 

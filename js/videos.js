@@ -92,7 +92,7 @@ function renderVideos() {
         const teacher = escapeVideoText(video.teacherName || 'Bizim Riyaziyyat');
         const youtubeId = youtubeVideoId(video.youtubeUrl || '');
         const thumbnail = video.thumbnailUrl || (youtubeId ? `https://img.youtube.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg` : '');
-        const image = thumbnail ? `<img src="${escapeVideoText(thumbnail)}" alt="${title}" loading="lazy">` : `<span class="topic-emoji">${escapeVideoText(video.emoji || '📐')}</span>`;
+        const image = thumbnail ? `<img src="${escapeVideoText(thumbnail)}" alt="${title}" data-fallback="${escapeVideoText(video.emoji || '📐')}" loading="lazy">` : `<span class="topic-emoji">${escapeVideoText(video.emoji || '📐')}</span>`;
         return `
             <article class="video-card">
                 <button class="video-thumb play-video" type="button" data-video-id="${id}" aria-label="${title} videosunu aç">
@@ -111,6 +111,15 @@ function renderVideos() {
                 </div>
             </article>`;
     }).join('');
+
+    grid.querySelectorAll('.video-thumb img').forEach(image => {
+        image.addEventListener('error', () => {
+            const fallback = document.createElement('span');
+            fallback.className = 'topic-emoji';
+            fallback.textContent = image.dataset.fallback || '📐';
+            image.replaceWith(fallback);
+        }, { once: true });
+    });
 }
 
 async function playVideo(id) {

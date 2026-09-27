@@ -5,6 +5,8 @@
     { "source": "/api/auth/register",        "destination": "/api/auth.js?action=register" },
     { "source": "/api/auth/logout",          "destination": "/api/auth.js?action=logout" },
     { "source": "/api/auth/me",              "destination": "/api/auth.js?action=me" },
+    { "source": "/api/auth/forgot-password", "destination": "/api/auth.js?action=forgot-password" },
+    { "source": "/api/auth/reset-password",  "destination": "/api/auth.js?action=reset-password" },
 
     { "source": "/api/tests/:id",            "destination": "/api/tests/index.js?id=:id" },
     { "source": "/api/tests",                "destination": "/api/tests/index.js" },

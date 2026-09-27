@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const redis = require('../lib/redis');
 const {
@@ -19,6 +20,8 @@ const ADMIN_FALLBACK = {
   premium: true,
   balance: 0,
 };
+const PASSWORD_RESET_TTL = 15 * 60;
+const PASSWORD_RESET_MESSAGE = 'Əgər bu email qeydiyyatlıdırsa, şifrə bərpa linki göndərildi.';
 
 function parseUsers(value) {
   if (!value) return [];
@@ -129,6 +132,99 @@ async function register(req, res) {
   return res.status(201).json({ user: sanitizeUser(newUser) });
 }
 
+async function requestPasswordReset(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Email düzgün deyil' });
+  }
+
+  const emailConfig = {
+    service_id: process.env.EMAILJS_SERVICE_ID,
+    template_id: process.env.EMAILJS_RESET_TEMPLATE_ID,
+    user_id: process.env.EMAILJS_PUBLIC_KEY,
+  };
+  if (Object.values(emailConfig).some(value => !value)) {
+    return res.status(503).json({ error: 'Şifrə bərpa email xidməti konfiqurasiya edilməyib' });
+  }
+
+  const emailHash = crypto.createHash('sha256').update(email).digest('hex');
+  const rateKey = `passwordResetRate:${emailHash}`;
+  if (await redis.get(rateKey)) return res.status(200).json({ ok: true, message: PASSWORD_RESET_MESSAGE });
+  await redis.set(rateKey, '1', { ex: 60 });
+
+  const users = parseUsers(await redis.get('allUsers'));
+  if (!users.some(user => user.email === ADMIN_FALLBACK.email)) users.push(ADMIN_FALLBACK);
+  const user = users.find(item => item.email === email && !item.frozen);
+  if (!user) return res.status(200).json({ ok: true, message: PASSWORD_RESET_MESSAGE });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const resetKey = `passwordReset:${tokenHash}`;
+  await redis.set(resetKey, JSON.stringify({ email, expiresAt: Date.now() + PASSWORD_RESET_TTL * 1000 }), { ex: PASSWORD_RESET_TTL });
+
+  const appUrl = (process.env.APP_URL || 'https://bizimriyaziyyat.vercel.app').replace(/\/+$/, '');
+  const resetUrl = `${appUrl}/reset-password.html?token=${encodeURIComponent(token)}`;
+  let emailResponse;
+  try {
+    emailResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...emailConfig,
+        template_params: {
+          to_email: user.email,
+          reset_url: resetUrl,
+          site_name: 'Bizim Riyaziyyat',
+        },
+      }),
+    });
+  } catch (error) {
+    await redis.del(resetKey);
+    console.error('[auth] password reset email request failed:', error.message);
+    return res.status(502).json({ error: 'Bərpa emaili göndərilmədi. EmailJS konfiqurasiyasını yoxlayın.' });
+  }
+
+  if (!emailResponse.ok) {
+    await redis.del(resetKey);
+    console.error('[auth] password reset email failed with status:', emailResponse.status);
+    return res.status(502).json({ error: 'Bərpa emaili göndərilmədi. EmailJS konfiqurasiyasını yoxlayın.' });
+  }
+  return res.status(200).json({ ok: true, message: PASSWORD_RESET_MESSAGE });
+}
+
+async function resetPassword(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const token = String(req.body?.token || '');
+  const password = String(req.body?.password || '');
+  if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).json({ error: 'Bərpa linki yanlışdır və ya vaxtı bitib' });
+  if (password.length < 6) return res.status(400).json({ error: 'Şifrə minimum 6 simvol olmalıdır' });
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const resetKey = `passwordReset:${tokenHash}`;
+  const rawReset = await redis.getdel(resetKey);
+  let reset = rawReset;
+  if (typeof rawReset === 'string') {
+    try { reset = JSON.parse(rawReset); } catch { reset = null; }
+  }
+  if (!reset || Array.isArray(reset) || !reset.email || reset.expiresAt < Date.now()) {
+    return res.status(400).json({ error: 'Bərpa linki yanlışdır və ya vaxtı bitib' });
+  }
+
+  const users = parseUsers(await redis.get('allUsers'));
+  if (!users.some(user => user.email === ADMIN_FALLBACK.email)) users.push(ADMIN_FALLBACK);
+  const user = users.find(item => item.email === reset.email);
+  if (!user) {
+    await redis.del(resetKey);
+    return res.status(400).json({ error: 'Bərpa linki yanlışdır və ya vaxtı bitib' });
+  }
+
+  user.password = await bcrypt.hash(password, 12);
+  user.updatedAt = new Date().toISOString();
+  await redis.set('allUsers', JSON.stringify(users));
+  return res.status(200).json({ ok: true, message: 'Şifrəniz yeniləndi. İndi yeni şifrənizlə daxil ola bilərsiniz.' });
+}
+
 async function me(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const token = require('../lib/auth').getUserFromRequest(req);
@@ -151,6 +247,8 @@ module.exports = async function handler(req, res) {
     const action = req.query?.action;
     if (action === 'login') return await login(req, res);
     if (action === 'register') return await register(req, res);
+    if (action === 'forgot-password') return await requestPasswordReset(req, res);
+    if (action === 'reset-password') return await resetPassword(req, res);
     if (action === 'me') return await me(req, res);
     if (action === 'logout') return logout(req, res);
     return res.status(404).json({ error: 'Auth endpoint tapılmadı' });
