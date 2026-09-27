@@ -167,6 +167,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const updated = await API.users.update(user.id, updates);
             API.setCachedUser(updated);
+            try {
+                await API.points.awardDailyTask('profile-update', 'Profil yenilə', 10);
+            } catch {}
             showAlert('success', 'Profil uğurla yeniləndi!');
             setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
         } catch (error) {

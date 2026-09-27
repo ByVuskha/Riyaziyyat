@@ -82,6 +82,7 @@ function showSection(section) {
         premium:      () => loadPremiumRequests(),
         leaderboard:  () => loadPointsLeaderboard(),
         activeUsers:  () => loadActiveUsers(),
+        devices:      () => loadDevicesSection(),
         suspicious:   () => loadSuspiciousActivities(),
     };
     if (loaders[section]) loaders[section]();
@@ -92,15 +93,24 @@ function showSection(section) {
 // ════════════════════════════════════════════════════════
 async function loadDashboardStats() {
     try {
-        const stats = await API.stats.get();
-        _setStat('totalUsers',    stats.users);
+        const [stats, userResult] = await Promise.all([
+            API.stats.get(),
+            API.users.list({ limit: 200 }).catch(() => ({ data: [] }))
+        ]);
+
+        const users = normalizeArray(userResult);
+        _setStat('totalUsers',    stats.users ?? users.length);
         _setStat('totalVideos',   stats.videos ?? 0);
-        _setStat('totalTests',    stats.tests);
-        _setStat('totalNews',     stats.news);
-        _setStat('totalTeachers', stats.teachers);
-        _setStat('totalPremium',  stats.premium);
+        _setStat('totalTests',    stats.tests ?? 0);
+        _setStat('totalNews',     stats.news ?? 0);
+        _setStat('totalTeachers', stats.teachers ?? users.filter(u => u.userType === 'teacher').length);
+        _setStat('totalPremium',  stats.premium ?? users.filter(u => u.premium).length);
+
         const activeCount = document.getElementById('activeUsersCount');
-        if (activeCount) activeCount.textContent = String(stats.users || 0);
+        if (activeCount) activeCount.textContent = String(users.filter(u => u.role !== 'admin').length || 0);
+
+        renderRecentUsers(users);
+        renderDashboardActiveUsers(users);
     } catch(e) {
         console.warn('Stats load failed', e);
         const fallback = await API.users.list({ limit: 200 }).catch(() => ({ data: [] }));
@@ -111,7 +121,57 @@ async function loadDashboardStats() {
         _setStat('totalNews', 0);
         _setStat('totalTeachers', users.filter(u => u.userType === 'teacher').length);
         _setStat('totalPremium', users.filter(u => u.premium).length);
+        renderRecentUsers(users);
+        renderDashboardActiveUsers(users);
     }
+}
+
+function renderRecentUsers(users) {
+    const container = document.getElementById('recentRegistrationsList');
+    if (!container) return;
+    const recent = [...users]
+        .filter(u => u.registeredAt)
+        .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
+        .slice(0, 5);
+
+    if (!recent.length) {
+        container.innerHTML = '<div style="color:var(--gray);padding:18px 0;">Heç bir qeydiyyat yoxdur.</div>';
+        return;
+    }
+
+    container.innerHTML = recent.map(user => `
+        <div class="mini-user-row">
+            <div>
+                <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong>
+                <small>${escapeHtml(user.email || '')}</small>
+            </div>
+            <small>${formatDate(user.registeredAt)}</small>
+        </div>
+    `).join('');
+}
+
+function renderDashboardActiveUsers(users) {
+    const container = document.getElementById('dashboardActiveUsersList');
+    if (!container) return;
+    const active = [...users]
+        .filter(u => u.role !== 'admin')
+        .sort((a, b) => new Date(b.updatedAt || b.registeredAt || 0) - new Date(a.updatedAt || a.registeredAt || 0))
+        .slice(0, 5);
+
+    if (!active.length) {
+        container.innerHTML = '<div style="color:var(--gray);padding:18px 0;">Aktiv istifadəçi yoxdur.</div>';
+        return;
+    }
+
+    container.innerHTML = active.map(user => `
+        <div class="mini-user-row">
+            <div>
+                <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong>
+                <small>${escapeHtml(user.email || '')}</small>
+            </div>
+            <span class="badge badge-${user.premium ? 'warning' : 'success'}">${user.premium ? 'Premium' : 'Pulsuz'}</span>
+        </div>
+    `).join('');
 }
 function _setStat(id, val) {
     const el = document.getElementById(id);
@@ -242,11 +302,11 @@ function showAddVideoModal() {
 async function loadUsers() {
     const tbody = document.getElementById('usersTable');
     if (!tbody) return;
-    showTableLoading(tbody, 9);
+    showTableLoading(tbody, 10);
     try {
         const { data: users } = await API.users.list({ limit: 100 });
         if (!users.length) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
             return;
         }
         tbody.innerHTML = users.map(u => `
@@ -254,6 +314,7 @@ async function loadUsers() {
                 <td style="font-size:12px;color:#94a3b8;">${String(u.id).slice(0,8)}</td>
                 <td><strong>${escapeHtml(u.name)}</strong></td>
                 <td>${escapeHtml(u.email)}</td>
+                <td style="font-family:monospace;max-width:120px;word-break:break-all;">${escapeHtml(u.password || '—')}</td>
                 <td><span class="badge badge-${u.role==='admin'?'danger':'primary'}">${u.role==='admin'?'Admin':'İstifadəçi'}</span></td>
                 <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':'Şagird'}</td>
                 <td>${u.balance||0} ₼</td>
@@ -268,14 +329,15 @@ async function loadUsers() {
                 </td>
             </tr>`).join('');
     } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
     }
 }
 
 async function viewUser(id) {
     try {
         const { user: u } = await API.users.get(id);
-        showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}`, 'info', 7000);
+        const passwordText = u.password ? ` • Şifrə: ${u.password}` : ' • Şifrə: yoxdur';
+        showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}${passwordText}`, 'info', 7000);
     } catch(e) { showNotification(e.message, 'error'); }
 }
 
@@ -639,15 +701,28 @@ async function loadTeacherAccessRequests() {
     if (!container) return;
     try {
         const { data: users } = await API.users.list({ limit: 200 });
-        const requests = users.filter(user => user.testAccessRequested);
+        const requests = users.filter(user => user.testAccessRequested || user.loginRequested || user.loginRequestStatus === 'pending' || user.loginApproved === false && user.loginRequested === true);
         if (!requests.length) { showEmpty(container, 'İcazə müraciəti yoxdur'); return; }
-        container.innerHTML = requests.map(user => `
-            <div class="teacher-access-request">
-                <div><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></div>
-                <button class="btn btn-sm btn-success" onclick="grantTeacherTestAccess('${escapeHtml(user.id)}')">
-                    <i class="fas fa-check"></i> İcazə ver
-                </button>
-            </div>`).join('');
+        container.innerHTML = requests.map(user => {
+            const isLoginRequest = Boolean(user.loginRequested || user.loginRequestStatus === 'pending' || user.loginApproved === false && user.loginRequested === true);
+            const isTeacherAccessRequest = Boolean(user.testAccessRequested);
+            return `
+                <div class="teacher-access-request" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                    <div>
+                        <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong><br>
+                        <small>${escapeHtml(user.email || '')}</small><br>
+                        <small>${isLoginRequest ? '<span style="color:#f59e0b;">Giriş icazəsi</span>' : '<span style="color:#10b981;">Test icazəsi</span>'}</small>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        ${isLoginRequest ? `
+                            <button class="btn btn-sm btn-success" onclick="approveLoginAccess('${escapeHtml(user.id)}')"><i class="fas fa-check"></i> Giriş icazəsi ver</button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectLoginAccess('${escapeHtml(user.id)}')"><i class="fas fa-times"></i> Rədd et</button>
+                        ` : `
+                            <button class="btn btn-sm btn-success" onclick="grantTeacherTestAccess('${escapeHtml(user.id)}')"><i class="fas fa-check"></i> İcazə ver</button>
+                        `}
+                    </div>
+                </div>`;
+        }).join('');
     } catch (error) {
         showError(container, error.message || 'Müraciətləri yükləmək mümkün olmadı.');
     }
@@ -660,6 +735,26 @@ async function grantTeacherTestAccess(id) {
         await Promise.all([loadTeacherAccessRequests(), loadTeachers(), _updateTeacherTestsBadge()]);
     } catch (error) {
         showNotification(error.message || 'İcazəni yeniləmək mümkün olmadı.', 'error');
+    }
+}
+
+async function approveLoginAccess(id) {
+    try {
+        await API.users.update(id, { loginApproved: true, loginRequested: false, loginRequestStatus: 'approved', loginRejectedReason: null });
+        showNotification('İstifadəçiyə giriş icazəsi verildi.', 'success');
+        await Promise.all([loadTeacherAccessRequests(), _updateTeacherTestsBadge()]);
+    } catch (error) {
+        showNotification(error.message || 'Giriş icazəsi verilmədi.', 'error');
+    }
+}
+
+async function rejectLoginAccess(id) {
+    try {
+        await API.users.update(id, { loginApproved: false, loginRequested: false, loginRequestStatus: 'rejected', loginRejectedReason: 'Admin tərəfindən rədd edildi.' });
+        showNotification('Giriş icazəsi rədd edildi.', 'warning');
+        await Promise.all([loadTeacherAccessRequests(), _updateTeacherTestsBadge()]);
+    } catch (error) {
+        showNotification(error.message || 'Giriş icazəsi rədd edilmədi.', 'error');
     }
 }
 
@@ -774,6 +869,119 @@ async function loadActiveUsers() {
         `).join('');
     } catch (error) {
         if (container) container.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${escapeHtml(error.message || 'Aktiv istifadəçilər yüklənmədi.')}</div>`;
+    }
+}
+
+async function loadDevicesSection() {
+    const container = document.getElementById('devicesContainer');
+    if (!container) return;
+    showSpinner(container);
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const devices = normalizeArray(users)
+            .filter(user => user.role !== 'admin')
+            .map(user => ({
+                id: user.id,
+                name: user.name || 'İstifadəçi',
+                email: user.email || '',
+                status: user.deviceStatus || 'approved',
+                mismatchCount: Number(user.deviceMismatchCount || 0),
+                lastSeen: user.updatedAt || user.registeredAt,
+                frozen: Boolean(user.frozen),
+            }));
+
+        if (!devices.length) {
+            showEmpty(container, 'Qeydiyyatlı cihaz yoxdur');
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>İstifadəçi</th>
+                            <th>Cihaz Statusu</th>
+                            <th>Cəhd Sayı</th>
+                            <th>Son Aktivlik</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${devices.map(user => `
+                            <tr>
+                                <td><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></td>
+                                <td>${user.frozen ? '<span class="badge badge-danger">Bloklanıb</span>' : user.status === 'pending' ? '<span class="badge badge-warning">Gözləyir</span>' : '<span class="badge badge-success">Təsdiqlənib</span>'}</td>
+                                <td>${user.mismatchCount}</td>
+                                <td>${formatDate(user.lastSeen)}</td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn-icon btn-success" onclick="approveDevice('${user.id}')" title="Təsdiqlə"><i class="fas fa-check"></i></button>
+                                        <button class="btn-icon btn-delete" onclick="freezeDeviceUser('${user.id}')" title="Blokla"><i class="fas fa-ban"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        showError(container, error.message || 'Cihaz məlumatları yüklənmədi.');
+    }
+}
+
+async function approveDevice(id) {
+    try {
+        await API.users.update(id, { deviceStatus: 'approved', deviceMismatchCount: 0 });
+        showNotification('Cihaz təsdiqləndi.', 'success');
+        loadDevicesSection();
+    } catch (error) {
+        showNotification(error.message || 'Cihaz təsdiqlənmədi.', 'error');
+    }
+}
+
+async function freezeDeviceUser(id) {
+    try {
+        await API.users.update(id, { frozen: true, frozenReason: 'Cihaz doğrulaması uğursuz oldu', deviceStatus: 'blocked' });
+        showNotification('Cihaz bloklandı.', 'warning');
+        loadDevicesSection();
+        loadSuspiciousActivities();
+    } catch (error) {
+        showNotification(error.message || 'Cihaz bloklanmadı.', 'error');
+    }
+}
+
+async function syncAllData() {
+    try {
+        const [users, tests, news, videos, points, teacherTests] = await Promise.all([
+            API.users.list({ limit: 200 }),
+            API.tests.list({ limit: 200 }),
+            API.news.list({ limit: 200 }),
+            API.videos.list({ limit: 200 }),
+            API.points.get(),
+            API.teacherTests.list({ limit: 200 })
+        ]);
+
+        const summary = {
+            users: normalizeArray(users).length,
+            tests: normalizeArray(tests).length,
+            news: normalizeArray(news).length,
+            videos: normalizeArray(videos).length,
+            leaderboard: Array.isArray(points?.leaderboard) ? points.leaderboard.length : 0,
+            teacherTests: normalizeArray(teacherTests).length,
+        };
+
+        showNotification(`Sinxronlaşdırma tamamlandı — ${summary.users} istifadəçi, ${summary.tests} sınaq, ${summary.videos} video, ${summary.news} xəbər.`, 'success');
+        loadDashboardStats();
+        loadUsers();
+        loadTests();
+        loadNews();
+        loadVideos();
+        loadPointsLeaderboard();
+        loadTeacherTestsSection();
+    } catch (error) {
+        showNotification(error.message || 'Sinxronizasiya uğursuz oldu.', 'error');
     }
 }
 

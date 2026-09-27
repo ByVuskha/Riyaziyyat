@@ -108,6 +108,22 @@
         .goal-label span:last-child  { color: #9ca3af; }
         .progress-bar  { height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
+        .task-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 18px; }
+        .task-item {
+            border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px;
+            padding: 14px; display: flex; flex-direction: column; gap: 10px; transition: all .2s ease;
+        }
+        .task-item.complete { background: #ecfdf5; border-color: #a7f3d0; }
+        .task-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .task-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(99, 102, 241, .1); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .task-meta { flex: 1; }
+        .task-title { font-size: 13px; font-weight: 700; margin: 0; }
+        .task-reward { font-size: 11px; color: #f59e0b; font-weight: 700; }
+        .task-desc { font-size: 11px; color: #64748b; margin: 0; }
+        .task-btn { border: none; cursor: pointer; border-radius: 10px; padding: 8px 12px; font-size: 11px; font-weight: 700; }
+        .task-btn.primary { background: linear-gradient(135deg,#667eea,#764ba2); color: white; }
+        .task-btn.success { background: #d1fae5; color: #065f46; }
+        .task-btn:disabled { opacity: .7; cursor: wait; }
 
         /* ── Two-col ── */
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
@@ -344,6 +360,8 @@
                 </div>
             </div>
         </div>
+
+        <div class="task-list" id="dailyTaskList"></div>
     </div>
 
     <!-- ── Activity + Streak ── -->
@@ -498,8 +516,8 @@
 
 
 <script>
+document.addEventListener('DOMContentLoaded', async () => {
 // ── API-based auth guard ──────────────────────────────────────────────
-(async () => {
 const user = await requireLogin(); // from app.js — redirects if not logged in
 if (!user) return;
 
@@ -540,6 +558,67 @@ updatePremiumBanner();
 const sdEl = document.getElementById('statDemo');
 if (sdEl) sdEl.textContent = user.demoTests ?? 3;
 
+const DAILY_TASKS = [
+    { id: 'login', icon: '🔐', title: 'Giriş et', reward: 10, description: 'Hesabınıza daxil olun' },
+    { id: 'watch-video', icon: '📹', title: 'Video izlə', reward: 15, description: 'Bir dərs izləyin' },
+    { id: 'solve-test', icon: '📝', title: 'Sınaq həll et', reward: 20, description: 'Bir sınaq tamamlayın' },
+    { id: 'read-news', icon: '📰', title: 'Xəbər oxu', reward: 10, description: 'Yeni xəbəri nəzərdən keçirin' },
+    { id: 'profile-update', icon: '👤', title: 'Profil yenilə', reward: 10, description: 'Məlumatlarınızı tamamlayın' },
+];
+
+function getTodayTaskMap(dailyTasks) {
+    const today = new Date().toISOString().slice(0, 10);
+    return (dailyTasks && typeof dailyTasks === 'object' && dailyTasks[today] && typeof dailyTasks[today] === 'object') ? dailyTasks[today] : {};
+}
+
+function renderDailyTasks(myData = {}) {
+    const taskList = document.getElementById('dailyTaskList');
+    if (!taskList) return;
+    const completed = getTodayTaskMap(myData.dailyTasks || {});
+
+    taskList.innerHTML = DAILY_TASKS.map(task => {
+        const isDone = Boolean(completed[task.id]);
+        return `
+            <div class="task-item ${isDone ? 'complete' : ''}">
+                <div class="task-head">
+                    <div class="task-icon">${task.icon}</div>
+                    <div class="task-meta">
+                        <p class="task-title">${task.title}</p>
+                        <span class="task-reward">+${task.reward} xal</span>
+                    </div>
+                </div>
+                <p class="task-desc">${task.description}</p>
+                <button type="button" class="task-btn ${isDone ? 'success' : 'primary'}" data-task-id="${task.id}" ${isDone ? 'disabled' : ''}>
+                    ${isDone ? 'Tamamlandı' : 'Tamamla'}
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    taskList.querySelectorAll('[data-task-id]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const task = DAILY_TASKS.find(item => item.id === button.dataset.taskId);
+            if (!task) return;
+
+            button.disabled = true;
+            button.textContent = 'Yüklənir...';
+            try {
+                const result = await API.points.awardDailyTask(task.id, task.title, task.reward);
+                if (result.taskAlreadyCompleted || result.earnedPoints === 0) {
+                    showNotification('Bu tapşırıq artıq tamamlanıb.', 'warning');
+                } else {
+                    showNotification(`+${result.earnedPoints || task.reward} xal qazandınız!`, 'success');
+                }
+                await renderDashboard();
+            } catch (error) {
+                showNotification(error.data?.error || error.message || 'Tapşırıq tamamlanmadı.', 'error');
+                button.disabled = false;
+                button.textContent = 'Tamamla';
+            }
+        });
+    });
+}
+
 /* ── Main dashboard render (points-based) ────────────────────────────── */
 async function renderDashboard() {
     document.getElementById('welcomeName').textContent = user.name;
@@ -549,8 +628,10 @@ async function renderDashboard() {
     const { points: myData, leaderboard } = await API.points.get();
     const videosArr = myData?.watchedVideos || [];
     const testsArr   = myData.completedTests || [];
-    const total      = myData.total || 0;
+    const total      = Number(myData.total) || 0;
     const history    = Array.isArray(myData.history) ? myData.history : [];
+
+    renderDailyTasks(myData);
 
     /* Stats */
     document.getElementById('statVideos').textContent = videosArr.length;
@@ -558,7 +639,18 @@ async function renderDashboard() {
     document.getElementById('statPoints').textContent = total.toLocaleString();
 
     /* Rank */
-    const rank = leaderboard.findIndex(entry => String(entry.userId) === String(user.id)) + 1;
+    const rankedLeaderboard = [...(Array.isArray(leaderboard) ? leaderboard : [])]
+        .map(entry => ({ ...entry, total: Number(entry.total) || 0 }))
+        .sort((a, b) => Number(b.total) - Number(a.total));
+
+    const currentRankEntry = rankedLeaderboard.find(entry => String(entry.userId) === String(user.id));
+    if (!currentRankEntry) {
+        rankedLeaderboard.push({ userId: user.id, userName: user.name, total: total || 0 });
+        rankedLeaderboard.sort((a, b) => Number(b.total) - Number(a.total));
+    }
+
+    const rankIndex = rankedLeaderboard.findIndex(entry => String(entry.userId) === String(user.id));
+    const rank = rankIndex >= 0 ? rankIndex + 1 : 0;
     document.getElementById('statRank').textContent = rank > 0 ? `#${rank}` : '-';
 
     /* Welcome subtitle */

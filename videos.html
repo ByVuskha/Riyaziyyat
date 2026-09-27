@@ -27,10 +27,10 @@
         .page-header {
             background: linear-gradient(135deg, var(--dark), var(--primary));
             color: white;
-            padding: 60px 0 40px;
+            padding: 42px 0 24px;
         }
-        .page-header h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
-        .page-header p { opacity: 0.85; font-size: 16px; }
+        .page-header h1 { font-size: 34px; font-weight: 800; margin-bottom: 8px; }
+        .page-header p { opacity: 0.85; font-size: 15px; }
 
         .filters {
             background: white;
@@ -86,9 +86,9 @@
 
         .videos-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-            gap: 25px;
-            padding: 40px 0;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+            gap: 18px;
+            padding: 24px 0 32px;
         }
         .video-card {
             background: white;
@@ -211,12 +211,12 @@
 <div class="filters">
     <div class="container">
         <div class="filters-inner">
-            <button class="filter-btn active" onclick="filterVideos('all', this)">Hamısı</button>
-            <button class="filter-btn" onclick="filterVideos('hendese', this)">📐 Həndəsə</button>
-            <button class="filter-btn" onclick="filterVideos('cebr', this)">🔢 Cəbr</button>
-            <button class="filter-btn" onclick="filterVideos('analiz', this)">∫ Analiz</button>
-            <button class="filter-btn" onclick="filterVideos('ehtimal', this)">🎲 Ehtimal</button>
-            <button class="filter-btn" onclick="filterVideos('free', this)">🆓 Pulsuz</button>
+            <button class="filter-btn active" data-filter="all" onclick="filterVideos('all', this)">Hamısı</button>
+            <button class="filter-btn" data-filter="hendese" onclick="filterVideos('hendese', this)">📐 Həndəsə</button>
+            <button class="filter-btn" data-filter="cebr" onclick="filterVideos('cebr', this)">🔢 Cəbr</button>
+            <button class="filter-btn" data-filter="analiz" onclick="filterVideos('analiz', this)">∫ Analiz</button>
+            <button class="filter-btn" data-filter="ehtimal" onclick="filterVideos('ehtimal', this)">🎲 Ehtimal</button>
+            <button class="filter-btn" data-filter="free" onclick="filterVideos('free', this)">🆓 Pulsuz</button>
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Mövzu axtar..." oninput="searchVideos(this.value)">
@@ -255,15 +255,15 @@
 
 
     <canvas id="mathCanvas"></canvas>
-    <script src="js/confetti.js"></script>
-    <script src="js/math-bg.js"></script>
-    <script src="js/animations.js"></script>
-    <script src="js/notifications.js"></script>
+    <script src="js/confetti.js?v=20260927"></script>
+    <script src="js/math-bg.js?v=20260927"></script>
+    <script src="js/animations.js?v=20260927"></script>
+    <script src="js/notifications.js?v=20260927"></script>
 
 
-<script src="js/videos.js"></script>
-<script src="js/notifications.js"></script>
-<script src="js/api-client.js"></script>
-<script src="js/app.js"></script>
+<script src="js/videos.js?v=20260927"></script>
+<script src="js/notifications.js?v=20260927"></script>
+<script src="js/api-client.js?v=20260927"></script>
+<script src="js/app.js?v=20260927"></script>
 </body>
 </html>

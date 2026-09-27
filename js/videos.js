@@ -30,6 +30,32 @@ function youtubeVideoId(url) {
     return '';
 }
 
+function normalizeFilterValue(value) {
+    const normalized = String(value || 'all').trim().toLowerCase();
+    const aliases = {
+        all: 'all',
+        hamisi: 'all',
+        ceber: 'cebr',
+        cəbr: 'cebr',
+        cabr: 'cebr',
+        hendese: 'hendese',
+        həndəsə: 'hendese',
+        hendese: 'hendese',
+        analiz: 'analiz',
+        ehtimal: 'ehtimal',
+        free: 'free',
+        pulsuz: 'free',
+    };
+    return aliases[normalized] || normalized;
+}
+
+function syncFilterButtons() {
+    document.querySelectorAll('.filter-btn').forEach(item => {
+        const filterValue = normalizeFilterValue(item.dataset.filter || item.textContent || 'all');
+        item.classList.toggle('active', filterValue === normalizeFilterValue(currentCategory));
+    });
+}
+
 async function loadVideos() {
     const grid = document.getElementById('videosGrid');
     if (!grid) return;
@@ -39,16 +65,15 @@ async function loadVideos() {
         const { data } = await API.videos.list({ limit: 100 });
         videoCatalog = Array.isArray(data) ? data : [];
         const params = new URLSearchParams(window.location.search);
-        const category = params.get('filter');
+        const category = normalizeFilterValue(params.get('filter'));
         const teacher = params.get('teacher');
         if (category) currentCategory = category;
         if (teacher) {
             currentSearch = teacher;
-            document.getElementById('searchInput').value = teacher;
+            const input = document.getElementById('searchInput');
+            if (input) input.value = teacher;
         }
-        document.querySelectorAll('.filter-btn').forEach(button => {
-            button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${currentCategory}'`));
-        });
+        syncFilterButtons();
         renderVideos();
     } catch (error) {
         grid.innerHTML = `<div class="videos-state videos-error">${escapeVideoText(error.message || 'Videolar yüklənmədi. Şəbəkə bağlantısını yoxlayın.')}</div>`;
@@ -56,9 +81,9 @@ async function loadVideos() {
 }
 
 function filterVideos(category, button) {
-    currentCategory = category || 'all';
-    document.querySelectorAll('.filter-btn').forEach(item => item.classList.remove('active'));
-    if (button) button.classList.add('active');
+    currentCategory = normalizeFilterValue(category || 'all');
+    if (button && button.dataset.filter) currentCategory = normalizeFilterValue(button.dataset.filter);
+    syncFilterButtons();
     renderVideos();
 }
 
@@ -70,10 +95,15 @@ function searchVideos(value) {
 function renderVideos() {
     const grid = document.getElementById('videosGrid');
     if (!grid) return;
-    const category = normalizeVideoText(currentCategory);
+    const category = normalizeFilterValue(currentCategory);
     const query = normalizeVideoText(currentSearch);
     const filtered = videoCatalog.filter(video => {
-        const matchesCategory = category === 'all' || normalizeVideoText(video.category) === category;
+        const rawCategory = normalizeVideoText(video.category || video.subject || 'Riyaziyyat');
+        const rawTitle = normalizeVideoText(video.title || '');
+        const rawTeacher = normalizeVideoText(video.teacherName || '');
+        const matchesCategory = category === 'all' ? true : category === 'free' ? !video.isPremium : (
+            rawCategory === category || rawTitle.includes(category) || rawTeacher.includes(category)
+        );
         const matchesFree = category !== 'free' || !video.isPremium;
         const matchesSearch = !query || normalizeVideoText(`${video.title} ${video.description} ${video.teacherName}`).includes(query);
         return matchesCategory && matchesFree && matchesSearch;
@@ -152,6 +182,9 @@ async function playVideo(id) {
             throw new Error('Video ünvanı düzgün deyil');
         }
         API.videos.view(id).catch(() => {});
+        try {
+            await API.points.awardDailyTask('watch-video', 'Video izlə', 15);
+        } catch {}
         modal.style.display = 'flex';
     } catch (error) {
         if (error.status === 403) {

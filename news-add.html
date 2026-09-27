@@ -71,6 +71,12 @@
             </div>
             
             <div class="form-group">
+                <label>Şəkil URL (isteğe bağlı)</label>
+                <input type="url" class="form-control" id="newsImageUrl" placeholder="https://example.com/news-image.jpg">
+                <small style="color:var(--gray);display:block;margin-top:6px;">Şəkil əlavə edirsinizsə, public xəbərlər səhifəsində avtomatik görünəcək.</small>
+            </div>
+
+            <div class="form-group">
                 <label>Müəllif</label>
                 <input type="text" class="form-control" id="newsAuthor" value="Bizim Riyaziyyat Komandası">
             </div>
@@ -114,6 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         text: document.getElementById('newsText').value,
         emoji: document.getElementById('newsEmoji').value,
         author: document.getElementById('newsAuthor').value,
+        imageUrl: document.getElementById('newsImageUrl').value.trim(),
     };
     
     try {
@@ -133,6 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Reset form
     document.getElementById('newsForm').reset();
     document.getElementById('newsAuthor').value = 'Bizim Riyaziyyat Komandası';
+    document.getElementById('newsImageUrl').value = '';
     
     // Reload news list
     loadNews();
@@ -168,11 +176,10 @@ async function loadNews() {
         } else {
             displayDate = n.date || '';
         }
+        const imageMarkup = n.imageUrl ? `<img src="${n.imageUrl}" alt="${escapeHtml(n.title)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;display:block;">` : `<div style="width:60px;height:60px;background:#e7f2f2;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">${escapeHtml(n.emoji || '📰')}</div>`;
         return `
         <div style="display:flex;gap:15px;padding:15px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;">
-            <div style="width:60px;height:60px;background:#e7f2f2;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
-                ${escapeHtml(n.emoji || '📰')}
-            </div>
+            ${imageMarkup}
             <div style="flex:1;">
                 <h4 style="font-size:15px;margin-bottom:5px;">${escapeHtml(n.title)}</h4>
                 <p style="font-size:13px;color:var(--gray);margin-bottom:8px;">${escapeHtml((n.text || '').substring(0, 100))}...</p>

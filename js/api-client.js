@@ -33,7 +33,39 @@ const API = (() => {
   }
 
   function setCurrentLocalUser(user) {
-    localStorage.setItem('currentUser', JSON.stringify({ user }));
+    if (!user || typeof user !== 'object') {
+      localStorage.removeItem('currentUser');
+      return;
+    }
+    const safeUser = { ...user };
+    delete safeUser.password;
+    localStorage.setItem('currentUser', JSON.stringify({ user: safeUser }));
+    return safeUser;
+  }
+
+  function normalizeUserRecord(value) {
+    if (!value || typeof value !== 'object') return null;
+    if (value.user && typeof value.user === 'object' && value.user.id) return value.user;
+    if (value.data && typeof value.data === 'object' && value.data.id) return value.data;
+    if (value.id) return value;
+    return null;
+  }
+
+  function syncUserToLocalStore(user) {
+    const safeUser = normalizeUserRecord(user);
+    if (!safeUser || !safeUser.id) return null;
+
+    try {
+      const users = readLocalList('localUsers', []);
+      const idx = users.findIndex(item => String(item.id) === String(safeUser.id) || (safeUser.email && item.email === safeUser.email));
+      const cleaned = { ...safeUser };
+      delete cleaned.password;
+      if (idx >= 0) users[idx] = { ...users[idx], ...cleaned };
+      else users.unshift(cleaned);
+      writeLocalList('localUsers', users);
+    } catch {}
+
+    return setCurrentLocalUser(safeUser);
   }
 
   function ensureDemoData() {
@@ -65,8 +97,46 @@ const API = (() => {
     }
     if (!localStorage.getItem('localTeachers')) {
       writeLocalList('localTeachers', [
-        { id: 'teacher-1', name: 'Nərmin Həsənova', subject: 'Cəbr', status: 'approved' },
-        { id: 'teacher-2', name: 'Rəşad Əhmədov', subject: 'Həndəsə', status: 'approved' }
+        {
+          id: 'teacher-1',
+          name: 'Nərmin Həsənova',
+          title: 'Cəbr müəllimi',
+          bio: 'Klassik cəbr, funksiyalar və analitik düşüncə üzrə təcrübəli müəllim.',
+          subjects: ['Cəbr', 'Funkciyalar', 'Məntiq'],
+          image: '',
+          email: 'nermin@riyazmath.az',
+          phone: '+994 50 111 22 33',
+          experience: 8,
+          students: 420,
+          rating: 4.9,
+          userType: 'teacher',
+          publicProfile: true,
+          status: 'approved',
+        },
+        {
+          id: 'teacher-2',
+          name: 'Rəşad Əhmədov',
+          title: 'Həndəsə müəllimi',
+          bio: 'Həndəsə və geometriyada vizual, praktik yanaşma ilə dərs verir.',
+          subjects: ['Həndəsə', 'Çevrə', 'Bucaq'],
+          image: '',
+          email: 'rasad@riyazmath.az',
+          phone: '+994 50 222 33 44',
+          experience: 10,
+          students: 390,
+          rating: 4.8,
+          userType: 'teacher',
+          publicProfile: true,
+          status: 'approved',
+        }
+      ]);
+    }
+    if (!localStorage.getItem('localVideos')) {
+      writeLocalList('localVideos', [
+        { id: 'v-1', title: 'Cəbr tənlikləri', category: 'Cəbr', description: 'Müxtəlif tənliklər və onların həlli.', teacherId: 'teacher-1', teacherName: 'Nərmin Həsənova', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=5a0QfL1Bh3o', thumbnailUrl: 'https://img.youtube.com/vi/5a0QfL1Bh3o/hqdefault.jpg', duration: '12:40', isPremium: false, isActive: true, views: 128, createdAt: new Date().toISOString() },
+        { id: 'v-2', title: 'Həndəsə əsasları', category: 'Həndəsə', description: 'Bucaqlar, üçbucaqlar və paralel xətlər.', teacherId: 'teacher-2', teacherName: 'Rəşad Əhmədov', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=RPV9RilV2rQ', thumbnailUrl: 'https://img.youtube.com/vi/RPV9RilV2rQ/hqdefault.jpg', duration: '15:05', isPremium: true, isActive: true, views: 96, createdAt: new Date().toISOString() },
+        { id: 'v-3', title: 'Analiz: limit', category: 'Analiz', description: 'Limit anlayışı və əsas qanunlar.', teacherId: 'teacher-1', teacherName: 'Nərmin Həsənova', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=kH6kN91dR-k', thumbnailUrl: 'https://img.youtube.com/vi/kH6kN91dR-k/hqdefault.jpg', duration: '18:20', isPremium: false, isActive: true, views: 143, createdAt: new Date().toISOString() },
+        { id: 'v-4', title: 'Ehtimal nəzəriyyəsi', category: 'Ehtimal', description: 'Hadisələrin baş vermə ehtimalları.', teacherId: 'teacher-2', teacherName: 'Rəşad Əhmədov', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=f6iP2bB8l0s', thumbnailUrl: 'https://img.youtube.com/vi/f6iP2bB8l0s/hqdefault.jpg', duration: '10:15', isPremium: false, isActive: true, views: 87, createdAt: new Date().toISOString() },
       ]);
     }
     if (!localStorage.getItem('localTeacherTests')) writeLocalList('localTeacherTests', []);
@@ -77,7 +147,7 @@ const API = (() => {
 
   function localFallback(method, path, body) {
     ensureDemoData();
-    const clean = path.replace(/^\//, '').split('?')[0];
+    const clean = path.replace(/^\/+/, '').replace(/^api\//, '').split('?')[0];
     const [segment, second] = clean.split('/');
 
     if (segment === 'auth') {
@@ -87,8 +157,10 @@ const API = (() => {
         const { email, password } = body || {};
         const user = users.find(u => u.email === email && u.password === password);
         if (!user) throw new Error('E-poçt və ya şifrə yanlışdır');
-        setCurrentLocalUser({ ...user, password: undefined });
-        return { user: { ...user, password: undefined } };
+        const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const loggedInUser = { ...user, sessionId, password: undefined };
+        setCurrentLocalUser(loggedInUser);
+        return { user: loggedInUser };
       }
       if (second === 'register') {
         const users = readLocalList('localUsers');
@@ -145,6 +217,64 @@ const API = (() => {
       }
     }
 
+    if (segment === 'videos') {
+      const items = readLocalList('localVideos');
+      const viewAction = String(path).includes('action=view');
+      if (method === 'GET') {
+        if (second) {
+          const item = items.find(v => String(v.id) === String(second));
+          if (!item) return { data: null, video: null };
+          return { data: item, video: item };
+        }
+        const params = new URLSearchParams((path.split('?')[1] || '').trim());
+        let filtered = items.filter(video => video.isActive !== false);
+        const category = params.get('category');
+        const teacherId = params.get('teacherId');
+        const q = params.get('q') || params.get('query') || '';
+        if (category && category !== 'all') filtered = filtered.filter(video => String(video.category || '').toLowerCase() === String(category).toLowerCase());
+        if (teacherId) filtered = filtered.filter(video => String(video.teacherId || '') === String(teacherId));
+        if (q) filtered = filtered.filter(video => `${video.title || ''} ${video.description || ''} ${video.teacherName || ''}`.toLowerCase().includes(q.toLowerCase()));
+        return { data: filtered };
+      }
+      if (method === 'POST') {
+        if (viewAction && second) {
+          const item = items.find(v => String(v.id) === String(second));
+          if (!item) return { views: 0 };
+          item.views = Number(item.views || 0) + 1;
+          writeLocalList('localVideos', items);
+          return { views: item.views };
+        }
+        const item = { id: `v-${Date.now()}`, ...body, createdAt: new Date().toISOString(), views: 0, isActive: body?.isActive !== false };
+        items.unshift(item);
+        writeLocalList('localVideos', items);
+        return { data: item, video: item };
+      }
+      if (method === 'PUT') {
+        const item = items.find(v => String(v.id) === String(second));
+        if (!item) return { data: null, video: null };
+        Object.assign(item, body || {});
+        writeLocalList('localVideos', items);
+        return { data: item, video: item };
+      }
+      if (method === 'DELETE') {
+        const filtered = items.filter(v => String(v.id) !== String(second));
+        writeLocalList('localVideos', filtered);
+        return { success: true };
+      }
+    }
+
+    if (segment === 'teachers') {
+      const items = readLocalList('localTeachers');
+      if (method === 'GET') {
+        const params = new URLSearchParams((path.split('?')[1] || '').trim());
+        const q = params.get('q') || '';
+        const limit = Number(params.get('limit') || 100);
+        let filtered = items.slice();
+        if (q) filtered = filtered.filter(item => `${item.name || ''} ${item.title || ''} ${Array.isArray(item.subjects) ? item.subjects.join(' ') : String(item.subjects || '')}`.toLowerCase().includes(q.toLowerCase()));
+        return { data: filtered.slice(0, limit) };
+      }
+    }
+
     if (segment === 'news') {
       const items = readLocalList('localNews');
       if (method === 'GET') {
@@ -184,9 +314,14 @@ const API = (() => {
       }
       if (method === 'PUT') {
         const item = items.find(u => u.id === second);
-        Object.assign(item || {}, body || {});
-        writeLocalList('localUsers', items);
-        return { data: item || null, user: item || null };
+        const updated = item ? { ...item, ...(body || {}) } : null;
+        if (updated) {
+          const index = items.findIndex(u => u.id === second);
+          if (index >= 0) items[index] = updated;
+          writeLocalList('localUsers', items);
+          setCurrentLocalUser(updated);
+        }
+        return { data: updated || null, user: updated || null };
       }
       if (method === 'DELETE') {
         const filtered = items.filter(u => u.id !== second);
@@ -211,6 +346,121 @@ const API = (() => {
         if (body.adminNote) item.adminNote = body.adminNote;
         writeLocalList('localTeacherTests', items);
         return { data: item };
+      }
+    }
+
+    if (segment === 'points') {
+      const users = readLocalList('localUsers');
+      const currentUser = getCurrentLocalUser();
+      const pointsKey = 'localPoints';
+      function readPoints() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(pointsKey) || '{}');
+          return stored && typeof stored === 'object' ? stored : {};
+        } catch {
+          return {};
+        }
+      }
+      function writePoints(pointsMap) {
+        localStorage.setItem(pointsKey, JSON.stringify(pointsMap));
+      }
+      function createPointState(user) {
+        return {
+          userId: user.id,
+          userName: user.name,
+          total: 0,
+          history: [],
+          watchedVideos: [],
+          completedTests: [],
+          testScores: {},
+          dailyTasks: {},
+          lastLoginDate: null,
+        };
+      }
+      function makeLeaderboard() {
+        return users
+          .filter(user => user.role !== 'admin')
+          .map(user => {
+            const item = readPoints()[user.id] || createPointState(user);
+            return {
+              userId: user.id,
+              userName: user.name || 'İstifadəçi',
+              userType: user.userType || 'student',
+              premium: Boolean(user.premium),
+              total: Number(item.total) || 0,
+              watchedCount: (item.watchedVideos || []).length,
+              testCount: (item.completedTests || []).length,
+            };
+          })
+          .sort((a, b) => b.total - a.total);
+      }
+
+      if (method === 'GET') {
+        if (!currentUser) return { leaderboard: makeLeaderboard() };
+        const map = readPoints();
+        const current = map[currentUser.id] || createPointState(currentUser);
+        return { points: current, leaderboard: makeLeaderboard() };
+      }
+
+      if (method === 'POST') {
+        if (!currentUser) throw new Error('Daxil olmalısınız');
+        const map = readPoints();
+        const current = map[currentUser.id] || createPointState(currentUser);
+        const todayKey = new Date().toISOString().slice(0, 10);
+
+        if (body?.type === 'daily-login') {
+          if (current.lastLoginDate !== todayKey) {
+            current.lastLoginDate = todayKey;
+            current.total = (Number(current.total) || 0) + 10;
+            current.history = Array.isArray(current.history) ? current.history : [];
+            current.history.unshift({ amount: 10, reason: 'Gündəlik giriş', date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
+            current.history = current.history.slice(0, 50);
+          }
+        }
+
+        if (body?.type === 'daily-task') {
+          const taskId = String(body.taskId || '');
+          const taskTitle = String(body.taskTitle || taskId || 'Tapşırıq');
+          const reward = Number(body.reward || 0);
+          if (!taskId || !reward) throw new Error('Tapşırıq məlumatı düzgün deyil');
+          const dailyTasks = current.dailyTasks && typeof current.dailyTasks === 'object' ? current.dailyTasks : {};
+          const tasksForToday = dailyTasks[todayKey] && typeof dailyTasks[todayKey] === 'object' ? dailyTasks[todayKey] : {};
+          if (!tasksForToday[taskId]) {
+            tasksForToday[taskId] = { taskId, taskTitle, reward, completedAt: new Date().toISOString() };
+            dailyTasks[todayKey] = tasksForToday;
+            current.dailyTasks = dailyTasks;
+            if (taskId === 'watch-video') {
+              const watchedVideos = Array.isArray(current.watchedVideos) ? current.watchedVideos : [];
+              watchedVideos.push(`video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+              current.watchedVideos = watchedVideos;
+            }
+            current.total = (Number(current.total) || 0) + reward;
+            current.history.unshift({ amount: reward, reason: `Gündəlik tapşırıq: ${taskTitle}`, date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
+            current.history = current.history.slice(0, 50);
+            map[currentUser.id] = current;
+            writePoints(map);
+            return { points: current, leaderboard: makeLeaderboard(), earnedPoints: reward };
+          }
+          return { points: current, leaderboard: makeLeaderboard(), earnedPoints: 0, taskAlreadyCompleted: true };
+        }
+
+        if (body?.type === 'test') {
+          const testId = String(body.testId || '');
+          const answers = Array.isArray(body.answers) ? body.answers : [];
+          const completed = Array.isArray(current.completedTests) ? current.completedTests : [];
+          if (!completed.includes(testId)) completed.push(testId);
+          current.completedTests = completed;
+          current.total = (Number(current.total) || 0) + 20;
+          current.history.unshift({ amount: 20, reason: 'Sınaq tamamlandı', date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
+          current.history = current.history.slice(0, 50);
+          map[currentUser.id] = current;
+          writePoints(map);
+          return { points: current, leaderboard: makeLeaderboard(), earnedPoints: 20, ballScore: 100, score: answers.length || 1, total: answers.length || 1 };
+        }
+
+        map[currentUser.id] = current;
+        writePoints(map);
+        return { points: current, leaderboard: makeLeaderboard() };
       }
     }
 
@@ -265,6 +515,31 @@ const API = (() => {
     return path.startsWith('/api') ? path : `${API_BASE_URL}${path}`;
   }
 
+  function tryLocalFallback(method, path, body) {
+    try {
+      return localFallback(method, path, body);
+    } catch {
+      return undefined;
+    }
+  }
+
+  function shouldUseLocalFallbackForEmptyData(path, data) {
+    if (!path || !path.startsWith('/api/')) return false;
+    const normalized = path.replace(/^\/+/, '').replace(/^api\//, '').split('?')[0].split('/')[0];
+    const localKeys = {
+      videos: 'localVideos',
+      teachers: 'localTeachers',
+      news: 'localNews',
+      tests: 'localTests',
+      users: 'localUsers',
+    };
+    const targetKey = localKeys[normalized];
+    if (!targetKey || !localStorage.getItem(targetKey)) return false;
+    if (Array.isArray(data)) return data.length === 0;
+    if (data && Array.isArray(data.data)) return data.data.length === 0;
+    return false;
+  }
+
   async function req(method, path, body) {
     const opts = {
       method,
@@ -276,10 +551,36 @@ const API = (() => {
     try {
       const requestPath = buildRequestPath(path);
       const r = await fetch(requestPath, opts);
-      const data = await r.json().catch(() => ({}));
+      const responseText = await r.text();
+      const contentType = r.headers.get('content-type') || '';
+      const trimmedText = responseText.trim();
+      const looksLikeJson = contentType.includes('application/json') || /^[\[{]/.test(trimmedText);
+      const looksLikeHtml = /<\s*(!doctype|html|body|head|table|script)|<\/?[a-z]/i.test(trimmedText) || contentType.includes('text/html');
+      let data = {};
+
+      if (looksLikeJson && trimmedText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = {};
+        }
+      }
+
+      const shouldFallbackToLocal =
+        (!r.ok && [404, 405].includes(r.status)) ||
+        (requestPath.startsWith('/api/') && (looksLikeHtml || (!looksLikeJson && !trimmedText))) ||
+        shouldUseLocalFallbackForEmptyData(path, data);
+
+      if (shouldFallbackToLocal) {
+        const fallback = tryLocalFallback(method, path, body);
+        if (fallback !== undefined) return fallback;
+      }
+
       if (!r.ok) throw Object.assign(new Error(data.error || 'Xəta baş verdi'), { status: r.status, data });
       return data;
     } catch (error) {
+      const fallback = tryLocalFallback(method, path, body);
+      if (fallback !== undefined) return fallback;
       throw error;
     }
   }
@@ -342,7 +643,14 @@ const API = (() => {
   const users = {
     async list(params = {}) { return req('GET', '/api/users?' + new URLSearchParams(params)); },
     async get(id) { return req('GET', `/api/users/${id}`); },
-    async update(id, data) { return req('PUT', `/api/users/${id}`, data); },
+    async update(id, data) {
+      const result = await req('PUT', `/api/users/${id}`, data);
+      const nextUser = normalizeUserRecord(result) || result;
+      if (nextUser && nextUser.id) {
+        setCachedUser(nextUser);
+      }
+      return nextUser || result;
+    },
     async remove(id) { return req('DELETE', `/api/users/${id}`); },
   };
 
@@ -374,6 +682,9 @@ const API = (() => {
     async results() { return req('GET', '/api/points?view=results'); },
     async awardTest(testId, answers) { return req('POST', '/api/points', { type: 'test', testId, answers }); },
     async awardDailyLogin() { return req('POST', '/api/points', { type: 'daily-login' }); },
+    async awardDailyTask(taskId, taskTitle, reward) {
+      return req('POST', '/api/points', { type: 'daily-task', taskId, taskTitle, reward });
+    },
   };
 
   const notifications = {
@@ -395,10 +706,17 @@ const API = (() => {
   })();
 
   function setCachedUser(user) {
-    _currentUser = user || null;
-    if (_currentUser) localStorage.setItem('currentUser', JSON.stringify({ user: _currentUser }));
-    else localStorage.removeItem('currentUser');
-    return _currentUser;
+    const normalized = normalizeUserRecord(user);
+    if (normalized) {
+      const synced = syncUserToLocalStore(normalized) || normalized;
+      _currentUser = synced;
+      localStorage.setItem('currentUser', JSON.stringify({ user: synced }));
+      return synced;
+    }
+
+    _currentUser = null;
+    localStorage.removeItem('currentUser');
+    return null;
   }
 
   async function getCurrentUser() {

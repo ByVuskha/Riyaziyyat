@@ -3,6 +3,7 @@ const { getUserFromRequest, requireAuth, setCommonHeaders } = require('../lib/au
 const { allowMethods } = require('../lib/helpers');
 
 const POINTS = { perfect: 50, good: 30, pass: 15, fail: 5, dailyLogin: 10 };
+const DAILY_TASK_REWARDS = { 'watch-video': 15, 'solve-test': 20, 'read-news': 10, 'profile-update': 10, 'login': 10 };
 
 function parseList(value) {
   return Array.isArray(value) ? value : (value ? JSON.parse(value) : []);
@@ -17,6 +18,7 @@ function emptyPoints(user) {
     watchedVideos: [],
     completedTests: [],
     testScores: {},
+    dailyTasks: {},
     lastLoginDate: null,
   };
 }
@@ -124,6 +126,40 @@ module.exports = async function handler(req, res) {
         addPoints(data, earnedPoints, 'Gündəlik giriş');
       }
     }
+  } else if (req.body?.type === 'daily-task') {
+    const taskId = String(req.body?.taskId || '');
+    const taskTitle = String(req.body?.taskTitle || taskId || 'Tapşırıq');
+    const taskReward = Number(req.body?.reward || DAILY_TASK_REWARDS[taskId] || 0);
+
+    if (!taskId || !taskReward) {
+      return res.status(400).json({ error: 'Tapşırıq məlumatı düzgün deyil' });
+    }
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const dailyTasks = data.dailyTasks && typeof data.dailyTasks === 'object' ? data.dailyTasks : {};
+    const todayTasks = dailyTasks[todayKey] && typeof dailyTasks[todayKey] === 'object' ? dailyTasks[todayKey] : {};
+
+    if (todayTasks[taskId]) {
+      return res.status(200).json({ points: data, leaderboard: makeLeaderboard(users, points), earnedPoints: 0, taskAlreadyCompleted: true });
+    }
+
+    todayTasks[taskId] = {
+      taskId,
+      taskTitle,
+      reward: taskReward,
+      completedAt: new Date().toISOString(),
+    };
+    dailyTasks[todayKey] = todayTasks;
+    data.dailyTasks = dailyTasks;
+
+    if (taskId === 'watch-video') {
+      const watchedVideos = Array.isArray(data.watchedVideos) ? data.watchedVideos : [];
+      watchedVideos.push(`video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      data.watchedVideos = watchedVideos;
+    }
+
+    earnedPoints = taskReward;
+    addPoints(data, earnedPoints, `Gündəlik tapşırıq: ${taskTitle}`);
   } else if (req.body?.type === 'test') {
     const testId = String(req.body?.testId || '');
     const answers = req.body?.answers;

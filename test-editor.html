@@ -173,6 +173,24 @@
                 <input type="text" class="form-control" id="testCategory" placeholder="Məs: Cəbr, Həndəsə, Analiz">
             </div>
         </div>
+        <div class="form-row" style="margin-bottom:15px;">
+            <div class="form-group" style="margin:0;">
+                <label>Sual kateqoriyası</label>
+                <select class="form-control" id="questionPreset">
+                    <option value="umumi">Ümumi</option>
+                    <option value="cebr">Cəbr</option>
+                    <option value="hendese">Həndəsə</option>
+                    <option value="analiz">Analiz</option>
+                    <option value="ehtimal">Ehtimal</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-secondary" onclick="applyQuestionPreset()" style="width:100%;">
+                    <i class="fas fa-magic"></i> Mövzu nümunəsi
+                </button>
+            </div>
+        </div>
         <div class="form-row-3" style="margin-bottom:15px;">
             <div class="form-group" style="margin:0;">
                 <label>Çətinlik</label>
@@ -297,10 +315,10 @@
 
 
     <canvas id="mathCanvas"></canvas>
-    <script src="js/confetti.js"></script>
-    <script src="js/math-bg.js"></script>
-    <script src="js/animations.js"></script>
-    <script src="js/notifications.js"></script>
+    <script src="js/confetti.js?v=20260927"></script>
+    <script src="js/math-bg.js?v=20260927"></script>
+    <script src="js/animations.js?v=20260927"></script>
+    <script src="js/notifications.js?v=20260927"></script>
 <script>
 // ════════════════════════════════════════════════════════
 //  KaTeX helpers
@@ -450,6 +468,78 @@ document.addEventListener('DOMContentLoaded', async () => {
 let questions = [];
 let editingIdx = -1;
 
+const SUBJECT_TEMPLATES = {
+    umumi: {
+        text: '$3x + 7 = 19$ tənliyinin kökü nədir?',
+        options: ['2', '3', '4', '5'],
+        correctAnswer: 2,
+        explanation: 'Tənliyi həll edərək $3x = 12$ və $x = 4$ alınır.',
+    },
+    cebr: {
+        text: '$2x - 5 = 11$ tənliyinin kökü neçədir?',
+        options: ['3', '6', '8', '9'],
+        correctAnswer: 1,
+        explanation: '$2x = 16$ olduğundan $x = 8$.',
+    },
+    hendese: {
+        text: 'Bir üçbucağın iki bucağı $35^\circ$ və $65^\circ$ olarsa, üçüncü bucaq neçə dərəcədir?',
+        options: ['60°', '70°', '80°', '90°'],
+        correctAnswer: 2,
+        explanation: 'Üçbucağın daxili açıları cəmi $180^\circ$-dir: $180 - (35 + 65) = 80^\circ$.',
+    },
+    analiz: {
+        text: '$f(x)=x^2-4x+3$ funksiyasının minimum nöqtəsi hansıdır?',
+        options: ['$(2,-1)$', '$(1,0)$', '$(0,3)$', '$(4,3)$'],
+        correctAnswer: 0,
+        explanation: 'Parabola təpəsi $x=-b/2a=2$ ilə tapılır və qiymət $-1$ olur.',
+    },
+    ehtimal: {
+        text: 'Bir zər çoxluqdan 2 dəfə atılır. "Bəhrə" gəlmə ehtimalı nədir?',
+        options: ['$\frac{1}{2}$', '$\frac{1}{4}$', '$\frac{1}{6}$', '$\frac{3}{4}$'],
+        correctAnswer: 1,
+        explanation: 'Hər atışda 1/2 ehtimal var, iki dəfə ardıcıl olaraq baş vermə ehtimalı $1/2 \times 1/2 = 1/4$.',
+    },
+};
+
+function syncQuestionPresetFromTestCategory() {
+    const categoryInput = document.getElementById('testCategory');
+    const presetSelect = document.getElementById('questionPreset');
+    if (!categoryInput || !presetSelect) return;
+    const raw = String(categoryInput.value || '').trim().toLowerCase();
+    const map = {
+        ceber: 'cebr',
+        cəbr: 'cebr',
+        cabr: 'cebr',
+        hendese: 'hendese',
+        həndəsə: 'hendese',
+        analiz: 'analiz',
+        ehtimal: 'ehtimal',
+    };
+    presetSelect.value = map[raw] || 'umumi';
+}
+
+function applyQuestionPreset() {
+    const presetKey = document.getElementById('questionPreset')?.value || 'umumi';
+    const template = SUBJECT_TEMPLATES[presetKey];
+    if (!template) return;
+    document.getElementById('questionText').value = template.text;
+    document.getElementById('optA').value = template.options[0];
+    document.getElementById('optB').value = template.options[1];
+    document.getElementById('optC').value = template.options[2];
+    document.getElementById('optD').value = template.options[3];
+    document.getElementById('explanation').value = template.explanation;
+    const answerRadio = document.getElementById('rOpt' + template.correctAnswer);
+    if (answerRadio) answerRadio.checked = true;
+    ['qtext_preview','pA','pB','pC','pD'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+    });
+    ['questionText','optA','optB','optC','optD'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.dispatchEvent(new Event('input'));
+    });
+}
+
 // ════════════════════════════════════════════════════════
 //  Load existing test
 // ════════════════════════════════════════════════════════
@@ -530,6 +620,8 @@ function openModal() {
     editingIdx = -1;
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:#4f46e5;"></i> Yeni Sual Əlavə Et';
     clearModal();
+    syncQuestionPresetFromTestCategory();
+    applyQuestionPreset();
     document.getElementById('questionModal').classList.add('active');
 }
 
@@ -664,8 +756,8 @@ document.getElementById('questionModal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
 </script>
-<script src="js/notifications.js"></script>
-<script src="js/api-client.js"></script>
-<script src="js/app.js"></script>
+<script src="js/notifications.js?v=20260927"></script>
+<script src="js/api-client.js?v=20260927"></script>
+<script src="js/app.js?v=20260927"></script>
 </body>
 </html>

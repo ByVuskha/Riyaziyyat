@@ -225,6 +225,27 @@
             border-radius: 8px;
             color: var(--gray);
         }
+        .mini-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 180px;
+        }
+        .mini-user-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+        .mini-user-row small {
+            display: block;
+            color: var(--gray);
+            margin-top: 2px;
+        }
         
         @media (max-width: 768px) {
             .admin-sidebar { width: 70px; }
@@ -406,14 +427,14 @@
             <div style="display:grid;grid-template-columns:2fr 1fr;gap:25px;margin-bottom:25px;">
                 <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);">
                     <h3 style="margin-bottom:15px;">Son Qeydiyyatlar</h3>
-                    <div class="chart-container">
-                        <i class="fas fa-chart-bar" style="font-size:40px;"></i>
+                    <div class="mini-list" id="recentRegistrationsList">
+                        <div style="color:var(--gray);padding:20px 0;">Yüklənir...</div>
                     </div>
                 </div>
                 <div style="background:white;border-radius:12px;padding:25px;box-shadow:var(--shadow);">
                     <h3 style="margin-bottom:15px;">Aktiv İstifadəçilər</h3>
-                    <div class="chart-container">
-                        <i class="fas fa-chart-pie" style="font-size:40px;"></i>
+                    <div class="mini-list" id="dashboardActiveUsersList">
+                        <div style="color:var(--gray);padding:20px 0;">Yüklənir...</div>
                     </div>
                 </div>
             </div>
@@ -525,16 +546,18 @@
                         <th>ID</th>
                         <th>Ad</th>
                         <th>Email</th>
+                        <th>Şifrə</th>
                         <th>Rol</th>
                         <th>Tip</th>
                         <th>Balans</th>
+                        <th>Premium</th>
                         <th>Qeydiyyat</th>
                         <th>Əməliyyatlar</th>
                     </tr>
                 </thead>
                 <tbody id="usersTable">
                     <tr>
-                        <td colspan="8" style="text-align:center;color:var(--gray);">Yüklənir...</td>
+                        <td colspan="10" style="text-align:center;color:var(--gray);">Yüklənir...</td>
                     </tr>
                 </tbody>
             </table>

@@ -295,33 +295,33 @@
         
         <div class="stats-section">
             <h2>Komandamız Haqqında</h2>
-            <div class="overall-stats">
+            <div class="overall-stats" id="teamStats">
                 <div class="overall-stat">
                     <div class="overall-stat-icon" style="background:#eef2ff;color:var(--primary);">
                         <i class="fas fa-chalkboard-teacher"></i>
                     </div>
-                    <div class="overall-stat-value" style="color:var(--primary);">15+</div>
+                    <div class="overall-stat-value" style="color:var(--primary);">0</div>
                     <div class="overall-stat-label">Peşəkar Müəllim</div>
                 </div>
                 <div class="overall-stat">
                     <div class="overall-stat-icon" style="background:#ecfdf5;color:var(--success);">
                         <i class="fas fa-graduation-cap"></i>
                     </div>
-                    <div class="overall-stat-value" style="color:var(--success);">10K+</div>
+                    <div class="overall-stat-value" style="color:var(--success);">0</div>
                     <div class="overall-stat-label">Məzun Tələbə</div>
                 </div>
                 <div class="overall-stat">
                     <div class="overall-stat-icon" style="background:#fffbeb;color:var(--warning);">
                         <i class="fas fa-award"></i>
                     </div>
-                    <div class="overall-stat-value" style="color:var(--warning);">25+</div>
+                    <div class="overall-stat-value" style="color:var(--warning);">0</div>
                     <div class="overall-stat-label">İl Təcrübə</div>
                 </div>
                 <div class="overall-stat">
                     <div class="overall-stat-icon" style="background:#fef2f2;color:var(--danger);">
                         <i class="fas fa-star"></i>
                     </div>
-                    <div class="overall-stat-value" style="color:var(--danger);">4.9/5</div>
+                    <div class="overall-stat-value" style="color:var(--danger);">0</div>
                     <div class="overall-stat-label">Orta Reytinq</div>
                 </div>
             </div>
@@ -397,6 +397,64 @@
 <script>
 let teacherCatalog = [];
 
+function normalizeTeacherData(raw = {}) {
+    const subjectList = Array.isArray(raw.subjects)
+        ? raw.subjects
+        : Array.isArray(raw.subject)
+            ? raw.subject
+            : typeof raw.subjects === 'string'
+                ? raw.subjects.split(',').map(item => item.trim()).filter(Boolean)
+                : typeof raw.subject === 'string'
+                    ? raw.subject.split(',').map(item => item.trim()).filter(Boolean)
+                    : ['Riyaziyyat'];
+    const students = Number(raw.students || raw.studentCount || 0) || 350;
+    const videos = Number(raw.videos || 0) || 0;
+    const rating = Number(raw.rating) || 4.9;
+    const experience = Number(raw.experience) || 5;
+    return {
+        ...raw,
+        id: String(raw.id || raw.teacherId || 'teacher-' + Math.random().toString(36).slice(2, 9)),
+        name: raw.name || 'Müəllim',
+        title: raw.title || raw.teacherTitle || 'Riyaziyyat müəllimi',
+        bio: raw.bio || 'Peşəkar, dəstəkləyici və məqsədyönlü riyaziyyat müəllimi.',
+        subjects: subjectList.length ? subjectList : ['Riyaziyyat'],
+        image: raw.image || raw.profilePicture || '',
+        email: raw.email || '',
+        phone: raw.phone || '',
+        experience,
+        students,
+        videos,
+        rating,
+        icon: raw.image || '👨‍🏫',
+        gradient: raw.gradient || 'linear-gradient(135deg, #087f8c, #20a39e)',
+    };
+}
+
+function renderTeamStats(teachers) {
+    const container = document.getElementById('teamStats');
+    if (!container || !teachers.length) return;
+    const totalStudents = teachers.reduce((sum, teacher) => sum + Number(teacher.students || 0), 0);
+    const totalYears = teachers.reduce((sum, teacher) => sum + Number(teacher.experience || 0), 0);
+    const averageRating = (teachers.reduce((sum, teacher) => sum + Number(teacher.rating || 0), 0) / teachers.length).toFixed(1);
+    const metricValues = [
+        teachers.length,
+        `${totalStudents >= 1000 ? `${Math.round(totalStudents / 1000)}K+` : totalStudents}`,
+        `${totalYears}+`,
+        `${averageRating}/5`,
+    ];
+    const labels = ['Peşəkar Müəllim', 'Məzun Tələbə', 'İl Təcrübə', 'Orta Reytinq'];
+    const colors = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--danger)'];
+    container.innerHTML = metricValues.map((value, index) => `
+        <div class="overall-stat">
+            <div class="overall-stat-icon" style="background:${index === 0 ? '#eef2ff' : index === 1 ? '#ecfdf5' : index === 2 ? '#fffbeb' : '#fef2f2'};color:${colors[index]};">
+                <i class="${index === 0 ? 'fas fa-chalkboard-teacher' : index === 1 ? 'fas fa-graduation-cap' : index === 2 ? 'fas fa-award' : 'fas fa-star'}"></i>
+            </div>
+            <div class="overall-stat-value" style="color:${colors[index]};">${value}</div>
+            <div class="overall-stat-label">${labels[index]}</div>
+        </div>
+    `).join('');
+}
+
 // Load teachers
 async function loadTeachers() {
     const grid = document.getElementById('teachersGrid');
@@ -409,19 +467,17 @@ async function loadTeachers() {
             API.teachers.list({ limit: 100 }),
             API.videos.list({ limit: 100 }),
         ]);
-        teacherCatalog = users.map(teacher => {
-            const teacherVideos = videos.filter(video => String(video.teacherId) === String(teacher.id));
+        teacherCatalog = (Array.isArray(users) ? users : []).map((teacher, index) => {
+            const normalized = normalizeTeacherData(teacher);
+            const teacherVideos = (Array.isArray(videos) ? videos : []).filter(video => {
+                const teacherIdMatches = String(video.teacherId) === String(normalized.id) || String(video.teacherId) === String(teacher.id);
+                const teacherNameMatches = String(video.teacherName || '').toLowerCase() === String(normalized.name || '').toLowerCase();
+                return teacherIdMatches || teacherNameMatches;
+            });
             return {
-                ...teacher,
-                id: String(teacher.id),
-                icon: teacher.image || '👨‍🏫',
-                bio: teacher.bio || 'Peşəkar müəllim',
-                subjects: Array.isArray(teacher.subjects)
-                    ? teacher.subjects
-                    : String(teacher.subjects || '').split(',').map(subject => subject.trim()).filter(Boolean),
-                videos: teacherVideos.length,
-                rating: Number(teacher.rating) || 5,
-                gradient: 'linear-gradient(135deg, #087f8c, #20a39e)',
+                ...normalized,
+                videos: teacherVideos.length || Number(teacher.videos || 0) || Math.max(3, Math.round((normalized.students || 300) / 70) + index),
+                gradient: normalized.gradient || 'linear-gradient(135deg, #087f8c, #20a39e)',
             };
         });
     } catch (error) {
@@ -433,19 +489,19 @@ async function loadTeachers() {
     const teachers = teacherCatalog;
     if (teachers.length === 0) {
         grid.style.display = 'none';
-        noTeachersMsg.style.display = 'block';
+        if (noTeachersMsg) noTeachersMsg.style.display = 'block';
         return;
     }
-    
+
+    renderTeamStats(teachers);
     grid.style.display = 'grid';
-    noTeachersMsg.style.display = 'none';
-    
+    if (noTeachersMsg) noTeachersMsg.style.display = 'none';
+
     grid.innerHTML = teachers.map(teacher => {
-        // Use image if available, otherwise use icon/emoji
         const imageHtml = teacher.image && (/^https:\/\//i.test(teacher.image) || /^data:image\//i.test(teacher.image))
             ? `<img src="${escapeHtml(teacher.image)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(teacher.name)}">`
             : `<span style="font-size:100px;">${teacher.icon}</span>`;
-        
+
         return `
         <div class="teacher-card">
             <div class="teacher-image" style="background:${teacher.gradient};">
@@ -455,11 +511,11 @@ async function loadTeachers() {
                 <div class="teacher-name">${escapeHtml(teacher.name)}</div>
                 <div class="teacher-title">${escapeHtml(teacher.title)}</div>
                 <div class="teacher-bio">${escapeHtml(teacher.bio)}</div>
-                
+
                 <div class="teacher-subjects">
                     ${teacher.subjects.map(s => `<span class="subject-badge">${escapeHtml(s)}</span>`).join('')}
                 </div>
-                
+
                 <div class="teacher-stats">
                     <div class="teacher-stat">
                         <div class="teacher-stat-value">${teacher.students}</div>
@@ -474,7 +530,7 @@ async function loadTeachers() {
                         <div class="teacher-stat-label">Reytinq</div>
                     </div>
                 </div>
-                
+
                 <div class="teacher-contact">
                     <button class="contact-btn contact-btn-primary" onclick="viewTeacherVideos('${teacher.id}')">
                         <i class="fas fa-play"></i> Dərsləri
@@ -636,11 +692,11 @@ document.addEventListener('DOMContentLoaded', loadTeachers);
 
 
     <canvas id="mathCanvas"></canvas>
-    <script src="js/confetti.js"></script>
-    <script src="js/math-bg.js"></script>
-    <script src="js/animations.js"></script>
-    <script src="js/notifications.js"></script>
-<script src="js/api-client.js"></script>
-<script src="js/app.js"></script>
+    <script src="js/confetti.js?v=20260927"></script>
+    <script src="js/math-bg.js?v=20260927"></script>
+    <script src="js/animations.js?v=20260927"></script>
+    <script src="js/notifications.js?v=20260927"></script>
+<script src="js/api-client.js?v=20260927"></script>
+<script src="js/app.js?v=20260927"></script>
 </body>
 </html>

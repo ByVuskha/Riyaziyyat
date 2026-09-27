@@ -21,6 +21,17 @@
   else document.documentElement.removeAttribute('data-theme');
 })();
 
+window.addEventListener('storage', (event) => {
+  if (event.key !== 'currentUser') return;
+  try {
+    const payload = event.newValue ? JSON.parse(event.newValue) : null;
+    const user = payload && payload.user ? payload.user : null;
+    API.setCachedUser(user);
+  } catch {
+    API.clearUserCache();
+  }
+});
+
 (function initMathBackground() {
   if (document.getElementById('math-theme-styles')) return;
   const style = document.createElement('style');

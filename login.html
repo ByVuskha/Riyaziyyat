@@ -122,7 +122,7 @@
 <script src="js/api-client.js"></script>
 <script src="js/app.js"></script>
 <script>
-(async () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Redirect if already logged in
     await redirectIfLoggedIn('dashboard.html');
 
@@ -188,6 +188,9 @@
 
         try {
             const { user } = await API.auth.login(email, password);
+            try {
+                await API.points.awardDailyTask('login', 'Giriş et', 10);
+            } catch {}
             showAlert('Uğurla daxil oldunuz!', 'success');
 
             // Read redirect param if present
@@ -205,7 +208,7 @@
             btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Daxil Ol';
         }
     });
-})();
+});
 </script>
 </body>
 </html>

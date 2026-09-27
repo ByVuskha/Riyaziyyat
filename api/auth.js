@@ -7,6 +7,7 @@ const {
   buildCookieHeader,
   clearCookieHeader,
   setCommonHeaders,
+  getUserFromRequest,
 } = require('../lib/auth');
 const { genId, sanitizeUser } = require('../lib/helpers');
 
@@ -32,6 +33,10 @@ function parseUsers(value) {
   return [];
 }
 
+function generateSessionId() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
 async function login(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { email, password } = req.body || {};
@@ -49,6 +54,9 @@ async function login(req, res) {
   const user = users.find(item => item.email === normalizedEmail);
   if (!user) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
   if (user.frozen) return res.status(403).json({ error: 'Hesabınız bloklanıb. Dəstək xidməti ilə əlaqə saxlayın.' });
+  if (user.loginApproved === false || user.loginRequestStatus === 'pending' || user.loginRequestStatus === 'rejected') {
+    return res.status(403).json({ error: 'Giriş icazəsi admin tərəfindən hələ təsdiqlənməyib. Admin müraciətinizi yoxlayır.' });
+  }
 
   let passwordOk = false;
   let passwordMigrated = false;
@@ -73,15 +81,20 @@ async function login(req, res) {
 
   const userIndex = users.findIndex(item => item.email === normalizedEmail);
   if (userIndex >= 0) {
+    const nextSessionId = generateSessionId();
+    users[userIndex].sessionId = nextSessionId;
     users[userIndex].deviceId = users[userIndex].deviceId || null;
     users[userIndex].deviceStatus = 'approved';
     users[userIndex].deviceMismatchCount = 0;
     users[userIndex].deviceLastSeenAt = new Date().toISOString();
     users[userIndex].updatedAt = new Date().toISOString();
     await redis.set('allUsers', JSON.stringify(users));
+    const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name, sessionId: nextSessionId });
+    res.setHeader('Set-Cookie', buildCookieHeader(token));
+    return res.status(200).json({ user: sanitizeUser(users[userIndex]) });
   }
 
-  const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+  const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name, sessionId: generateSessionId() });
   res.setHeader('Set-Cookie', buildCookieHeader(token));
   return res.status(200).json({ user: sanitizeUser(user) });
 }
@@ -103,6 +116,7 @@ async function register(req, res) {
   const users = parseUsers(await redis.get('allUsers'));
   if (users.some(user => user.email === normalizedEmail)) return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
 
+  const sessionId = generateSessionId();
   const newUser = {
     id: genId(),
     name: name.trim(),
@@ -113,6 +127,12 @@ async function register(req, res) {
     premium: false,
     balance: 0,
     points: 0,
+    sessionId,
+    loginApproved: true,
+    loginRequested: false,
+    loginRequestStatus: 'approved',
+    loginRequestedAt: null,
+    loginRejectedReason: null,
     deviceId: null,
     knownDevices: [],
     deviceStatus: 'approved',
@@ -144,7 +164,7 @@ async function register(req, res) {
     await redis.set('teachers', JSON.stringify(teachers));
   }
 
-  const token = signToken({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name });
+  const token = signToken({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name, sessionId });
   res.setHeader('Set-Cookie', buildCookieHeader(token));
   return res.status(201).json({ user: sanitizeUser(newUser) });
 }
@@ -244,20 +264,44 @@ async function resetPassword(req, res) {
 
 async function me(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const token = require('../lib/auth').getUserFromRequest(req);
+  const token = getUserFromRequest(req);
   if (!token) return res.status(401).json({ error: 'Giriş tələb olunur' });
+
   const users = parseUsers(await redis.get('allUsers'));
   const rawPoints = await redis.get('userPoints');
   const pointsMap = rawPoints && typeof rawPoints === 'object' ? rawPoints : (rawPoints ? JSON.parse(rawPoints) : {});
   const user = users.find(item => String(item.id) === String(token.id) || item.email === token.email);
   if (!user) return res.status(404).json({ error: 'İstifadəçi tapılmadı' });
+
+  const activeSessionId = token.sessionId || user.sessionId || null;
+  const storedSessionId = user.sessionId || null;
+  if (storedSessionId && activeSessionId && String(storedSessionId) !== String(activeSessionId)) {
+    res.setHeader('Set-Cookie', clearCookieHeader());
+    return res.status(401).json({ error: 'Bu hesab başqa cihazda aktivdir. Yenidən daxil olun.' });
+  }
+
+  if (!storedSessionId && activeSessionId) {
+    user.sessionId = activeSessionId;
+    await redis.set('allUsers', JSON.stringify(users));
+  }
+
   const totalPoints = Number(pointsMap[String(user.id)]?.total || user.points || 0);
   user.points = totalPoints;
   return res.status(200).json({ user: sanitizeUser(user) });
 }
 
-function logout(req, res) {
+async function logout(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const token = getUserFromRequest(req);
+  if (token) {
+    const users = parseUsers(await redis.get('allUsers'));
+    const user = users.find(item => String(item.id) === String(token.id) || item.email === token.email);
+    if (user) {
+      user.sessionId = null;
+      user.updatedAt = new Date().toISOString();
+      await redis.set('allUsers', JSON.stringify(users));
+    }
+  }
   res.setHeader('Set-Cookie', clearCookieHeader());
   return res.status(200).json({ ok: true });
 }

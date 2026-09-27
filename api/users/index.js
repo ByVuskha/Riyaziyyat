@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
     const page  = parseInt(req.query?.page)  || 1;
     const limit = parseInt(req.query?.limit) || 50;
     const q     = (req.query?.q || '').toLowerCase();
+    const includeSensitive = admin.role === 'admin';
 
     let filtered = users;
     if (q) {
@@ -28,7 +29,9 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    return res.status(200).json(paginate(filtered.map(sanitizeUser), page, limit));
+    return res.status(200).json(
+      paginate(filtered.map(user => sanitizeUser(user, { includePassword: includeSensitive })), page, limit)
+    );
   }
 
   if (!allowMethods(req, res, ['GET', 'PUT', 'DELETE'])) return;
@@ -45,12 +48,13 @@ module.exports = async function handler(req, res) {
     return res.status(403).json({ error: 'İcazəniz yoxdur' });
   }
 
-  if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx]));
+  if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx], { includePassword: session.role === 'admin' }));
 
   if (req.method === 'PUT') {
     const { name, password, currentPassword, balance, role, premium, premiumExpiresAt,
       frozen, canAddTests, userType, phone, bio, profilePicture, testAccessRequested,
-      testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail } = req.body || {};
+      testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail,
+      loginRequested, loginRequestedAt, loginRequestStatus, loginApproved, loginRejectedReason } = req.body || {};
 
     if (session.role !== 'admin') {
       if (name) users[idx].name = name.trim();
@@ -67,6 +71,29 @@ module.exports = async function handler(req, res) {
       if (testAccessRequested === true) {
         users[idx].testAccessRequested = true;
         users[idx].testAccessRequestedAt = testAccessRequestedAt || new Date().toISOString();
+      }
+      if (loginRequested === true) {
+        users[idx].loginRequested = true;
+        users[idx].loginRequestStatus = 'pending';
+        users[idx].loginApproved = false;
+        users[idx].loginRequestedAt = loginRequestedAt || new Date().toISOString();
+        users[idx].loginRejectedReason = null;
+        const rawNotifications = await redis.get('siteNotifications');
+        const notifications = rawNotifications ? JSON.parse(rawNotifications) : [];
+        notifications.unshift({
+          id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          title: 'Giriş icazəsi müraciəti',
+          message: `${users[idx].name || 'İstifadəçi'} (${users[idx].email}) giriş icazəsi üçün müraciət etdi. Admin təsdiqləməlidir.`,
+          type: 'warning',
+          audience: 'all',
+          userId: users[idx].id,
+          userName: users[idx].name,
+          senderId: users[idx].id,
+          senderName: 'Sistem',
+          readBy: [],
+          createdAt: new Date().toISOString(),
+        });
+        await redis.set('siteNotifications', JSON.stringify(notifications.slice(0, 250)), { ex: 86400 * 30 });
       }
       if (password) {
         if (password.length < 6) return res.status(400).json({ error: 'Yeni şifrə minimum 6 simvol olmalıdır' });
@@ -88,6 +115,14 @@ module.exports = async function handler(req, res) {
       if (canAddTests !== undefined) users[idx].canAddTests = Boolean(canAddTests);
       if (testAccessRequested !== undefined) users[idx].testAccessRequested = Boolean(testAccessRequested);
       if (testAccessRequestedAt !== undefined) users[idx].testAccessRequestedAt = testAccessRequestedAt;
+      if (loginRequested !== undefined) users[idx].loginRequested = Boolean(loginRequested);
+      if (loginApproved !== undefined) {
+        users[idx].loginApproved = Boolean(loginApproved);
+        users[idx].loginRequestStatus = users[idx].loginApproved ? 'approved' : 'rejected';
+      }
+      if (loginRequestStatus !== undefined) users[idx].loginRequestStatus = loginRequestStatus;
+      if (loginRejectedReason !== undefined) users[idx].loginRejectedReason = loginRejectedReason;
+      if (loginRequestedAt !== undefined) users[idx].loginRequestedAt = loginRequestedAt;
       if (password && password.length >= 6) users[idx].password = await bcrypt.hash(password, 12);
     }
 
