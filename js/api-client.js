@@ -379,6 +379,10 @@ const API = (() => {
   const notifications = {
     async list(params = {}) { return req('GET', '/api/notifications?' + new URLSearchParams(params)); },
     async send(data) { return req('POST', '/api/notifications', data); },
+    async read(ids) {
+      const idList = Array.isArray(ids) ? ids : [ids];
+      return req('PUT', '/api/notifications', { ids: idList.filter(Boolean), action: 'mark-read' });
+    },
   };
 
   let _currentUser = (() => {

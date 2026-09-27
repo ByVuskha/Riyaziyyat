@@ -10,7 +10,26 @@ function parseList(value) {
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
-  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+  if (!allowMethods(req, res, ['GET', 'POST', 'PUT'])) return;
+
+  if (req.method === 'PUT') {
+    const session = getUserFromRequest(req);
+    if (!session) return res.status(401).json({ error: 'Daxil olmalısınız' });
+
+    const body = req.body || {};
+    const notificationIds = Array.isArray(body.ids) ? body.ids : body.notificationId ? [body.notificationId] : [];
+    const notifications = parseList(await redis.get('siteNotifications'));
+
+    const updated = notifications.map(item => {
+      if (!notificationIds.length || !notificationIds.includes(item.id)) return item;
+      const readBy = Array.isArray(item.readBy) ? item.readBy : [];
+      if (!readBy.includes(session.id)) readBy.push(session.id);
+      return { ...item, readBy };
+    });
+
+    await redis.set('siteNotifications', JSON.stringify(updated.slice(0, 250)), { ex: 86400 * 30 });
+    return res.status(200).json({ ok: true, data: updated });
+  }
 
   if (req.method === 'GET') {
     const notifications = parseList(await redis.get('siteNotifications'));
@@ -24,6 +43,10 @@ module.exports = async function handler(req, res) {
         if (session.role === 'admin') return true;
         return item.audience === 'all' || String(item.userId) === String(session.id) || String(item.userId) === String(qUserId);
       })
+      .map(item => ({
+        ...item,
+        isUnread: !Array.isArray(item.readBy) || !item.readBy.includes(session?.id || '')
+      }))
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     return res.status(200).json({ data: visible });
   }
@@ -49,6 +72,7 @@ module.exports = async function handler(req, res) {
     userName: body.userName || null,
     senderId: admin.id,
     senderName: admin.name,
+    readBy: [],
     createdAt: new Date().toISOString(),
   };
 

@@ -32,6 +32,11 @@ function parseUsers(value) {
   return [];
 }
 
+function normalizeKnownDevices(value) {
+  const items = Array.isArray(value) ? value : (value ? [value] : []);
+  return Array.from(new Set(items.filter(Boolean).map(String)));
+}
+
 function buildDeviceFingerprint(req) {
   const headers = req.headers || {};
   const ua = String(headers['user-agent'] || '').trim();
@@ -78,8 +83,11 @@ async function login(req, res) {
 
   if (user.role !== 'admin') {
     const currentDeviceId = buildDeviceFingerprint(req);
-    const previousDeviceId = user.deviceId || null;
-    const mismatch = previousDeviceId && previousDeviceId !== currentDeviceId;
+    const approvedDeviceId = user.deviceId || null;
+    const knownDevices = normalizeKnownDevices(user.knownDevices || (approvedDeviceId ? [approvedDeviceId] : []));
+    const isAllowedDevice = !!approvedDeviceId && currentDeviceId === approvedDeviceId;
+    const isKnownDevice = knownDevices.includes(currentDeviceId);
+    const mismatch = !isAllowedDevice && !isKnownDevice && !!approvedDeviceId;
     const mismatchCount = Number(user.deviceMismatchCount || 0);
 
     if (mismatch) {
@@ -109,6 +117,8 @@ async function login(req, res) {
   const currentDeviceId = buildDeviceFingerprint(req);
   const userIndex = users.findIndex(item => item.email === normalizedEmail);
   if (userIndex >= 0) {
+    const knownDevices = normalizeKnownDevices(users[userIndex].knownDevices);
+    users[userIndex].knownDevices = Array.from(new Set([...knownDevices, currentDeviceId]));
     users[userIndex].deviceId = currentDeviceId;
     users[userIndex].deviceStatus = 'approved';
     users[userIndex].deviceMismatchCount = 0;
@@ -150,6 +160,7 @@ async function register(req, res) {
     balance: 0,
     points: 0,
     deviceId: null,
+    knownDevices: [],
     deviceStatus: 'approved',
     deviceMismatchCount: 0,
     deviceLastSeenAt: null,

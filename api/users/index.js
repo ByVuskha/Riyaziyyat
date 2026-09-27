@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
     const { name, password, currentPassword, balance, role, premium, premiumExpiresAt,
       frozen, canAddTests, userType, phone, bio, profilePicture, testAccessRequested,
       testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail,
-      deviceId, deviceStatus, deviceMismatchCount, frozenReason } = req.body || {};
+      deviceId, deviceStatus, deviceMismatchCount, frozenReason, knownDevices } = req.body || {};
 
     if (session.role !== 'admin') {
       if (name) users[idx].name = name.trim();
@@ -88,6 +88,7 @@ module.exports = async function handler(req, res) {
       if (frozen !== undefined) users[idx].frozen = Boolean(frozen);
       if (frozenReason !== undefined) users[idx].frozenReason = String(frozenReason).slice(0, 300);
       if (deviceId !== undefined) users[idx].deviceId = deviceId ? String(deviceId) : null;
+      if (knownDevices !== undefined) users[idx].knownDevices = Array.isArray(knownDevices) ? knownDevices.filter(Boolean).map(String) : [];
       if (deviceStatus !== undefined) users[idx].deviceStatus = String(deviceStatus);
       if (deviceMismatchCount !== undefined) users[idx].deviceMismatchCount = Number(deviceMismatchCount) || 0;
       if (canAddTests !== undefined) users[idx].canAddTests = Boolean(canAddTests);

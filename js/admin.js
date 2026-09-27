@@ -786,13 +786,15 @@ async function loadDevicesSection() {
         const { data: users } = await API.users.list({ limit: 200 });
         const devices = normalizeArray(users)
             .filter(user => user.role !== 'admin')
-            .slice(0, 15)
             .map(user => ({
                 user: user.name || 'İstifadəçi',
                 email: user.email || '',
-                status: user.premium ? 'Premium' : 'Standart',
-                lastSeen: user.updatedAt || user.registeredAt || new Date().toISOString(),
-                type: user.userType === 'teacher' ? 'Müəllim' : 'Şagird'
+                status: user.deviceStatus || 'approved',
+                lastSeen: user.deviceLastSeenAt || user.updatedAt || user.registeredAt || new Date().toISOString(),
+                type: user.userType === 'teacher' ? 'Müəllim' : 'Şagird',
+                deviceId: user.deviceId || 'Yazılmayıb',
+                knownDevices: Array.isArray(user.knownDevices) && user.knownDevices.length ? user.knownDevices : (user.deviceId ? [user.deviceId] : []),
+                frozen: Boolean(user.frozen),
             }));
 
         if (!devices.length) {
@@ -807,11 +809,16 @@ async function loadDevicesSection() {
                         <strong>${escapeHtml(item.user)}</strong><br>
                         <small style="color:#64748b;">${escapeHtml(item.email)}</small>
                     </div>
-                    <span class="badge badge-${item.status === 'Premium' ? 'warning' : 'primary'}">${item.status}</span>
+                    <span class="badge badge-${item.status === 'blocked' ? 'danger' : item.status === 'warning' ? 'warning' : 'primary'}">${item.status === 'blocked' ? 'Blok' : item.status === 'warning' ? 'Xəbərdarlıq' : 'Təsdiqlənib'}</span>
                 </div>
-                <div style="margin-top:12px;font-size:12px;color:#64748b; display:flex; justify-content:space-between; gap:12px;">
-                    <span>${escapeHtml(item.type)}</span>
-                    <span>${formatDate(item.lastSeen)}</span>
+                <div style="margin-top:12px;font-size:12px;color:#64748b; display:grid; gap:8px;">
+                    <div><strong style="color:#111827;">Active cihaz:</strong> ${escapeHtml(item.deviceId.slice(0, 18) || 'Yazılmayıb')}...</div>
+                    <div><strong style="color:#111827;">Qeyd olunmuş cihazlar:</strong> ${item.knownDevices.map(device => escapeHtml(device.slice(0, 18))).join(', ') || 'Heç biri'}</div>
+                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <span>${escapeHtml(item.type)}</span>
+                        <span>${formatDate(item.lastSeen)}</span>
+                    </div>
+                    ${item.frozen ? '<div style="color:#dc2626; font-weight:700;">Hesab bloklanıb</div>' : ''}
                 </div>
             </div>
         `).join('');
@@ -867,13 +874,22 @@ async function loadSuspiciousActivities() {
 
 async function allowDeviceAccess(userId) {
     try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const user = normalizeArray(users).find(item => String(item.id) === String(userId));
+        const known = Array.isArray(user?.knownDevices) ? user.knownDevices.filter(Boolean).map(String) : [];
+        const fallback = user?.deviceId ? [user.deviceId] : [];
+        const approvedList = known.length ? known : fallback;
+
         await API.users.update(userId, {
             frozen: false,
             frozenReason: 'Admin fərqli cihaz üçün icazə verdi.',
             deviceStatus: 'approved',
             deviceMismatchCount: 0,
+            knownDevices: approvedList,
+            deviceId: approvedList[0] || user?.deviceId || null,
         });
         showNotification('Fərqli cihaz üçün icazə verildi.', 'success');
+        loadDevicesSection();
         loadSuspiciousActivities();
     } catch (error) {
         showNotification(error.message || 'İcazə verilmədi.', 'error');

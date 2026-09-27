@@ -107,7 +107,164 @@ async function redirectIfLoggedIn(dest = 'dashboard.html') {
 // ════════════════════════════════════════════════════════
 //  Navbar dynamic update
 // ════════════════════════════════════════════════════════
+function installNotificationBellStyles() {
+  if (document.getElementById('header-notification-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'header-notification-styles';
+  style.textContent = `
+    .header-notify-wrap { position: relative; display: inline-flex; align-items: center; }
+    .header-notify-btn {
+      position: relative; background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.2);
+      color: #1f2937; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px; transition: all .2s ease; text-decoration: none;
+    }
+    .header-notify-btn:hover { background: rgba(99, 102, 241, 0.08); transform: translateY(-1px); }
+    .header-notify-btn.has-new {
+      animation: notifyBellPulse 1.8s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+    }
+    @keyframes notifyBellPulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.25); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .header-notify-badge {
+      position: absolute; top: -3px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
+      background: linear-gradient(135deg, #ef4444, #dc2626); color: white; font-size: 10px; font-weight: 800;
+      display: none; align-items: center; justify-content: center; border: 2px solid #fff; line-height: 1;
+      animation: badgePop .22s ease;
+    }
+    @keyframes badgePop {
+      0% { transform: scale(0.7); }
+      100% { transform: scale(1); }
+    }
+    .header-notify-menu {
+      position: absolute; top: calc(100% + 12px); right: 0; width: min(360px, 90vw); background: rgba(255,255,255,0.98);
+      backdrop-filter: blur(12px); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 18px; box-shadow: 0 18px 45px rgba(15,23,42,0.16);
+      display: none; z-index: 2000; overflow: hidden;
+    }
+    .header-notify-menu.open { display: block; }
+    .header-notify-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #edf2f7; background: #f8fafc;
+    }
+    .header-notify-title { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #475569; text-transform: uppercase; }
+    .header-notify-list { max-height: 320px; overflow-y: auto; }
+    .header-notify-item {
+      display: block; padding: 12px 14px; border-bottom: 1px solid #f1f5f9; text-decoration: none; color: inherit; background: white; transition: background .2s ease;
+    }
+    .header-notify-item.unread { background: #f8fafc; }
+    .header-notify-item:hover { background: #f8fafc; }
+    .header-notify-item strong { display: block; font-size: 13px; color: #111827; margin-bottom: 5px; }
+    .header-notify-item p { margin: 0; color: #475569; font-size: 12px; line-height: 1.5; }
+    .header-notify-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
+    .header-notify-time { font-size: 10px; color: #94a3b8; }
+    .header-notify-read { font-size: 10px; color: #10b981; font-weight: 700; }
+    .header-notify-empty { padding: 26px 18px; text-align: center; color: #64748b; font-size: 12px; }
+    .header-notify-footer { padding: 8px 12px; border-top: 1px solid #edf2f7; background: #f8fafc; }
+    .header-notify-footer a { color: #4338ca; text-decoration: none; font-size: 12px; font-weight: 700; }
+  `;
+  document.head.appendChild(style);
+}
+
+function getNotificationReadKey(user) {
+  if (!user) return 'guestNotificationsRead';
+  return `notificationsRead:${user.id || user.email || 'anon'}`;
+}
+
+function getReadNotificationIds(user) {
+  try {
+    const raw = localStorage.getItem(getNotificationReadKey(user));
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function setReadNotificationIds(user, ids) {
+  localStorage.setItem(getNotificationReadKey(user), JSON.stringify(Array.from(new Set(ids || []))));
+}
+
+async function refreshHeaderNotifications(user) {
+  const bell = document.getElementById('headerNotifBell');
+  const count = document.getElementById('headerNotifCount');
+  const menu = document.getElementById('headerNotifMenu');
+  const list = document.getElementById('headerNotifList');
+  if (!bell || !count || !menu || !list) return;
+
+  if (!user) {
+    bell.style.display = 'none';
+    menu.classList.remove('open');
+    return;
+  }
+
+  bell.style.display = 'inline-flex';
+
+  try {
+    const { data = [] } = await API.notifications.list();
+    const readIds = getReadNotificationIds(user);
+    const mapped = data.slice(0, 8).map(item => ({
+      ...item,
+      unread: !(Array.isArray(item.readBy) ? item.readBy.includes(String(user.id)) : false) && !readIds.includes(String(item.id)),
+    }));
+    const unreadCount = mapped.filter(item => item.unread).length;
+    count.textContent = unreadCount > 9 ? '9+' : unreadCount;
+    count.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+    bell.classList.toggle('has-new', unreadCount > 0);
+
+    if (!mapped.length) {
+      list.innerHTML = '<div class="header-notify-empty">Hələ heç bir bildiriş yoxdur.</div>';
+      return;
+    }
+
+    list.innerHTML = mapped.map(item => `
+      <div class="header-notify-item ${item.unread ? 'unread' : ''}" data-notify-id="${item.id}">
+        <strong>${item.title || 'Yeni bildiriş'}</strong>
+        <p>${String(item.message || '').replace(/\n/g, '<br>')}</p>
+        <div class="header-notify-meta">
+          <span class="header-notify-time">${item.createdAt ? new Date(item.createdAt).toLocaleString('az-AZ') : 'İndiki vaxt'}</span>
+          ${item.unread ? '<span class="header-notify-read">Oxunmayıb</span>' : '<span class="header-notify-read" style="color:#94a3b8;">Oxundu</span>'}
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.header-notify-item').forEach(node => {
+      const id = node.dataset.notifyId;
+      node.addEventListener('click', async event => {
+        if (event.target.closest('button')) return;
+        const item = mapped.find(n => String(n.id) === String(id));
+        if (!item || !item.unread) return;
+        const nextRead = getReadNotificationIds(user);
+        nextRead.push(String(id));
+        setReadNotificationIds(user, nextRead);
+        if (API.notifications && API.notifications.read) {
+          try { await API.notifications.read(id); } catch {}
+        }
+        await refreshHeaderNotifications(user);
+      });
+    });
+  } catch (error) {
+    count.textContent = '0';
+    count.style.display = 'none';
+    list.innerHTML = '<div class="header-notify-empty">Bildirişlər yüklənmədi.</div>';
+  }
+}
+
+async function markHeaderNotificationRead(user, id) {
+  if (!user || !id) return;
+  const readIds = getReadNotificationIds(user);
+  if (!readIds.includes(String(id))) {
+    readIds.push(String(id));
+    setReadNotificationIds(user, readIds);
+  }
+  if (API.notifications && API.notifications.read) {
+    try { await API.notifications.read(id); } catch {}
+  }
+  await refreshHeaderNotifications(user);
+}
+
 function renderSharedNavigation(user) {
+  installNotificationBellStyles();
   let inner = document.querySelector('.navbar-inner');
   if (!inner) {
     const adminHeader = document.querySelector('.admin-header');
@@ -128,6 +285,71 @@ function renderSharedNavigation(user) {
     actions.className = 'navbar-actions';
     inner.appendChild(actions);
   }
+
+  let bellWrap = actions.querySelector('#headerNotifBellWrap');
+  if (!bellWrap) {
+    bellWrap = document.createElement('div');
+    bellWrap.id = 'headerNotifBellWrap';
+    bellWrap.className = 'header-notify-wrap';
+    actions.insertBefore(bellWrap, actions.firstChild);
+  }
+
+  let bell = document.getElementById('headerNotifBell');
+  if (!bell) {
+    bell = document.createElement('button');
+    bell.id = 'headerNotifBell';
+    bell.type = 'button';
+    bell.className = 'header-notify-btn';
+    bell.setAttribute('aria-label', 'Bildirişlər');
+    bell.innerHTML = '<i class="fas fa-bell"></i><span id="headerNotifCount" class="header-notify-badge">0</span>';
+    bellWrap.appendChild(bell);
+  }
+
+  let menu = document.getElementById('headerNotifMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'headerNotifMenu';
+    menu.className = 'header-notify-menu';
+    bellWrap.appendChild(menu);
+  }
+
+  menu.innerHTML = `
+    <div class="header-notify-header">
+      <span class="header-notify-title">Bildirişlər</span>
+      <button type="button" id="headerNotifClose" class="btn btn-sm btn-secondary" style="padding:5px 10px; font-size:11px;">Bağla</button>
+    </div>
+    <div id="headerNotifList" class="header-notify-list"></div>
+    <div class="header-notify-footer"><a href="notifications.html">Bütün bildirişlər</a></div>
+  `;
+
+  const closeBtn = document.getElementById('headerNotifClose');
+  closeBtn?.addEventListener('click', () => menu.classList.remove('open'));
+
+  bell.onclick = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!user) {
+      window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    const isOpen = menu.classList.contains('open');
+    menu.classList.toggle('open', !isOpen);
+    bell.classList.toggle('has-new', !isOpen && Number(count.textContent.replace(/\D/g, '')) > 0);
+    if (!isOpen) {
+      const listItems = menu.querySelectorAll('.header-notify-item.unread');
+      for (const item of listItems) {
+        const id = item.dataset.notifyId;
+        await markHeaderNotificationRead(user, id);
+      }
+    }
+  };
+
+  document.addEventListener('click', event => {
+    const target = event.target;
+    if (!menu.contains(target) && !bell.contains(target)) {
+      menu.classList.remove('open');
+    }
+  });
 
   let adminLink = actions.querySelector('#navAdminLink');
   if (!adminLink) {
@@ -269,9 +491,14 @@ async function updateNavbar() {
       const badge = document.getElementById('premiumBadge');
       if (badge) badge.style.display = 'inline-flex';
     }
+    await refreshHeaderNotifications(user);
   } else {
     if (guestEl) guestEl.style.display = 'flex';
     if (userEl)  userEl.style.display  = 'none';
+    const bell = document.getElementById('headerNotifBell');
+    const count = document.getElementById('headerNotifCount');
+    if (bell) bell.style.display = 'none';
+    if (count) count.style.display = 'none';
   }
 }
 
