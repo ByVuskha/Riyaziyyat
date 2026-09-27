@@ -15,16 +15,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAdminPage();   // from app.js — redirects if not admin
     if (!user) return;
     renderAdminUser(user);
-    loadDashboardStats();
-    loadUsers();
+    await Promise.all([
+        loadDashboardStats(),
+        loadUsers(),
+        loadVideos(),
+        loadTests(),
+        loadNews(),
+        loadNotificationsSection(),
+        loadPayments(),
+        loadPremiumRequests(),
+        loadPointsLeaderboard(),
+        loadActiveUsers(),
+        loadDevicesSection(),
+        loadSuspiciousActivities(),
+        loadTeacherTestsSection(),
+    ]);
     _updateTeacherTestsBadge();
 });
 
 function renderAdminUser(user) {
     const el = document.getElementById('adminUserName');
-    if (el) el.textContent = user.name;
+    if (el) el.textContent = user?.name || 'Admin';
     const av = document.getElementById('adminAvatar');
-    if (av) av.textContent = user.name[0].toUpperCase();
+    if (av) av.textContent = (user?.name || 'A')[0].toUpperCase();
+}
+
+function normalizeArray(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
 }
 
 // ════════════════════════════════════════════════════════
@@ -39,21 +58,24 @@ function showSection(section) {
     if (target) { target.style.display = 'block'; target.classList.add('active'); }
 
     document.querySelectorAll('.admin-menu-item').forEach(i => i.classList.remove('active'));
-    if (event?.target) event.target.closest('.admin-menu-item')?.classList.add('active');
+    const currentItem = document.querySelector(`.admin-menu-item[onclick*="'${section}'"]`);
+    if (currentItem) currentItem.classList.add('active');
 
     const titles = {
         dashboard:'Dashboard', users:'İstifadəçilər', teachers:'Müəllimlər',
         teacherTests:'Müəllim Sınaqları', videos:'Video Dərslər', tests:'Sınaqlar',
         testResults:'Sınaq Nəticələri', news:'Xəbərlər', notifications:'Bildirişlər', payments:'Ödənişlər',
         leaderboard:'Xal Liderliyi', devices:'Cihaz İdarəetməsi',
-        suspicious:'Şübhəli Fəaliyyətlər', activeUsers:'Aktiv İstifadəçilər',
+        suspicious:'Şübhəli Fəaliyyətlər', activeUsers:'Aktiv İstifadəçilər', premium:'Premium İdarəetməsi',
     };
     const pt = document.getElementById('pageTitle');
     if (pt) pt.textContent = titles[section] || 'Dashboard';
 
     const loaders = {
+        dashboard:    () => loadDashboardStats(),
         users:        () => loadUsers(),
         teachers:     () => loadTeachers(),
+        videos:       () => loadVideos(),
         tests:        () => loadTests(),
         news:         () => loadNews(),
         notifications:() => loadNotificationsSection(),
@@ -61,7 +83,10 @@ function showSection(section) {
         teacherTests: () => { loadTeacherTestsSection(); _updateTeacherTestsBadge(); },
         testResults:  () => loadTestResults(),
         premium:      () => loadPremiumRequests(),
-        leaderboard:  () => loadLeaderboard(),
+        leaderboard:  () => loadPointsLeaderboard(),
+        activeUsers:  () => loadActiveUsers(),
+        suspicious:   () => loadSuspiciousActivities(),
+        devices:      () => loadDevicesSection(),
     };
     if (loaders[section]) loaders[section]();
 }
@@ -72,18 +97,147 @@ function showSection(section) {
 async function loadDashboardStats() {
     try {
         const stats = await API.stats.get();
-        _setStat('statUsers',    stats.users);
-        _setStat('statTests',    stats.tests);
-        _setStat('statNews',     stats.news);
-        _setStat('statTeachers', stats.teachers);
-        _setStat('statPremium',  stats.premium);
+        _setStat('totalUsers',    stats.users);
+        _setStat('totalVideos',   stats.videos ?? 0);
+        _setStat('totalTests',    stats.tests);
+        _setStat('totalNews',     stats.news);
+        _setStat('totalTeachers', stats.teachers);
+        _setStat('totalPremium',  stats.premium);
+        const activeCount = document.getElementById('activeUsersCount');
+        if (activeCount) activeCount.textContent = String(stats.users || 0);
     } catch(e) {
         console.warn('Stats load failed', e);
+        const fallback = await API.users.list({ limit: 200 }).catch(() => ({ data: [] }));
+        const users = normalizeArray(fallback);
+        _setStat('totalUsers', users.length);
+        _setStat('totalVideos', 0);
+        _setStat('totalTests', 0);
+        _setStat('totalNews', 0);
+        _setStat('totalTeachers', users.filter(u => u.userType === 'teacher').length);
+        _setStat('totalPremium', users.filter(u => u.premium).length);
     }
 }
 function _setStat(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val ?? '—';
+}
+
+async function loadVideos() {
+    const tbody = document.getElementById('videosTable');
+    if (!tbody) return;
+    showTableLoading(tbody, 7);
+    try {
+        const result = await API.videos.list({ limit: 100 });
+        const videos = normalizeArray(result);
+        if (!videos.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">Video yoxdur</td></tr>';
+            return;
+        }
+        tbody.innerHTML = videos.map(video => `
+            <tr>
+                <td>${escapeHtml(video.id || '—').slice(0, 8)}</td>
+                <td><strong>${escapeHtml(video.title || 'Başlıqsız')}</strong></td>
+                <td>${escapeHtml(video.category || 'Ümumi')}</td>
+                <td>${escapeHtml(video.duration || '00:00')}</td>
+                <td>${Number(video.views || 0).toLocaleString('az-AZ')}</td>
+                <td>${video.isActive === false ? '<span class="badge badge-warning">Passiv</span>' : '<span class="badge badge-success">Aktiv</span>'}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-icon btn-view" onclick="window.open('${escapeHtml(video.youtubeUrl || video.videoUrl || '#')}', '_blank')" title="Bax"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteVideo('${video.id}')" title="Sil"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Videolar yüklənmədi.')}</td></tr>`;
+    }
+}
+
+async function deleteVideo(id) {
+    if (!id) return;
+    showConfirm('Bu videonu silmək istədiyinizdən əminsiniz?', async () => {
+        try {
+            await API.videos.remove(id);
+            showNotification('Video silindi!', 'success');
+            loadVideos();
+            loadDashboardStats();
+        } catch (error) {
+            showNotification(error.message || 'Video silinmədi.', 'error');
+        }
+    });
+}
+
+function toggleUserForm() {
+    const form = document.getElementById('addUserForm');
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveNewUser() {
+    const name = document.getElementById('newUserName')?.value?.trim() || '';
+    const email = document.getElementById('newUserEmail')?.value?.trim() || '';
+    const password = document.getElementById('newUserPassword')?.value || '';
+    const role = document.getElementById('newUserRole')?.value || 'user';
+    const balance = Number(document.getElementById('newUserBalance')?.value || 0);
+    if (!name || !email || !password) {
+        showNotification('Ad, email və şifrə vacibdir.', 'warning');
+        return;
+    }
+    try {
+        const result = await API.auth.register(name, email, password, 'student');
+        if (role === 'admin') await API.users.update(result.user.id, { role: 'admin' });
+        if (!Number.isNaN(balance)) await API.users.update(result.user.id, { balance });
+        showNotification('İstifadəçi yaradıldı!', 'success');
+        toggleUserForm();
+        loadUsers();
+        loadDashboardStats();
+    } catch (error) {
+        showNotification(error.message || 'İstifadəçi yaradılmadı.', 'error');
+    }
+}
+
+function toggleTeacherForm() {
+    const form = document.getElementById('addTeacherForm');
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveNewTeacher() {
+    const name = document.getElementById('newTeacherName')?.value?.trim() || '';
+    const title = document.getElementById('newTeacherTitle')?.value?.trim() || '';
+    const subjects = document.getElementById('newTeacherSubjects')?.value?.trim() || '';
+    const image = document.getElementById('newTeacherImage')?.value?.trim() || '';
+    const experience = Number(document.getElementById('newTeacherExperience')?.value || 0);
+    const email = document.getElementById('newTeacherEmail')?.value?.trim() || `${name.toLowerCase().replace(/[^a-zəöüçğşıİ]/g, '') || 'teacher'}-${Date.now()}@example.com`;
+    const phone = document.getElementById('newTeacherPhone')?.value?.trim() || '';
+    const bio = document.getElementById('newTeacherBio')?.value?.trim() || '';
+    if (!name || !title || !subjects) {
+        showNotification('Ad, vəzifə və ixtisas sahələri vacibdir.', 'warning');
+        return;
+    }
+    try {
+        const result = await API.auth.register(name, email, 'teacher123', 'teacher');
+        await API.users.update(result.user.id, {
+            userType: 'teacher',
+            canAddTests: true,
+            teacherTitle: title,
+            subjects,
+            profilePicture: image,
+            experience: Number.isFinite(experience) ? experience : 0,
+            phone,
+            bio,
+            publicProfile: true,
+        });
+        showNotification('Müəllim hesabı yaradıldı!', 'success');
+        toggleTeacherForm();
+        loadTeachers();
+        loadDashboardStats();
+    } catch (error) {
+        showNotification(error.message || 'Müəllim yaradılmadı.', 'error');
+    }
+}
+
+function showAddVideoModal() {
+    window.location.href = 'video-upload.html';
 }
 
 // ════════════════════════════════════════════════════════
@@ -399,29 +553,61 @@ async function loadPayments() {
 //  Premium Requests
 // ════════════════════════════════════════════════════════
 async function loadPremiumRequests() {
-    const container = document.getElementById('premiumRequestsList');
-    if (!container) return;
-    showSpinner(container);
+    const requestTable = document.getElementById('premiumRequestsTable');
+    const usersTable = document.getElementById('premiumUsersTable');
+    const badge = document.getElementById('premiumPendingBadge');
+    if (!requestTable && !usersTable) return;
+
     try {
-        const reqs = await API.premium.list();
+        const [reqs, { data: users }] = await Promise.all([
+            API.premium.list(),
+            API.users.list({ limit: 200 })
+        ]);
         const pending = reqs.filter(r => r.status === 'pending');
-        const badge = document.getElementById('premiumPendingBadge');
         if (badge) { badge.textContent = pending.length; badge.style.display = pending.length ? 'inline-flex' : 'none'; }
 
-        if (!reqs.length) { showEmpty(container, 'Premium müraciət yoxdur'); return; }
-        container.innerHTML = reqs.map(r => `
-            <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
-                <div style="flex:1;">
-                    <strong>${escapeHtml(r.userName)}</strong> — ${escapeHtml(r.packageName)}
-                    <br><span style="font-size:12px;color:#6b7280;">${r.userEmail} · ${r.price} ₼ · ${formatDate(r.requestedAt)}</span>
-                </div>
-                ${r.status === 'pending' ? `
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-sm btn-success" onclick="approvePremium('${r.id}')"><i class="fas fa-check"></i> Təsdiqlə</button>
-                    <button class="btn btn-sm btn-danger"  onclick="rejectPremium('${r.id}')"><i class="fas fa-times"></i> Rədd Et</button>
-                </div>` : `<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:${r.status==='approved'?'#ecfdf5':'#fef2f2'};color:${r.status==='approved'?'#065f46':'#991b1b'};">${r.status==='approved'?'✅ Təsdiqləndi':'❌ Rədd Edildi'}</span>`}
-            </div>`).join('');
-    } catch(e) { showError(container, e.message); }
+        if (requestTable) {
+            if (!reqs.length) {
+                requestTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--gray);">Premium müraciət yoxdur</td></tr>';
+            } else {
+                requestTable.innerHTML = reqs.map(r => `
+                    <tr>
+                        <td>${escapeHtml(r.id || '—').slice(0, 10)}</td>
+                        <td><strong>${escapeHtml(r.userName || 'İstifadəçi')}</strong><br><small>${escapeHtml(r.userEmail || '')}</small></td>
+                        <td>${formatDate(r.requestedAt)}</td>
+                        <td>${r.status === 'pending' ? '<span class="badge badge-warning">Gözləyir</span>' : r.status === 'approved' ? '<span class="badge badge-success">Təsdiqlənib</span>' : '<span class="badge badge-danger">Rədd edilib</span>'}</td>
+                        <td>
+                            ${r.status === 'pending' ? `
+                                <div class="action-btns">
+                                    <button class="btn-icon btn-view" onclick="approvePremium('${r.id}')" title="Təsdiqlə"><i class="fas fa-check"></i></button>
+                                    <button class="btn-icon btn-delete" onclick="rejectPremium('${r.id}')" title="Rədd et"><i class="fas fa-times"></i></button>
+                                </div>` : '<span style="color:#94a3b8;">—</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        if (usersTable) {
+            const premiumUsers = normalizeArray(users).filter(user => user.premium);
+            if (!premiumUsers.length) {
+                usersTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--gray);">Premium istifadəçi yoxdur</td></tr>';
+            } else {
+                usersTable.innerHTML = premiumUsers.map(user => `
+                    <tr>
+                        <td>${escapeHtml(String(user.id || '—')).slice(0, 10)}</td>
+                        <td><strong>${escapeHtml(user.name || 'İstifadəçi')}</strong><br><small>${escapeHtml(user.email || '')}</small></td>
+                        <td>${formatDate(user.premiumActivatedAt)}</td>
+                        <td>${formatDate(user.premiumExpiresAt)}</td>
+                        <td><button class="btn-icon btn-delete" onclick="API.users.update('${user.id}', { premium: false }); showNotification('Premium ləğv edildi', 'warning'); loadPremiumRequests();" title="Ləğv et"><i class="fas fa-ban"></i></button></td>
+                    </tr>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        if (requestTable) requestTable.innerHTML = `<tr><td colspan="5" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Premium məlumatı yüklənmədi.')}</td></tr>`;
+        if (usersTable) usersTable.innerHTML = `<tr><td colspan="5" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Premium məlumatı yüklənmədi.')}</td></tr>`;
+    }
 }
 
 async function approvePremium(id) {
@@ -482,7 +668,7 @@ async function grantTeacherTestAccess(id) {
 }
 
 async function loadTeacherSubmissions() {
-    const container = document.getElementById('teacherTestsList');
+    const container = document.getElementById('teacherSubmittedTestsList');
     if (!container) return;
     showSpinner(container);
     try {
@@ -522,6 +708,174 @@ async function rejectTeacherTest(id) {
         try { await API.teacherTests.reject(id, reason); showNotification('Sınaq rədd edildi', 'warning'); loadTeacherTestsSection(); _updateTeacherTestsBadge(); }
         catch(e) { showNotification(e.message, 'error'); }
     });
+}
+
+async function loadPointsLeaderboard() {
+    const tbody = document.getElementById('leaderboardTable');
+    if (!tbody) return;
+    showTableLoading(tbody, 6);
+    try {
+        const result = await API.points.get();
+        const leaderboard = Array.isArray(result?.leaderboard) ? result.leaderboard : [];
+        if (!leaderboard.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray);">Hələ heç kim xal qazanmayıb</td></tr>';
+            return;
+        }
+        tbody.innerHTML = leaderboard.slice(0, 20).map((entry, index) => `
+            <tr>
+                <td style="font-weight:700;color:${index === 0 ? '#f59e0b' : index === 1 ? '#9ca3af' : index === 2 ? '#f97316' : '#475569'};">#${index + 1}</td>
+                <td><strong>${escapeHtml(entry.userName || 'İstifadəçi')}</strong></td>
+                <td>${entry.premium ? '<span class="badge badge-warning">Premium</span>' : '<span class="badge badge-secondary">Pulsuz</span>'}</td>
+                <td>${Number(entry.watchedCount || 0).toLocaleString('az-AZ')}</td>
+                <td>${Number(entry.testCount || 0).toLocaleString('az-AZ')}</td>
+                <td>${Number(entry.total || 0).toLocaleString('az-AZ')} xal</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Liderlik yüklənmədi.')}</td></tr>`;
+    }
+}
+
+async function loadActiveUsers() {
+    const container = document.getElementById('activeUsersContainer');
+    const total = document.getElementById('activeCountTotal');
+    const premium = document.getElementById('activePremiumCount');
+    const free = document.getElementById('activeFreeCount');
+    const last = document.getElementById('activeLastUpdate');
+    if (!container) return;
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const activeUsers = normalizeArray(users)
+            .filter(user => user.role !== 'admin')
+            .filter(user => {
+                const stamp = new Date(user.updatedAt || user.registeredAt || 0).getTime();
+                if (!stamp) return false;
+                return Date.now() - stamp < 1000 * 60 * 60 * 24 * 7;
+            })
+            .sort((a, b) => new Date(b.updatedAt || b.registeredAt || 0) - new Date(a.updatedAt || a.registeredAt || 0));
+
+        if (total) total.textContent = String(activeUsers.length);
+        if (premium) premium.textContent = String(activeUsers.filter(user => user.premium).length);
+        if (free) free.textContent = String(activeUsers.filter(user => !user.premium).length);
+        if (last) last.textContent = new Date().toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' });
+
+        if (!activeUsers.length) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray);">Aktiv istifadəçi yoxdur.</div>';
+            return;
+        }
+
+        container.innerHTML = activeUsers.slice(0, 12).map(user => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
+                <div>
+                    <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong><br>
+                    <small style="color:#64748b;">${escapeHtml(user.email || '')}</small>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:11px; color:#64748b;">${user.premium ? '👑 Premium' : 'Pulsuz'}</div>
+                    <div style="font-size:11px; color:#64748b;">${formatDate(user.updatedAt || user.registeredAt)}</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        if (container) container.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${escapeHtml(error.message || 'Aktiv istifadəçilər yüklənmədi.')}</div>`;
+    }
+}
+
+async function loadDevicesSection() {
+    const container = document.getElementById('devicesContainer');
+    if (!container) return;
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const devices = normalizeArray(users)
+            .filter(user => user.role !== 'admin')
+            .slice(0, 15)
+            .map(user => ({
+                user: user.name || 'İstifadəçi',
+                email: user.email || '',
+                status: user.premium ? 'Premium' : 'Standart',
+                lastSeen: user.updatedAt || user.registeredAt || new Date().toISOString(),
+                type: user.userType === 'teacher' ? 'Müəllim' : 'Şagird'
+            }));
+
+        if (!devices.length) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray);">Cihaz məlumatı yoxdur.</div>';
+            return;
+        }
+
+        container.innerHTML = devices.map(item => `
+            <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div>
+                        <strong>${escapeHtml(item.user)}</strong><br>
+                        <small style="color:#64748b;">${escapeHtml(item.email)}</small>
+                    </div>
+                    <span class="badge badge-${item.status === 'Premium' ? 'warning' : 'primary'}">${item.status}</span>
+                </div>
+                <div style="margin-top:12px;font-size:12px;color:#64748b; display:flex; justify-content:space-between; gap:12px;">
+                    <span>${escapeHtml(item.type)}</span>
+                    <span>${formatDate(item.lastSeen)}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${escapeHtml(error.message || 'Cihaz məlumatı yüklənmədi.')}</div>`;
+    }
+}
+
+async function loadSuspiciousActivities() {
+    const suspiciousTable = document.getElementById('suspiciousActivitiesTable');
+    const frozenTable = document.getElementById('frozenAccountsTable');
+    if (!suspiciousTable || !frozenTable) return;
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const allUsers = normalizeArray(users).filter(user => user.role !== 'admin');
+        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt);
+        const frozen = allUsers.filter(user => user.frozen);
+
+        suspiciousTable.innerHTML = suspicious.length
+            ? suspicious.map(user => `
+                <tr>
+                    <td>${escapeHtml(String(user.id || '—')).slice(0, 10)}</td>
+                    <td>${escapeHtml(user.name || 'İstifadəçi')}<br><small>${escapeHtml(user.email || '')}</small></td>
+                    <td>${user.frozen ? 'Blok' : user.testAccessRequested ? 'İcazə müraciəti' : 'Premium müraciəti'}</td>
+                    <td>${user.testAccessRequested ? '1' : user.premiumRequestedAt ? '1' : '—'}</td>
+                    <td>${escapeHtml(user.deviceId || 'Web')}</td>
+                    <td>${formatDate(user.updatedAt || user.registeredAt)}</td>
+                    <td><button class="btn-icon btn-view" onclick="viewUser('${user.id}')" title="Bax"><i class="fas fa-eye"></i></button></td>
+                </tr>`).join('')
+            : '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--gray);">Şübhəli aktivlik yoxdur</td></tr>';
+
+        frozenTable.innerHTML = frozen.length
+            ? frozen.map(user => `
+                <tr>
+                    <td>${escapeHtml(String(user.id || '—')).slice(0, 10)}</td>
+                    <td>${escapeHtml(user.name || 'İstifadəçi')}<br><small>${escapeHtml(user.email || '')}</small></td>
+                    <td>${user.frozenReason || 'İdarəetmə bloklanması'}</td>
+                    <td>${user.balance || 0} ₼</td>
+                    <td>${formatDate(user.updatedAt || user.registeredAt)}</td>
+                    <td><button class="btn-icon btn-success" onclick="API.users.update('${user.id}', { frozen: false }); showNotification('Hesab blokdan çıxarıldı.', 'success'); loadSuspiciousActivities();" title="Bloku aç"><i class="fas fa-unlock"></i></button></td>
+                </tr>`).join('')
+            : '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray);">Bloklanmış hesab yoxdur</td></tr>';
+    } catch (error) {
+        suspiciousTable.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Şübhəli məlumatlar yüklənmədi.')}</td></tr>`;
+        frozenTable.innerHTML = `<tr><td colspan="6" style="color:#ef4444;padding:20px;">${escapeHtml(error.message || 'Şübhəli məlumatlar yüklənmədi.')}</td></tr>`;
+    }
+}
+
+async function clearSuspiciousActivities() {
+    try {
+        const { data: users } = await API.users.list({ limit: 200 });
+        const frozen = normalizeArray(users).filter(user => user.frozen && user.role !== 'admin');
+        if (!frozen.length) {
+            showNotification('Təmizlənəcək bloklanmış hesab yoxdur.', 'info');
+            return;
+        }
+        await Promise.all(frozen.map(user => API.users.update(user.id, { frozen: false })));
+        showNotification(`${frozen.length} hesab blokdan çıxarıldı.`, 'success');
+        loadSuspiciousActivities();
+    } catch (error) {
+        showNotification(error.message || 'Şübhəli fəaliyyətlər təmizlənmədi.', 'error');
+    }
 }
 
 let allTestResults = [];
