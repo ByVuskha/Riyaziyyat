@@ -32,6 +32,16 @@ function parseUsers(value) {
   return [];
 }
 
+function buildDeviceFingerprint(req) {
+  const headers = req.headers || {};
+  const ua = String(headers['user-agent'] || '').trim();
+  const language = String(headers['accept-language'] || '').trim();
+  const forwarded = String(headers['x-forwarded-for'] || headers['cf-connecting-ip'] || headers['x-real-ip'] || '').trim();
+  const ip = forwarded.split(',')[0].trim();
+  const raw = [ua, language, ip].join('|');
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
 async function login(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { email, password } = req.body || {};
@@ -65,8 +75,45 @@ async function login(req, res) {
     }
   }
   if (!passwordOk) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
+
+  if (user.role !== 'admin') {
+    const currentDeviceId = buildDeviceFingerprint(req);
+    const previousDeviceId = user.deviceId || null;
+    const mismatch = previousDeviceId && previousDeviceId !== currentDeviceId;
+    const mismatchCount = Number(user.deviceMismatchCount || 0);
+
+    if (mismatch) {
+      const nextMismatch = mismatchCount + 1;
+      user.deviceMismatchCount = nextMismatch;
+      user.deviceStatus = nextMismatch >= 2 ? 'blocked' : 'warning';
+      user.deviceLastMismatchAt = new Date().toISOString();
+      user.deviceLastWarning = new Date().toISOString();
+      user.frozen = nextMismatch >= 2;
+      user.frozenReason = nextMismatch >= 2 ? 'Fərqli cihazdan giriş cəhdindən sonra hesab dondurulub.' : 'Fərqli cihazdan giriş aşkarlandı.';
+
+      if (nextMismatch >= 2) {
+        await redis.set('allUsers', JSON.stringify(users));
+        return res.status(403).json({ error: 'Hesabınız fərqli cihazdan giriş cəhdindən sonra dondurulub. Adminə müraciət edin.' });
+      }
+
+      await redis.set('allUsers', JSON.stringify(users));
+      return res.status(403).json({ error: 'Bu hesab başqa cihazdan istifadə olunur. Admin tərəfindən təsdiq tələb olunur.' });
+    }
+  }
+
   await redis.persist('allUsers');
   if (!hasAdminFallback || passwordMigrated) {
+    await redis.set('allUsers', JSON.stringify(users));
+  }
+
+  const currentDeviceId = buildDeviceFingerprint(req);
+  const userIndex = users.findIndex(item => item.email === normalizedEmail);
+  if (userIndex >= 0) {
+    users[userIndex].deviceId = currentDeviceId;
+    users[userIndex].deviceStatus = 'approved';
+    users[userIndex].deviceMismatchCount = 0;
+    users[userIndex].deviceLastSeenAt = new Date().toISOString();
+    users[userIndex].updatedAt = new Date().toISOString();
     await redis.set('allUsers', JSON.stringify(users));
   }
 
@@ -101,6 +148,11 @@ async function register(req, res) {
     userType,
     premium: false,
     balance: 0,
+    points: 0,
+    deviceId: null,
+    deviceStatus: 'approved',
+    deviceMismatchCount: 0,
+    deviceLastSeenAt: null,
     demoTests: 3,
     canAddTests: false,
     frozen: false,
@@ -230,8 +282,12 @@ async function me(req, res) {
   const token = require('../lib/auth').getUserFromRequest(req);
   if (!token) return res.status(401).json({ error: 'Giriş tələb olunur' });
   const users = parseUsers(await redis.get('allUsers'));
+  const rawPoints = await redis.get('userPoints');
+  const pointsMap = rawPoints && typeof rawPoints === 'object' ? rawPoints : (rawPoints ? JSON.parse(rawPoints) : {});
   const user = users.find(item => String(item.id) === String(token.id) || item.email === token.email);
   if (!user) return res.status(404).json({ error: 'İstifadəçi tapılmadı' });
+  const totalPoints = Number(pointsMap[String(user.id)]?.total || user.points || 0);
+  user.points = totalPoints;
   return res.status(200).json({ user: sanitizeUser(user) });
 }
 

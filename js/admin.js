@@ -827,7 +827,7 @@ async function loadSuspiciousActivities() {
     try {
         const { data: users } = await API.users.list({ limit: 200 });
         const allUsers = normalizeArray(users).filter(user => user.role !== 'admin');
-        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt);
+        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt || user.deviceStatus === 'warning' || user.deviceStatus === 'blocked');
         const frozen = allUsers.filter(user => user.frozen);
 
         suspiciousTable.innerHTML = suspicious.length
@@ -835,11 +835,16 @@ async function loadSuspiciousActivities() {
                 <tr>
                     <td>${escapeHtml(String(user.id || '—')).slice(0, 10)}</td>
                     <td>${escapeHtml(user.name || 'İstifadəçi')}<br><small>${escapeHtml(user.email || '')}</small></td>
-                    <td>${user.frozen ? 'Blok' : user.testAccessRequested ? 'İcazə müraciəti' : 'Premium müraciəti'}</td>
-                    <td>${user.testAccessRequested ? '1' : user.premiumRequestedAt ? '1' : '—'}</td>
+                    <td>${user.frozen ? 'Blok' : user.deviceStatus === 'warning' ? 'Fərqli cihaz' : user.testAccessRequested ? 'İcazə müraciəti' : 'Premium müraciəti'}</td>
+                    <td>${user.deviceMismatchCount || (user.frozen ? '1' : user.testAccessRequested ? '1' : user.premiumRequestedAt ? '1' : '—')}</td>
                     <td>${escapeHtml(user.deviceId || 'Web')}</td>
                     <td>${formatDate(user.updatedAt || user.registeredAt)}</td>
-                    <td><button class="btn-icon btn-view" onclick="viewUser('${user.id}')" title="Bax"><i class="fas fa-eye"></i></button></td>
+                    <td>
+                        <div class="action-btns" style="display:flex;gap:6px;">
+                            <button class="btn-icon btn-view" onclick="viewUser('${user.id}')" title="Bax"><i class="fas fa-eye"></i></button>
+                            ${(user.frozen || user.deviceStatus === 'warning' || user.deviceStatus === 'blocked') ? `<button class="btn-icon btn-success" onclick="allowDeviceAccess('${user.id}')" title="Cihaza icazə ver"><i class="fas fa-unlock"></i></button>` : ''}
+                        </div>
+                    </td>
                 </tr>`).join('')
             : '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--gray);">Şübhəli aktivlik yoxdur</td></tr>';
 
@@ -860,6 +865,21 @@ async function loadSuspiciousActivities() {
     }
 }
 
+async function allowDeviceAccess(userId) {
+    try {
+        await API.users.update(userId, {
+            frozen: false,
+            frozenReason: 'Admin fərqli cihaz üçün icazə verdi.',
+            deviceStatus: 'approved',
+            deviceMismatchCount: 0,
+        });
+        showNotification('Fərqli cihaz üçün icazə verildi.', 'success');
+        loadSuspiciousActivities();
+    } catch (error) {
+        showNotification(error.message || 'İcazə verilmədi.', 'error');
+    }
+}
+
 async function clearSuspiciousActivities() {
     try {
         const { data: users } = await API.users.list({ limit: 200 });
@@ -868,7 +888,7 @@ async function clearSuspiciousActivities() {
             showNotification('Təmizlənəcək bloklanmış hesab yoxdur.', 'info');
             return;
         }
-        await Promise.all(frozen.map(user => API.users.update(user.id, { frozen: false })));
+        await Promise.all(frozen.map(user => API.users.update(user.id, { frozen: false, deviceStatus: 'approved', deviceMismatchCount: 0 })));
         showNotification(`${frozen.length} hesab blokdan çıxarıldı.`, 'success');
         loadSuspiciousActivities();
     } catch (error) {
@@ -970,15 +990,16 @@ async function loadLeaderboard() {
     if (!container) return;
     showSpinner(container);
     try {
-        const { data: users } = await API.users.list({ limit: 200 });
-        const sorted = [...users].sort((a,b) => (b.points||0)-(a.points||0)).slice(0,20);
+        const result = await API.points.get();
+        const leaderboard = Array.isArray(result?.leaderboard) ? result.leaderboard : [];
+        const sorted = leaderboard.slice(0, 20);
         if (!sorted.length) { showEmpty(container, 'Xal məlumatı yoxdur'); return; }
         container.innerHTML = sorted.map((u,i) => `
             <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);">
                 <div style="width:32px;text-align:center;font-weight:800;font-size:16px;color:${i===0?'#fbbf24':i===1?'#9ca3af':i===2?'#f59e0b':'#94a3b8'};">${i+1}</div>
-                <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">${u.name[0].toUpperCase()}</div>
-                <div style="flex:1;"><strong>${escapeHtml(u.name)}</strong><br><span style="font-size:12px;color:#6b7280;">${u.email}</span></div>
-                <div style="font-weight:800;font-size:18px;color:var(--primary);">${u.points||0} xal</div>
+                <div style="width:38px;height:38px;border-radius:50%;background:${(u.userName || 'İstifadəçi').length % 2 === 0 ? '#667eea' : '#10b981'};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">${(u.userName || 'İ').charAt(0).toUpperCase()}</div>
+                <div style="flex:1;"><strong>${escapeHtml(u.userName || 'İstifadəçi')}</strong><br><span style="font-size:12px;color:#6b7280;">${escapeHtml(u.userType || 'student')}</span></div>
+                <div style="font-weight:800;font-size:18px;color:var(--primary);">${Number(u.total || 0).toLocaleString('az-AZ')} xal</div>
             </div>`).join('');
     } catch(e) { showError(container, e.message); }
 }
