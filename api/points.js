@@ -150,6 +150,9 @@ module.exports = async function handler(req, res) {
     const ballScore = Math.round((score / questions.length) * 100);
     const completed = Array.isArray(data.completedTests) ? data.completedTests : [];
     const alreadyCompleted = completed.includes(testId);
+    if (user.role !== 'admin' && alreadyCompleted) {
+      return res.status(400).json({ error: 'Bu sınaq artıq işlənib', alreadyCompleted: true });
+    }
     data.testScores = data.testScores && typeof data.testScores === 'object' ? data.testScores : {};
     const previous = data.testScores[testId];
     const previousPoints = previous

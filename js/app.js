@@ -168,7 +168,7 @@ function renderSharedNavigation(user) {
     { title: 'Öyrənmə', links: [['Video dərslər', 'videos.html'], ['Sınaqlar', 'tests.html'], ['Müəllimlər', 'teachers.html']] },
     { title: 'Platforma', links: [['Ana səhifə', 'index.html'], ['Bildirişlər', 'notifications.html'], ['Xəbərlər', 'news.html'], ['Uğurlar', 'success.html'], ['Yardım', 'faq.html']] },
     { title: 'Hesab', links: user
-      ? [['Kabinet', 'dashboard.html'], ['Profili düzəlt', 'profile-edit.html'], ['Ödənişlər', 'payment.html']]
+      ? [['Şəxsi Kabinet', 'dashboard.html'], ['Profili düzəlt', 'profile-edit.html'], ['Ödənişlər', 'payment.html']]
       : [['Daxil ol', 'login.html'], ['Qeydiyyat', 'register.html']] },
   ];
 

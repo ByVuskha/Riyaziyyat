@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>əxsi Kabinet — Bizim Riyaziyyat</title>
-    <meta name="description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <title>Şəxsi Kabinet — Bizim Riyaziyyat</title>
+    <meta name="description" content="Şəxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
     <meta name="keywords"    content="kabinet, profil, nailiyyətlər">
     <meta name="author"      content="Bizim Riyaziyyat">
     <meta name="robots"      content="index, follow">
     <meta property="og:type"        content="website">
     <meta property="og:url"         content="https://bizimriyaziyyat.vercel.app/dashboard.html">
-    <meta property="og:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
-    <meta property="og:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta property="og:title"       content="Şəxsi Kabinet — Bizim Riyaziyyat">
+    <meta property="og:description" content="Şəxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
     <meta property="og:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
     <meta property="og:locale"      content="az_AZ">
     <meta name="twitter:card"        content="summary_large_image">
-    <meta name="twitter:title"       content="əxsi Kabinet — Bizim Riyaziyyat">
-    <meta name="twitter:description" content="əxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
+    <meta name="twitter:title"       content="Şəxsi Kabinet — Bizim Riyaziyyat">
+    <meta name="twitter:description" content="Şəxsi kabinetimizdə nailiyyətlərinizi izləyin, sınaq nəticələrinizi görün.">
     <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
     <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/dashboard.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -239,7 +239,7 @@
                 <a href="videos.html">Dərslər</a>
                 <a href="tests.html">Sınaqlar</a>
                 <a href="news.html">Xəbərlər</a>
-                <a href="dashboard.html" class="active">Kabinet</a>
+                <a href="dashboard.html" class="active">Şəxsi Kabinet</a>
             </div>
             <div class="navbar-actions">
                 <button class="hamburger-btn" aria-label="Menyu" aria-expanded="false"><i class="fas fa-bars"></i></button>
@@ -573,9 +573,12 @@ async function renderDashboard() {
     /* Daily goal */
     const todayKey = new Date().toISOString().slice(0, 10);
     const todayH   = history.filter(h => h.timestamp && new Date(h.timestamp).toISOString().slice(0,10) === todayKey);
-    const tVid     = todayH.filter(h => h.reason && h.reason.includes('videosu')).length;
-    const tTst     = todayH.filter(h => h.reason && h.reason.includes('—')).length;
-    const tPts     = todayH.reduce((s, h) => s + (h.amount || 0), 0);
+    const todayVideoCount = todayH.filter(h => h.reason && /video|videosu|izlə|izlən/i.test(String(h.reason))).length;
+    const todayTestCountFromHistory = todayH.filter(h => h.reason && /sınaq|test|quiz/i.test(String(h.reason))).length;
+    const todayTestCountFromScores = Object.values(myData?.testScores || {}).filter(entry => String(entry.date || '') === todayKey).length;
+    const tVid = todayVideoCount;
+    const tTst = Math.max(todayTestCountFromHistory, todayTestCountFromScores);
+    const tPts = todayH.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
 
     document.getElementById('goalVideoText').textContent  = `${Math.min(tVid,2)} / 2`;
     document.getElementById('goalTestText').textContent   = `${Math.min(tTst,1)} / 1`;

@@ -124,7 +124,7 @@ function getAllTests() { return _testsCache; }
 
 document.addEventListener('DOMContentLoaded', () => { initTestsPage(); updateNavbar(); });
 
-function renderTests() {
+async function renderTests() {
     const allTests = getAllTests();
     const grid = document.getElementById('testsGrid');
 
@@ -137,19 +137,32 @@ function renderTests() {
             </div>`;
         return;
     }
-    
+
+    let completedSet = new Set();
+    try {
+        const user = await API.getCurrentUser();
+        if (user) {
+            const { points } = await API.points.get();
+            const completedTests = Array.isArray(points?.completedTests) ? points.completedTests : [];
+            completedSet = new Set(completedTests.map(id => String(id)));
+        }
+    } catch (error) {
+        completedSet = new Set();
+    }
+
     grid.innerHTML = allTests.map(t => {
         const diffColor = t.difficulty === 'Asan' ? '#10b981' : t.difficulty === 'Orta' ? '#f59e0b' : '#ef4444';
         const diffBg   = t.difficulty === 'Asan' ? '#ecfdf5' : t.difficulty === 'Orta' ? '#fffbeb' : '#fef2f2';
+        const isDone = completedSet.has(String(t.id));
+        const buttonLabel = isDone
+            ? '<i class="fas fa-check"></i> İşlənib'
+            : (t.free ? '<i class="fas fa-play"></i> Başla' : '<i class="fas fa-crown"></i> Premium ilə Başla');
         return `
         <div class="card" style="position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;" 
              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,0.12)'"
              onmouseout="this.style.transform='';this.style.boxShadow=''">
             
-            <!-- Üst şerit: pulsuz / premium -->
             <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${t.free ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#f59e0b,#d97706)'};"></div>
-            
-            <!-- Emoji + badge -->
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-top:8px;">
                 <div style="font-size:46px;line-height:1;">${t.emoji}</div>
                 <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;
@@ -162,7 +175,6 @@ function renderTests() {
             <h3 style="font-size:17px;font-weight:700;margin-bottom:6px;color:#1f2937;">${t.title}</h3>
             <p style="color:#6b7280;font-size:13px;margin-bottom:14px;line-height:1.5;">${t.desc}</p>
 
-            <!-- Meta bilgilər -->
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
                 <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:20px;">
                     <i class="fas fa-question-circle" style="color:#667eea;"></i> ${t.questions} sual
@@ -176,18 +188,15 @@ function renderTests() {
                 </span>
             </div>
 
-            <!-- İstifadəçi statistikası -->
             ${t.attempts > 0 ? `
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;font-size:12px;color:#64748b;">
                 <span><i class="fas fa-users" style="color:#667eea;"></i> ${t.users} nəfər həll etdi</span>
                 <span><i class="fas fa-chart-line" style="color:#10b981;"></i> ${t.attempts} cəhd</span>
             </div>` : ''}
 
-            <button class="btn btn-primary btn-block" onclick="startTest('${t.id}')"
-                style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;">
-                ${t.free
-                    ? '<i class="fas fa-play"></i> Başla'
-                    : '<i class="fas fa-crown"></i> Premium ilə Başla'}
+            <button class="btn btn-primary btn-block" onclick="${isDone ? 'return false;' : `startTest('${t.id}')`}" ${isDone ? 'disabled' : ''}
+                style="display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;${isDone ? 'opacity:0.75;cursor:not-allowed;' : ''};">
+                ${buttonLabel}
             </button>
         </div>
     `}).join('');
@@ -524,6 +533,10 @@ async function showResult() {
                 : '📚 Zəif';
     const gradeColor = ballScore >= 60 ? '#10b981' : ballScore >= 40 ? '#f59e0b' : '#ef4444';
     const wrong = currentTest.questions - score;
+
+    if (typeof renderTests === 'function') {
+        await renderTests();
+    }
 
     const modal = document.createElement('div');
     modal.id = 'resultModal';
