@@ -33,18 +33,22 @@
         .page-header p { opacity: 0.85; font-size: 15px; }
 
         .filters {
-            background: white;
-            padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
             position: sticky;
-            top: 70px;
-            z-index: 100;
+            top: 72px;
+            z-index: 120;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+            padding: 18px 0;
         }
         .filters-inner {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
+            position: relative;
+            z-index: 1;
         }
         .filter-btn {
             padding: 8px 18px;
