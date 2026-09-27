@@ -326,11 +326,6 @@ const API = (() => {
     async signature() { return req('POST', '/api/media-signature'); },
   };
 
-  const settings = {
-    async get() { return req('GET', '/api/site-settings'); },
-    async save(data) { return req('PUT', '/api/site-settings', data); },
-  };
-
   const teachers = {
     async list(params = {}) { return req('GET', '/api/teachers?' + new URLSearchParams(params)); },
   };
@@ -432,7 +427,7 @@ const API = (() => {
     }
   }
 
-  return { auth, tests, videos, media, settings, teachers, news, users, teacherTests, premium, stats, payments, points, notifications, getCurrentUser, getCachedUser: () => _currentUser, setCachedUser, clearUserCache, logout, notify };
+  return { auth, tests, videos, media, teachers, news, users, teacherTests, premium, stats, payments, points, notifications, getCurrentUser, getCachedUser: () => _currentUser, setCachedUser, clearUserCache, logout, notify };
 })();
 
 window.API = API;

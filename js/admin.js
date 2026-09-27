@@ -10,8 +10,6 @@
 //  Boot: require admin, then load dashboard
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('fontSize')?.addEventListener('input', updateSettingRangeLabels);
-    document.getElementById('lineHeight')?.addEventListener('input', updateSettingRangeLabels);
     const user = await requireAdminPage();   // from app.js — redirects if not admin
     if (!user) return;
     renderAdminUser(user);
