@@ -62,8 +62,9 @@ async function login(req, res) {
     }
   }
   if (!passwordOk) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
+  await redis.persist('allUsers');
   if (!hasAdminFallback || passwordMigrated) {
-    await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+    await redis.set('allUsers', JSON.stringify(users));
   }
 
   const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
@@ -82,6 +83,9 @@ async function register(req, res) {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  if (normalizedEmail === ADMIN_FALLBACK.email) {
+    return res.status(409).json({ error: 'Bu email administrator hesabı üçün ayrılıb' });
+  }
   const users = parseUsers(await redis.get('allUsers'));
   if (users.some(user => user.email === normalizedEmail)) return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
 
@@ -101,7 +105,7 @@ async function register(req, res) {
     registeredAt: new Date().toISOString(),
   };
   users.push(newUser);
-  await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+  await redis.set('allUsers', JSON.stringify(users));
 
   if (userType === 'teacher') {
     const teachers = parseUsers(await redis.get('teachers'));
@@ -117,7 +121,7 @@ async function register(req, res) {
       students: 0,
       createdAt: newUser.registeredAt,
     });
-    await redis.set('teachers', JSON.stringify(teachers), { ex: 86400 * 30 });
+    await redis.set('teachers', JSON.stringify(teachers));
   }
 
   const token = signToken({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name });

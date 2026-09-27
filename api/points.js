@@ -196,7 +196,7 @@ module.exports = async function handler(req, res) {
   const userIndex = users.findIndex(item => String(item.id) === String(user.id));
   if (userIndex >= 0) {
     users[userIndex].points = data.total;
-    await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+    await redis.set('allUsers', JSON.stringify(users));
   }
 
   return res.status(200).json({ points: data, leaderboard: makeLeaderboard(users, points), earnedPoints, ...scoreResult });

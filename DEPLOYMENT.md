@@ -12,7 +12,18 @@ Deploy the repository root to Vercel and configure these project environment var
 - `JWT_SECRET` (use a newly generated random secret)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required only for direct video-file uploads)
 
-In Vercel, open **Project Settings → Environment Variables**, add `JWT_SECRET`, select the Production environment (and Preview/Development if used), and set its value to a newly generated random secret. Generate one locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Save the variable and redeploy so the serverless functions receive it. Do not put the real value in this repository or in client-side code.
+In Vercel, open **Project Settings → Environment Variables**, add `JWT_SECRET`, select the Production environment (and Preview/Development if used), and set its value to a newly generated random secret. With Node.js, generate one using `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. On Windows PowerShell, generate one with:
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Save the variable and redeploy so the serverless functions receive it. Do not put the real value in this repository or in client-side code.
+
+Registration stores users in Upstash Redis (`allUsers`) with bcrypt-hashed passwords, and login verifies the submitted password against that record. Keep `JWT_SECRET` separate from the database: it signs session cookies and must remain a Vercel environment variable.
 
 YouTube video links and all other API-backed content use the Vercel/Upstash backend. Video-file uploads remain unavailable until Cloudinary is configured. Card payments are intentionally disabled until a real payment provider and its verified callback are integrated; the app must not credit balances based on a browser-only success screen.
 

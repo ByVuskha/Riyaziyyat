@@ -92,12 +92,12 @@ module.exports = async function handler(req, res) {
     }
 
     users[idx].updatedAt = new Date().toISOString();
-    await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+    await redis.set('allUsers', JSON.stringify(users));
     return res.status(200).json(sanitizeUser(users[idx]));
   }
 
   if (session.role !== 'admin') return res.status(403).json({ error: 'Admin icazəsi tələb olunur' });
   users.splice(idx, 1);
-  await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+  await redis.set('allUsers', JSON.stringify(users));
   return res.status(200).json({ ok: true });
 };

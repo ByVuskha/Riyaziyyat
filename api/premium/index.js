@@ -59,7 +59,7 @@ module.exports = async function handler(req, res) {
     if (userIndex >= 0) {
       users[userIndex].premiumRequestedAt = newReq.requestedAt;
       users[userIndex].requestedPlan = packageType;
-      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+      await redis.set('allUsers', JSON.stringify(users));
     }
     return res.status(201).json(newReq);
   }
@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
         users[uIdx].premiumActivatedAt = new Date().toISOString();
         users[uIdx].premiumExpiresAt   = expires.toISOString();
       }
-      await redis.set('allUsers', JSON.stringify(users), { ex: 86400 * 30 });
+      await redis.set('allUsers', JSON.stringify(users));
     }
     return res.status(200).json(reqs[idx]);
   }
