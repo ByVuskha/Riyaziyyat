@@ -305,15 +305,15 @@ function renderSharedNavigation(user) {
     bellWrap.appendChild(bell);
   }
 
-  let menu = document.getElementById('headerNotifMenu');
-  if (!menu) {
-    menu = document.createElement('div');
-    menu.id = 'headerNotifMenu';
-    menu.className = 'header-notify-menu';
-    bellWrap.appendChild(menu);
+  let notifyMenu = document.getElementById('headerNotifMenu');
+  if (!notifyMenu) {
+    notifyMenu = document.createElement('div');
+    notifyMenu.id = 'headerNotifMenu';
+    notifyMenu.className = 'header-notify-menu';
+    bellWrap.appendChild(notifyMenu);
   }
 
-  menu.innerHTML = `
+  notifyMenu.innerHTML = `
     <div class="header-notify-header">
       <span class="header-notify-title">Bildirişlər</span>
       <button type="button" id="headerNotifClose" class="btn btn-sm btn-secondary" style="padding:5px 10px; font-size:11px;">Bağla</button>
@@ -323,7 +323,7 @@ function renderSharedNavigation(user) {
   `;
 
   const closeBtn = document.getElementById('headerNotifClose');
-  closeBtn?.addEventListener('click', () => menu.classList.remove('open'));
+  closeBtn?.addEventListener('click', () => notifyMenu.classList.remove('open'));
 
   bell.onclick = async (event) => {
     event.preventDefault();
@@ -332,11 +332,11 @@ function renderSharedNavigation(user) {
       window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
       return;
     }
-    const isOpen = menu.classList.contains('open');
-    menu.classList.toggle('open', !isOpen);
+    const isOpen = notifyMenu.classList.contains('open');
+    notifyMenu.classList.toggle('open', !isOpen);
     bell.classList.toggle('has-new', !isOpen && Number(count.textContent.replace(/\D/g, '')) > 0);
     if (!isOpen) {
-      const listItems = menu.querySelectorAll('.header-notify-item.unread');
+      const listItems = notifyMenu.querySelectorAll('.header-notify-item.unread');
       for (const item of listItems) {
         const id = item.dataset.notifyId;
         await markHeaderNotificationRead(user, id);
@@ -346,8 +346,8 @@ function renderSharedNavigation(user) {
 
   document.addEventListener('click', event => {
     const target = event.target;
-    if (!menu.contains(target) && !bell.contains(target)) {
-      menu.classList.remove('open');
+    if (!notifyMenu.contains(target) && !bell.contains(target)) {
+      notifyMenu.classList.remove('open');
     }
   });
 
@@ -363,11 +363,11 @@ function renderSharedNavigation(user) {
   }
   adminLink.style.display = user?.role === 'admin' ? 'inline-flex' : 'none';
 
-  let menu = document.getElementById('sharedNavigation') || inner.querySelector('.navbar-menu');
-  if (!menu) {
-    menu = document.createElement('nav');
-    menu.className = 'navbar-menu';
-    inner.insertBefore(menu, actions);
+  let sharedNavMenu = document.getElementById('sharedNavigation') || inner.querySelector('.navbar-menu');
+  if (!sharedNavMenu) {
+    sharedNavMenu = document.createElement('nav');
+    sharedNavMenu.className = 'navbar-menu';
+    inner.insertBefore(sharedNavMenu, actions);
   }
 
   let toggle = actions.querySelector('.hamburger-btn');
@@ -401,8 +401,8 @@ function renderSharedNavigation(user) {
   }
 
   const currentPath = window.location.pathname.split('/').pop() || 'index.html';
-  menu.setAttribute('aria-label', 'Əsas naviqasiya');
-  menu.innerHTML = groups.map(group => `
+  sharedNavMenu.setAttribute('aria-label', 'Əsas naviqasiya');
+  sharedNavMenu.innerHTML = groups.map(group => `
     <section class="nav-group">
       <h3>${group.title}</h3>
       ${group.links.map(([label, href]) => `
@@ -410,8 +410,8 @@ function renderSharedNavigation(user) {
       `).join('')}
     </section>`).join('');
   toggle.setAttribute('aria-controls', 'sharedNavigation');
-  menu.id = 'sharedNavigation';
-  if (menu.parentElement !== document.body) document.body.appendChild(menu);
+  sharedNavMenu.id = 'sharedNavigation';
+  if (sharedNavMenu.parentElement !== document.body) document.body.appendChild(sharedNavMenu);
 
   if (!toggle.dataset.sharedNavReady) {
     toggle.dataset.sharedNavReady = 'true';
@@ -419,26 +419,26 @@ function renderSharedNavigation(user) {
       event.preventDefault();
       event.stopPropagation();
 
-      const isOpen = menu.classList.toggle('open');
-      menu.style.display = isOpen ? 'flex' : 'none';
-      menu.style.visibility = isOpen ? 'visible' : 'hidden';
-      menu.style.opacity = isOpen ? '1' : '0';
-      menu.style.pointerEvents = isOpen ? 'auto' : 'none';
-      menu.style.transform = isOpen ? 'translateX(0)' : 'translateX(-120%)';
+      const isOpen = sharedNavMenu.classList.toggle('open');
+      sharedNavMenu.style.display = isOpen ? 'flex' : 'none';
+      sharedNavMenu.style.visibility = isOpen ? 'visible' : 'hidden';
+      sharedNavMenu.style.opacity = isOpen ? '1' : '0';
+      sharedNavMenu.style.pointerEvents = isOpen ? 'auto' : 'none';
+      sharedNavMenu.style.transform = isOpen ? 'translateX(0)' : 'translateX(-120%)';
 
       toggle.setAttribute('aria-expanded', String(isOpen));
       const icon = toggle.querySelector('i');
       if (icon) icon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
     });
-    menu.addEventListener('click', event => {
+    sharedNavMenu.addEventListener('click', event => {
       const link = event.target.closest('a');
       if (!link) return;
-      menu.classList.remove('open');
-      menu.style.display = 'none';
-      menu.style.visibility = 'hidden';
-      menu.style.opacity = '0';
-      menu.style.pointerEvents = 'none';
-      menu.style.transform = 'translateX(-120%)';
+      sharedNavMenu.classList.remove('open');
+      sharedNavMenu.style.display = 'none';
+      sharedNavMenu.style.visibility = 'hidden';
+      sharedNavMenu.style.opacity = '0';
+      sharedNavMenu.style.pointerEvents = 'none';
+      sharedNavMenu.style.transform = 'translateX(-120%)';
       toggle.setAttribute('aria-expanded', 'false');
       const icon = toggle.querySelector('i');
       if (icon) icon.className = 'fas fa-bars';
