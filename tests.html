@@ -261,17 +261,29 @@ async function startTest(id) {
     }
 
     try {
-        const test = await API.tests.get(id);
+        const response = await API.tests.get(id);
+        const test = response?.test || response?.data || response;
+        const questions = Array.isArray(test?.questions)
+            ? test.questions
+            : Array.isArray(listing.data) ? listing.data : [];
+        if (!questions.length) {
+            showNotification('Bu sınaqda həll ediləcək sual yoxdur. Müəllimdən və ya admindən sınağı yoxlamağı xahiş edin.', 'error');
+            return;
+        }
+        if (questions.some(question => !question || typeof question !== 'object' || !String(question.question || question.text || question.q || '').trim())) {
+            showNotification('Sınağın sual məlumatları düzgün yüklənməyib. Sınağı admin yoxlamalıdır.', 'error');
+            return;
+        }
         currentTest = {
             ...listing,
-            id: test.id,
-            title: test.title,
-            questions: test.questions.length,
-            data: test.questions.map(question => ({
-                q: question.question,
-                opts: question.type === 'true-false' ? ['Doğru', 'Yanlış'] : (question.options || []),
+            id: test?.id || listing.id,
+            title: test?.title || listing.title,
+            questions: questions.length,
+            data: questions.map(question => ({
+                q: question.question || question.text || question.q,
+                opts: question.type === 'true-false' ? ['Doğru', 'Yanlış'] : (question.options || question.opts || []),
                 type: question.type || 'single-choice',
-                figure: question.figure,
+                figure: question.figure || null,
             })),
         };
     } catch (error) {
