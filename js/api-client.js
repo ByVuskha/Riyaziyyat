@@ -113,10 +113,25 @@ const API = (() => {
     }
     if (!localStorage.getItem('localTests')) {
       writeLocalList('localTests', [
-        { id: 't-1', title: 'Cəbr Əsasları', category: 'Cəbr', questionCount: 10, duration: 20, isPremium: false, difficulty: 'Asan', emoji: '📐', createdAt: new Date().toISOString() },
-        { id: 't-2', title: 'Həndəsə Praktikası', category: 'Həndəsə', questionCount: 12, duration: 25, isPremium: true, difficulty: 'Orta', emoji: '📏', createdAt: new Date().toISOString() }
+        { id: 't-1', title: 'Cəbr Əsasları', category: 'Cəbr', questionCount: 1, questions: [{ question: '$2x + 3 = 11$ tənliyində $x$-i tapın.', type: 'single-choice', options: ['3', '4', '5', '7'], correctAnswer: 1, explanation: '2x = 8, buna görə x = 4.' }], duration: 20, isPremium: false, difficulty: 'Asan', emoji: '📐', createdAt: new Date().toISOString() },
+        { id: 't-2', title: 'Həndəsə Praktikası', category: 'Həndəsə', questionCount: 1, questions: [{ question: 'Üçbucağın iki bucağı 50° və 60°-dir. Üçüncü bucağı tapın.', type: 'single-choice', options: ['60°', '70°', '80°', '90°'], correctAnswer: 1, explanation: 'Üçbucağın bucaqlarının cəmi 180°-dir.' }], duration: 25, isPremium: true, difficulty: 'Orta', emoji: '📏', createdAt: new Date().toISOString() }
       ]);
     }
+    const localTests = readLocalList('localTests');
+    const demoQuestions = {
+      't-1': { question: '$2x + 3 = 11$ tənliyində $x$-i tapın.', type: 'single-choice', options: ['3', '4', '5', '7'], correctAnswer: 1, explanation: '2x = 8, buna görə x = 4.' },
+      't-2': { question: 'Üçbucağın iki bucağı 50° və 60°-dir. Üçüncü bucağı tapın.', type: 'single-choice', options: ['60°', '70°', '80°', '90°'], correctAnswer: 1, explanation: 'Üçbucağın bucaqlarının cəmi 180°-dir.' },
+    };
+    let migratedTests = false;
+    localTests.forEach(test => {
+      const sampleQuestion = demoQuestions[String(test.id)];
+      if (sampleQuestion && !Array.isArray(test.questions)) {
+        test.questions = [sampleQuestion];
+        test.questionCount = test.questions.length;
+        migratedTests = true;
+      }
+    });
+    if (migratedTests) writeLocalList('localTests', localTests);
     if (!localStorage.getItem('localNews')) {
       writeLocalList('localNews', [
         { id: 'n-1', title: 'Yeni riyaziyyat dərsləri', author: 'Admin', emoji: '✨', views: 120, createdAt: new Date().toISOString() },
@@ -168,6 +183,25 @@ const API = (() => {
       ]);
     }
     if (!localStorage.getItem('localTeacherTests')) writeLocalList('localTeacherTests', []);
+    const approvedTeacherTests = readLocalList('localTeacherTests')
+      .filter(test => test.status === 'approved' && Array.isArray(test.questions) && test.questions.length);
+    let publishedTeacherTest = false;
+    approvedTeacherTests.forEach(test => {
+      if (localTests.some(item => String(item.teacherTestId) === String(test.id))) return;
+      const published = {
+        ...test,
+        id: `t-${test.id}`,
+        teacherTestId: test.id,
+        category: test.topic || test.category || 'Ümumi',
+        questionCount: test.questions.length,
+        createdAt: test.approvedAt || test.createdAt || new Date().toISOString(),
+      };
+      delete published.status;
+      delete published.adminNote;
+      localTests.unshift(published);
+      publishedTeacherTest = true;
+    });
+    if (publishedTeacherTest) writeLocalList('localTests', localTests);
     if (!localStorage.getItem('localPremium')) writeLocalList('localPremium', []);
     if (!localStorage.getItem('localPayments')) writeLocalList('localPayments', []);
     if (!localStorage.getItem('currentUser')) setCurrentLocalUser(null);
@@ -553,9 +587,27 @@ const API = (() => {
       if (method === 'PUT') {
         const item = items.find(t => t.id === body.id);
         if (!item) return { data: null };
+        if (item.status !== 'pending') throw new Error('Bu sınaq artıq nəzərdən keçirilib');
         item.status = body.action === 'approve' ? 'approved' : 'rejected';
         if (body.adminNote) item.adminNote = body.adminNote;
         writeLocalList('localTeacherTests', items);
+        if (body.action === 'approve' && Array.isArray(item.questions) && item.questions.length) {
+          const tests = readLocalList('localTests');
+          if (!tests.some(test => String(test.teacherTestId) === String(item.id))) {
+            const publishedTest = {
+              ...item,
+              id: `t-${item.id}`,
+              teacherTestId: item.id,
+              category: item.topic || item.category || 'Ümumi',
+              questionCount: item.questions.length,
+              createdAt: new Date().toISOString(),
+            };
+            delete publishedTest.status;
+            delete publishedTest.adminNote;
+            tests.unshift(publishedTest);
+            writeLocalList('localTests', tests);
+          }
+        }
         return { data: item };
       }
     }

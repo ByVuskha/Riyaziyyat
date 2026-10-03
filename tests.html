@@ -125,7 +125,7 @@ async function initTestsPage() {
             title:      t.title,
             emoji:      t.emoji || '📝',
             difficulty: t.difficulty || 'Orta',
-            questions:  t.questionCount || (t.questions ? t.questions.length : 0),
+            questions:  Array.isArray(t.questions) ? t.questions.length : (t.questionCount || 0),
             time:       t.duration || 30,
             free:       !t.isPremium,
             desc:       t.description || '',
