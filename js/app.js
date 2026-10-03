@@ -12,6 +12,10 @@
  *   6. page-specific inline script
  */
 
+document.querySelectorAll('.footer-bottom p').forEach(footer => {
+  footer.textContent = `© ${new Date().getFullYear()} Bizim Riyaziyyat. Bütün hüquqlar qorunur.`;
+});
+
 // ════════════════════════════════════════════════════════
 //  Dark Mode
 // ════════════════════════════════════════════════════════

@@ -97,91 +97,36 @@ const API = (() => {
   }
 
   function ensureDemoData() {
-    if (!localStorage.getItem('localUsers')) {
-      writeLocalList('localUsers', [{
-        id: 'admin-demo',
-        name: 'Admin',
-        email: 'admin@riyazmath.az',
-        password: 'admin123',
-        role: 'admin',
-        userType: 'teacher',
-        premium: true,
-        balance: 150,
-        points: 2500,
-        registeredAt: new Date().toISOString()
-      }]);
-    }
-    if (!localStorage.getItem('localTests')) {
-      writeLocalList('localTests', [
-        { id: 't-1', title: 'Cəbr Əsasları', category: 'Cəbr', questionCount: 1, questions: [{ question: '$2x + 3 = 11$ tənliyində $x$-i tapın.', type: 'single-choice', options: ['3', '4', '5', '7'], correctAnswer: 1, explanation: '2x = 8, buna görə x = 4.' }], duration: 20, isPremium: false, difficulty: 'Asan', emoji: '📐', createdAt: new Date().toISOString() },
-        { id: 't-2', title: 'Həndəsə Praktikası', category: 'Həndəsə', questionCount: 1, questions: [{ question: 'Üçbucağın iki bucağı 50° və 60°-dir. Üçüncü bucağı tapın.', type: 'single-choice', options: ['60°', '70°', '80°', '90°'], correctAnswer: 1, explanation: 'Üçbucağın bucaqlarının cəmi 180°-dir.' }], duration: 25, isPremium: true, difficulty: 'Orta', emoji: '📏', createdAt: new Date().toISOString() }
-      ]);
-    }
-    const localTests = readLocalList('localTests');
-    const demoQuestions = {
-      't-1': { question: '$2x + 3 = 11$ tənliyində $x$-i tapın.', type: 'single-choice', options: ['3', '4', '5', '7'], correctAnswer: 1, explanation: '2x = 8, buna görə x = 4.' },
-      't-2': { question: 'Üçbucağın iki bucağı 50° və 60°-dir. Üçüncü bucağı tapın.', type: 'single-choice', options: ['60°', '70°', '80°', '90°'], correctAnswer: 1, explanation: 'Üçbucağın bucaqlarının cəmi 180°-dir.' },
+    const demoRecords = {
+      localUsers: item => item.id === 'admin-demo' && item.email === 'admin@riyazmath.az',
+      localTests: item => ['t-1', 't-2'].includes(String(item.id)) &&
+        ['Cəbr Əsasları', 'Həndəsə Praktikası'].includes(item.title),
+      localNews: item => ['n-1', 'n-2'].includes(String(item.id)) &&
+        ['Yeni riyaziyyat dərsləri', 'Yazılışlara hazırlıq'].includes(item.title),
+      localTeachers: item => ['teacher-1', 'teacher-2'].includes(String(item.id)) &&
+        ['nermin@riyazmath.az', 'rasad@riyazmath.az'].includes(item.email),
+      localVideos: item => ['v-1', 'v-2', 'v-3', 'v-4'].includes(String(item.id)) &&
+        ['Cəbr tənlikləri', 'Həndəsə əsasları', 'Analiz: limit', 'Ehtimal nəzəriyyəsi'].includes(item.title) &&
+        String(item.youtubeUrl || '').startsWith('https://www.youtube.com/watch?v='),
     };
-    let migratedTests = false;
-    localTests.forEach(test => {
-      const sampleQuestion = demoQuestions[String(test.id)];
-      if (sampleQuestion && !Array.isArray(test.questions)) {
-        test.questions = [sampleQuestion];
-        test.questionCount = test.questions.length;
-        migratedTests = true;
+    Object.entries(demoRecords).forEach(([key, isDemo]) => {
+      const items = readLocalList(key);
+      const retained = items.filter(item => !isDemo(item));
+      if (retained.length !== items.length || !localStorage.getItem(key)) {
+        writeLocalList(key, retained);
       }
     });
-    if (migratedTests) writeLocalList('localTests', localTests);
-    if (!localStorage.getItem('localNews')) {
-      writeLocalList('localNews', [
-        { id: 'n-1', title: 'Yeni riyaziyyat dərsləri', author: 'Admin', emoji: '✨', views: 120, createdAt: new Date().toISOString() },
-        { id: 'n-2', title: 'Yazılışlara hazırlıq', author: 'Komanda', emoji: '🧠', views: 96, createdAt: new Date().toISOString() }
-      ]);
+    if (getCurrentLocalUser()?.id === 'admin-demo') localStorage.removeItem('currentUser');
+    try {
+      const points = JSON.parse(localStorage.getItem('localPoints') || '{}');
+      if (points && typeof points === 'object' && Object.prototype.hasOwnProperty.call(points, 'admin-demo')) {
+        delete points['admin-demo'];
+        localStorage.setItem('localPoints', JSON.stringify(points));
+      }
+    } catch (error) {
+      console.warn('Demo hesabının xalları təmizlənmədi:', error);
     }
-    if (!localStorage.getItem('localTeachers')) {
-      writeLocalList('localTeachers', [
-        {
-          id: 'teacher-1',
-          name: 'Nərmin Həsənova',
-          title: 'Cəbr müəllimi',
-          bio: 'Klassik cəbr, funksiyalar və analitik düşüncə üzrə təcrübəli müəllim.',
-          subjects: ['Cəbr', 'Funkciyalar', 'Məntiq'],
-          image: '',
-          email: 'nermin@riyazmath.az',
-          phone: '+994 50 111 22 33',
-          experience: 8,
-          students: 420,
-          rating: 4.9,
-          userType: 'teacher',
-          publicProfile: true,
-          status: 'approved',
-        },
-        {
-          id: 'teacher-2',
-          name: 'Rəşad Əhmədov',
-          title: 'Həndəsə müəllimi',
-          bio: 'Həndəsə və geometriyada vizual, praktik yanaşma ilə dərs verir.',
-          subjects: ['Həndəsə', 'Çevrə', 'Bucaq'],
-          image: '',
-          email: 'rasad@riyazmath.az',
-          phone: '+994 50 222 33 44',
-          experience: 10,
-          students: 390,
-          rating: 4.8,
-          userType: 'teacher',
-          publicProfile: true,
-          status: 'approved',
-        }
-      ]);
-    }
-    if (!localStorage.getItem('localVideos')) {
-      writeLocalList('localVideos', [
-        { id: 'v-1', title: 'Cəbr tənlikləri', category: 'Cəbr', description: 'Müxtəlif tənliklər və onların həlli.', teacherId: 'teacher-1', teacherName: 'Nərmin Həsənova', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=5a0QfL1Bh3o', thumbnailUrl: 'https://img.youtube.com/vi/5a0QfL1Bh3o/hqdefault.jpg', duration: '12:40', isPremium: false, isActive: true, views: 128, createdAt: new Date().toISOString() },
-        { id: 'v-2', title: 'Həndəsə əsasları', category: 'Həndəsə', description: 'Bucaqlar, üçbucaqlar və paralel xətlər.', teacherId: 'teacher-2', teacherName: 'Rəşad Əhmədov', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=RPV9RilV2rQ', thumbnailUrl: 'https://img.youtube.com/vi/RPV9RilV2rQ/hqdefault.jpg', duration: '15:05', isPremium: true, isActive: true, views: 96, createdAt: new Date().toISOString() },
-        { id: 'v-3', title: 'Analiz: limit', category: 'Analiz', description: 'Limit anlayışı və əsas qanunlar.', teacherId: 'teacher-1', teacherName: 'Nərmin Həsənova', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=kH6kN91dR-k', thumbnailUrl: 'https://img.youtube.com/vi/kH6kN91dR-k/hqdefault.jpg', duration: '18:20', isPremium: false, isActive: true, views: 143, createdAt: new Date().toISOString() },
-        { id: 'v-4', title: 'Ehtimal nəzəriyyəsi', category: 'Ehtimal', description: 'Hadisələrin baş vermə ehtimalları.', teacherId: 'teacher-2', teacherName: 'Rəşad Əhmədov', source: 'youtube', youtubeUrl: 'https://www.youtube.com/watch?v=f6iP2bB8l0s', thumbnailUrl: 'https://img.youtube.com/vi/f6iP2bB8l0s/hqdefault.jpg', duration: '10:15', isPremium: false, isActive: true, views: 87, createdAt: new Date().toISOString() },
-      ]);
-    }
+    const localTests = readLocalList('localTests');
     if (!localStorage.getItem('localTeacherTests')) writeLocalList('localTeacherTests', []);
     const approvedTeacherTests = readLocalList('localTeacherTests')
       .filter(test => test.status === 'approved' && Array.isArray(test.questions) && test.questions.length);
@@ -206,6 +151,8 @@ const API = (() => {
     if (!localStorage.getItem('localPayments')) writeLocalList('localPayments', []);
     if (!localStorage.getItem('currentUser')) setCurrentLocalUser(null);
   }
+
+  ensureDemoData();
 
   const LOCAL_DAILY_TASKS = {
     'watch-video': { title: 'Video izlə', reward: 15 },
