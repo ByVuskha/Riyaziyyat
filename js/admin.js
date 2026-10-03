@@ -951,15 +951,24 @@ async function loadDevicesSection() {
         const { data: users } = await API.users.list({ limit: 200 });
         const devices = normalizeArray(users)
             .filter(user => user.role !== 'admin')
-            .map(user => ({
-                id: user.id,
-                name: user.name || 'İstifadəçi',
-                email: user.email || '',
-                status: user.deviceStatus || 'approved',
-                mismatchCount: Number(user.deviceMismatchCount || 0),
-                lastSeen: user.updatedAt || user.registeredAt,
-                frozen: Boolean(user.frozen),
-            }));
+            .map(user => {
+                const status = user.frozen ? 'blocked' : (user.deviceStatus || 'approved');
+                const pendingId = user.pendingDeviceId || user.pendingDeviceInfo?.deviceId || '';
+                const pendingInfo = user.pendingDeviceInfo || {};
+                return {
+                    id: user.id,
+                    deviceId: user.deviceId || '',
+                    name: user.name || 'İstifadəçi',
+                    email: user.email || '',
+                    status,
+                    pendingDeviceId: pendingId,
+                    pendingDeviceName: [pendingInfo.browser, pendingInfo.platform].filter(Boolean).join(' · '),
+                    pendingRequestedAt: pendingInfo.requestedAt,
+                    mismatchCount: Number(user.deviceMismatchCount || 0),
+                    frozen: Boolean(user.frozen),
+                };
+            })
+            .sort((a, b) => Number(Boolean(b.pendingDeviceId)) - Number(Boolean(a.pendingDeviceId)) || Number(b.frozen) - Number(a.frozen));
 
         if (!devices.length) {
             showEmpty(container, 'Qeydiyyatlı cihaz yoxdur');
@@ -972,27 +981,45 @@ async function loadDevicesSection() {
                     <thead>
                         <tr>
                             <th>İstifadəçi</th>
-                            <th>Cihaz Statusu</th>
+                            <th>Etibarlı cihaz</th>
+                            <th>Yeni cihaz müraciəti</th>
                             <th>Cəhd Sayı</th>
-                            <th>Son Aktivlik</th>
                             <th>Əməliyyat</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${devices.map(user => `
-                            <tr>
-                                <td><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></td>
-                                <td>${user.frozen ? '<span class="badge badge-danger">Bloklanıb</span>' : user.status === 'pending' ? '<span class="badge badge-warning">Gözləyir</span>' : '<span class="badge badge-success">Təsdiqlənib</span>'}</td>
-                                <td>${user.mismatchCount}</td>
-                                <td>${formatDate(user.lastSeen)}</td>
-                                <td>
-                                    <div class="action-btns">
-                                        <button class="btn-icon btn-success" onclick="approveDevice('${user.id}')" title="Təsdiqlə"><i class="fas fa-check"></i></button>
-                                        <button class="btn-icon btn-delete" onclick="freezeDeviceUser('${user.id}')" title="Blokla"><i class="fas fa-ban"></i></button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
+                        ${devices.map(user => {
+                            const badge = user.frozen
+                                ? '<span class="badge badge-danger">Bloklanıb</span>'
+                                : user.status === 'pending_review' || user.status === 'pending'
+                                    ? '<span class="badge badge-warning">Gözləyir</span>'
+                                    : '<span class="badge badge-success">Təsdiqlənib</span>';
+                            const activeDevice = user.deviceId
+                                ? `<code title="${escapeHtml(user.deviceId)}" style="font-size:11px;">${escapeHtml(user.deviceId.slice(0, 14))}…</code>`
+                                : '<small style="color:#64748b;">Qeyd olunmayıb</small>';
+                            const pendingDevice = user.pendingDeviceId
+                                ? `<strong>${escapeHtml(user.pendingDeviceName || 'Yeni cihaz')}</strong><br>
+                                   <code title="${escapeHtml(user.pendingDeviceId)}" style="font-size:11px;">${escapeHtml(user.pendingDeviceId.slice(0, 14))}…</code>
+                                   <br><small style="color:#64748b;">${formatDate(user.pendingRequestedAt)}</small>`
+                                : '<small style="color:#64748b;">Müraciət yoxdur</small>';
+                            const approveButton = user.pendingDeviceId
+                                ? `<button class="btn btn-success btn-sm" onclick="approveDevice(decodeURIComponent('${encodeURIComponent(user.id)}'), decodeURIComponent('${encodeURIComponent(user.pendingDeviceId)}'))"><i class="fas fa-check"></i> Təsdiqlə</button>`
+                                : '';
+                            return `
+                                <tr>
+                                    <td><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></td>
+                                    <td>${activeDevice}<br>${badge}</td>
+                                    <td>${pendingDevice}</td>
+                                    <td>${user.mismatchCount}</td>
+                                    <td>
+                                        <div class="action-btns">
+                                            ${approveButton}
+                                            ${!user.frozen ? `<button class="btn-icon btn-delete" onclick="freezeDeviceUser(decodeURIComponent('${encodeURIComponent(user.id)}'))" title="Hesabı blokla" aria-label="Hesabı blokla"><i class="fas fa-ban"></i></button>` : ''}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1002,10 +1029,15 @@ async function loadDevicesSection() {
     }
 }
 
-async function approveDevice(id) {
+async function approveDevice(id, deviceId = null) {
     try {
-        await API.users.update(id, { deviceStatus: 'approved', deviceMismatchCount: 0 });
-        showNotification('Cihaz təsdiqləndi.', 'success');
+        if (!deviceId) {
+            showNotification('Təsdiqlənəcək müraciət edən cihaz tapılmadı.', 'error');
+            return;
+        }
+
+        await API.auth.approveDevice(id, deviceId);
+        showNotification('Cihaz təsdiqləndi. İstifadəçi yeni cihazdan yenidən giriş etməlidir.', 'success', 6000);
         loadDevicesSection();
     } catch (error) {
         showNotification(error.message || 'Cihaz təsdiqlənmədi.', 'error');
@@ -1063,7 +1095,7 @@ async function loadSuspiciousActivities() {
     try {
         const { data: users } = await API.users.list({ limit: 200 });
         const allUsers = normalizeArray(users).filter(user => user.role !== 'admin');
-        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt);
+        const suspicious = allUsers.filter(user => user.frozen || user.testAccessRequested || user.premiumRequestedAt || user.pendingDeviceId || user.deviceStatus === 'pending_review' || user.loginRequestStatus === 'pending');
         const frozen = allUsers.filter(user => user.frozen);
 
         suspiciousTable.innerHTML = suspicious.length

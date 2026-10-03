@@ -8,6 +8,7 @@ const {
   clearCookieHeader,
   setCommonHeaders,
   getUserFromRequest,
+  requireAdmin,
 } = require('../lib/auth');
 const { genId, sanitizeUser } = require('../lib/helpers');
 
@@ -79,7 +80,8 @@ function freezeDeviceMismatch(user, reason) {
   user.loginApproved = false;
   user.loginRequestStatus = 'rejected';
   user.loginRejectedReason = reason;
-  user.deviceMismatchCount = Number(user.deviceMismatchCount || 0) + 1;
+  user.pendingDeviceId = user.pendingDeviceId || user.deviceId || null;
+  user.pendingDeviceInfo = user.pendingDeviceInfo || { requestedAt: new Date().toISOString() };
   user.updatedAt = new Date().toISOString();
   return user;
 }
@@ -101,9 +103,6 @@ async function login(req, res) {
   const user = users.find(item => item.email === normalizedEmail);
   if (!user) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
   if (user.frozen) return res.status(403).json({ error: 'Hesabınız bloklanıb. Dəstək xidməti ilə əlaqə saxlayın.' });
-  if (user.loginApproved === false || user.loginRequestStatus === 'pending' || user.loginRequestStatus === 'rejected') {
-    return res.status(403).json({ error: 'Giriş icazəsi admin tərəfindən hələ təsdiqlənməyib. Admin müraciətinizi yoxlayır.' });
-  }
 
   let passwordOk = false;
   let passwordMigrated = false;
@@ -144,6 +143,11 @@ async function login(req, res) {
   const isDifferentDevice = Boolean(user.deviceId) && String(user.deviceId) !== String(deviceHash) && !existingKnownDevice;
   const isAdminOverride = user.role === 'admin';
 
+  if (!isDifferentDevice && !isAdminOverride &&
+      (user.loginApproved === false || user.loginRequestStatus === 'pending' || user.loginRequestStatus === 'rejected')) {
+    return res.status(403).json({ error: 'Giriş icazəsi admin tərəfindən təsdiqlənməlidir. Admin müraciətinizi yoxlayır.' });
+  }
+
   const userIndex = users.findIndex(item => item.email === normalizedEmail);
   if (userIndex >= 0) {
     const activeUser = users[userIndex];
@@ -151,8 +155,12 @@ async function login(req, res) {
       const mismatchCount = Number(activeUser.deviceMismatchCount || 0) + 1;
       activeUser.deviceMismatchCount = mismatchCount;
       activeUser.deviceStatus = 'pending_review';
-      activeUser.loginApproved = false;
-      activeUser.loginRequestStatus = 'pending';
+      activeUser.pendingDeviceId = deviceHash;
+      activeUser.pendingDeviceInfo = {
+        ...deviceInfo,
+        deviceId: deviceHash,
+        requestedAt: new Date().toISOString(),
+      };
       activeUser.deviceLastSeenAt = new Date().toISOString();
       activeUser.updatedAt = new Date().toISOString();
       await redis.set('allUsers', JSON.stringify(users));
@@ -169,18 +177,20 @@ async function login(req, res) {
       return res.status(403).json({
         error: 'Başqa cihazdan giriş cəhd edildi. Admin icazəsi tələb olunur.',
         warning: true,
+        pendingDeviceId: deviceHash,
       });
     }
 
     const nextSessionId = generateSessionId();
+    const pendingOtherDevice = Boolean(activeUser.pendingDeviceId && String(activeUser.pendingDeviceId) !== String(deviceHash));
     activeUser.sessionId = nextSessionId;
-    activeUser.deviceId = deviceHash;
-    activeUser.deviceStatus = 'approved';
-    activeUser.deviceMismatchCount = 0;
-    activeUser.loginApproved = true;
-    activeUser.loginRequestStatus = 'approved';
-    activeUser.loginRejectedReason = null;
-    activeUser.frozen = false;
+    if (!pendingOtherDevice) {
+      activeUser.deviceId = deviceHash;
+      activeUser.deviceStatus = 'approved';
+      activeUser.pendingDeviceId = null;
+      activeUser.pendingDeviceInfo = null;
+      activeUser.deviceMismatchCount = 0;
+    }
     activeUser.deviceLastSeenAt = new Date().toISOString();
     activeUser.knownDevices = Array.isArray(activeUser.knownDevices) ? activeUser.knownDevices : [];
     if (!activeUser.knownDevices.some(device => String(device.deviceId) === String(deviceHash))) {
@@ -204,7 +214,8 @@ async function approveDevice(req, res) {
   if (!adminUser) return;
 
   const { userId, deviceId } = req.body || {};
-  if (!userId || !deviceId) {
+  const allowedDeviceId = String(deviceId || req.body?.pendingDeviceId || '').trim();
+  if (!userId || !allowedDeviceId) {
     return res.status(400).json({ error: 'userId və deviceId tələb olunur' });
   }
 
@@ -212,8 +223,11 @@ async function approveDevice(req, res) {
   const targetUser = users.find(item => String(item.id) === String(userId));
   if (!targetUser) return res.status(404).json({ error: 'İstifadəçi tapılmadı' });
 
-  targetUser.deviceId = String(deviceId);
+  const pendingDeviceInfo = targetUser.pendingDeviceInfo || {};
+  targetUser.deviceId = allowedDeviceId;
   targetUser.deviceStatus = 'approved';
+  targetUser.pendingDeviceId = null;
+  targetUser.pendingDeviceInfo = null;
   targetUser.deviceMismatchCount = 0;
   targetUser.loginApproved = true;
   targetUser.loginRequestStatus = 'approved';
@@ -222,20 +236,21 @@ async function approveDevice(req, res) {
   targetUser.updatedAt = new Date().toISOString();
 
   const known = Array.isArray(targetUser.knownDevices) ? targetUser.knownDevices : [];
-  if (!known.some(device => String(device.deviceId) === String(deviceId))) {
+  if (!known.some(device => String(device.deviceId) === String(allowedDeviceId))) {
     known.push({
-      deviceId: String(deviceId),
-      browser: 'Admin approved',
-      platform: 'System approved',
-      language: 'az-AZ',
-      screen: '',
-      userAgent: '',
+      deviceId: String(allowedDeviceId),
+      browser: pendingDeviceInfo.browser || 'Admin approved',
+      platform: pendingDeviceInfo.platform || 'System approved',
+      language: pendingDeviceInfo.language || 'az-AZ',
+      screen: pendingDeviceInfo.screen || '',
+      userAgent: pendingDeviceInfo.userAgent || '',
       firstSeenAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),
     });
     targetUser.knownDevices = known;
   }
 
+  targetUser.sessionId = null;
   await redis.set('allUsers', JSON.stringify(users));
   return res.status(200).json({ ok: true, user: sanitizeUser(targetUser) });
 }
@@ -283,6 +298,8 @@ async function register(req, res) {
     loginRequestStatus: 'approved',
     loginRequestedAt: null,
     loginRejectedReason: null,
+    pendingDeviceId: null,
+    pendingDeviceInfo: null,
     deviceId: normalizedDeviceInfo.deviceId,
     knownDevices: [buildKnownDeviceEntry(normalizedDeviceInfo)],
     deviceStatus: 'approved',

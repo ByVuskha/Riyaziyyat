@@ -185,6 +185,7 @@ const API = (() => {
         const { email, password, deviceInfo } = body || {};
         const user = users.find(u => u.email === email && u.password === password);
         if (!user) throw new Error('E-poçt və ya şifrə yanlışdır');
+        if (user.frozen) throw new Error('Hesabınız bloklanıb. Admin təsdiqi tələb olunur.');
 
         const deviceId = String((deviceInfo && deviceInfo.deviceId) || localStorage.getItem('deviceFingerprint') || `${Date.now()}`);
         const knownDevices = Array.isArray(user.knownDevices) ? user.knownDevices : [];
@@ -192,15 +193,37 @@ const API = (() => {
           const nextCount = Number(user.deviceMismatchCount || 0) + 1;
           user.deviceMismatchCount = nextCount;
           user.deviceStatus = 'pending_review';
+          user.pendingDeviceId = deviceId;
+          user.pendingDeviceInfo = { deviceId, browser: 'Local browser', platform: 'Browser', ...deviceInfo, requestedAt: new Date().toISOString() };
           user.frozen = nextCount >= 2;
           writeLocalList('localUsers', users);
-          if (user.frozen) throw new Error('Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.');
-          throw new Error('Başqa cihazdan giriş cəhd edildi. Admin icazəsi tələb olunur.');
+          if (user.frozen) {
+            throw Object.assign(new Error('Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.'), {
+              status: 403,
+              data: { error: 'Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.', deviceBlocked: true },
+            });
+          }
+          throw Object.assign(new Error('Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.'), {
+            status: 403,
+            data: { error: 'Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.', warning: true },
+          });
         }
 
+        if (user.loginApproved === false || user.loginRequestStatus === 'pending' || user.loginRequestStatus === 'rejected') {
+          throw Object.assign(new Error('Giriş icazəsi admin tərəfindən təsdiqlənməlidir.'), {
+            status: 403,
+            data: { error: 'Giriş icazəsi admin tərəfindən təsdiqlənməlidir.' },
+          });
+        }
+
+        const pendingOtherDevice = Boolean(user.pendingDeviceId && String(user.pendingDeviceId) !== deviceId);
         user.deviceId = deviceId;
-        user.deviceStatus = 'approved';
-        user.deviceMismatchCount = 0;
+        if (!pendingOtherDevice) {
+          user.deviceStatus = 'approved';
+          user.pendingDeviceId = null;
+          user.pendingDeviceInfo = null;
+          user.deviceMismatchCount = 0;
+        }
         user.frozen = false;
         user.knownDevices = knownDevices.some(device => String(device.deviceId) === String(deviceId)) ? knownDevices : [...knownDevices, { deviceId, browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }];
         writeLocalList('localUsers', users);
@@ -209,6 +232,37 @@ const API = (() => {
         const loggedInUser = { ...user, sessionId, password: undefined };
         setCurrentLocalUser(loggedInUser);
         return { user: loggedInUser };
+      }
+      if (second === 'approve-device') {
+        const admin = getCurrentLocalUser();
+        if (!admin || admin.role !== 'admin') throw new Error('Admin icazəsi tələb olunur.');
+        const users = readLocalList('localUsers');
+        const target = users.find(user => String(user.id) === String(body?.userId));
+        const deviceId = String(body?.deviceId || '').trim();
+        if (!target) throw new Error('İstifadəçi tapılmadı.');
+        if (!deviceId) throw new Error('Təsdiqlənəcək cihaz ID-si tələb olunur.');
+        const pendingInfo = target.pendingDeviceInfo || {};
+        const knownDevices = Array.isArray(target.knownDevices) ? target.knownDevices : [];
+        if (!knownDevices.some(device => String(device.deviceId) === deviceId)) {
+          knownDevices.push({
+            ...pendingInfo,
+            deviceId,
+            firstSeenAt: new Date().toISOString(),
+            lastSeenAt: new Date().toISOString(),
+          });
+        }
+        target.deviceId = deviceId;
+        target.knownDevices = knownDevices;
+        target.deviceStatus = 'approved';
+        target.pendingDeviceId = null;
+        target.pendingDeviceInfo = null;
+        target.deviceMismatchCount = 0;
+        target.loginApproved = true;
+        target.loginRequestStatus = 'approved';
+        target.frozen = false;
+        target.sessionId = null;
+        writeLocalList('localUsers', users);
+        return { ok: true, user: target };
       }
       if (second === 'register') {
         const users = readLocalList('localUsers');
@@ -227,6 +281,8 @@ const API = (() => {
           premium: false,
           balance: 0,
           points: 0,
+          pendingDeviceId: null,
+          pendingDeviceInfo: null,
           deviceId: finalDeviceId,
           deviceStatus: 'approved',
           deviceMismatchCount: 0,
@@ -634,6 +690,7 @@ const API = (() => {
       if (!r.ok) throw Object.assign(new Error(data.error || 'Xəta baş verdi'), { status: r.status, data });
       return data;
     } catch (error) {
+      if (error.status) throw error;
       const fallback = tryLocalFallback(method, path, body);
       if (fallback !== undefined) return fallback;
       throw error;
