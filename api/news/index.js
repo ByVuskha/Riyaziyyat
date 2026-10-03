@@ -1,7 +1,8 @@
 // Collection and ID-based news operations share one serverless function.
 const redis  = require('../../lib/redis');
-const { requireAdmin, setCommonHeaders } = require('../../lib/auth');
+const { getUserFromRequest, requireAuth, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, genId, paginate } = require('../../lib/helpers');
+const { awardDailyTask } = require('../../lib/daily-tasks');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
@@ -9,13 +10,30 @@ module.exports = async function handler(req, res) {
 
   if (id) {
     if (req.method === 'POST' && action === 'view') {
+      if (!allowMethods(req, res, ['POST'])) return;
       const raw = await redis.get('news');
       const news = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
       const idx = news.findIndex(item => String(item.id) === String(id));
       if (idx === -1) return res.status(404).json({ error: 'Xəbər tapılmadı' });
       news[idx].views = (news[idx].views || 0) + 1;
       await redis.set('news', JSON.stringify(news), { ex: 86400 * 30 });
+      const user = getUserFromRequest(req);
+      if (user) await redis.set(`newsRead:${user.id}:${id}`, JSON.stringify({ startedAt: Date.now() }), { ex: 3600 });
       return res.status(200).json({ views: news[idx].views });
+    }
+
+    if (req.method === 'POST' && action === 'complete-read') {
+      if (!allowMethods(req, res, ['POST'])) return;
+      const user = requireAuth(req, res);
+      if (!user) return;
+      const rawRead = await redis.get(`newsRead:${user.id}:${id}`);
+      const readSession = rawRead && typeof rawRead === 'object' ? rawRead : (rawRead ? JSON.parse(rawRead) : null);
+      if (!readSession?.startedAt || Date.now() - Number(readSession.startedAt) < 20_000) {
+        return res.status(400).json({ error: 'Xəbəri oxumaq üçün ən azı 20 saniyə səhifədə qalın' });
+      }
+      await redis.del(`newsRead:${user.id}:${id}`);
+      const taskResult = await awardDailyTask(user, 'read-news');
+      return res.status(200).json({ completed: true, ...taskResult });
     }
 
     if (!allowMethods(req, res, ['GET', 'PUT', 'DELETE'])) return;

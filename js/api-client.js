@@ -173,6 +173,63 @@ const API = (() => {
     if (!localStorage.getItem('currentUser')) setCurrentLocalUser(null);
   }
 
+  const LOCAL_DAILY_TASKS = {
+    'watch-video': { title: 'Video izlə', reward: 15 },
+    'solve-test': { title: 'Sınaq həll et', reward: 20 },
+    'read-news': { title: 'Xəbər oxu', reward: 10 },
+    'profile-update': { title: 'Profil yenilə', reward: 10 },
+    login: { title: 'Giriş et', reward: 10 },
+  };
+
+  function applyLocalDailyTask(points, taskId, options = {}) {
+    const task = LOCAL_DAILY_TASKS[taskId];
+    if (!task) throw new Error('Dəstəklənməyən gündəlik tapşırıq');
+    const today = new Date().toISOString().slice(0, 10);
+    const dailyTasks = points.dailyTasks && typeof points.dailyTasks === 'object' ? points.dailyTasks : {};
+    const todayTasks = dailyTasks[today] && typeof dailyTasks[today] === 'object' ? dailyTasks[today] : {};
+    if (todayTasks[taskId]) return { earnedPoints: 0, taskAlreadyCompleted: true };
+
+    todayTasks[taskId] = { taskId, taskTitle: task.title, reward: task.reward, completedAt: new Date().toISOString() };
+    dailyTasks[today] = todayTasks;
+    points.dailyTasks = dailyTasks;
+    if (taskId === 'watch-video' && options.videoId) {
+      points.watchedVideos = Array.isArray(points.watchedVideos) ? points.watchedVideos : [];
+      if (!points.watchedVideos.includes(String(options.videoId))) points.watchedVideos.push(String(options.videoId));
+    }
+    points.total = (Number(points.total) || 0) + task.reward;
+    points.history = Array.isArray(points.history) ? points.history : [];
+    points.history.unshift({
+      amount: task.reward,
+      reason: `Gündəlik tapşırıq: ${task.title}`,
+      date: new Date().toLocaleDateString('az-AZ'),
+      time: new Date().toLocaleTimeString('az-AZ'),
+      timestamp: Date.now(),
+    });
+    points.history = points.history.slice(0, 50);
+    return { earnedPoints: task.reward, taskAlreadyCompleted: false };
+  }
+
+  function awardLocalDailyTask(taskId, options = {}) {
+    const user = getCurrentLocalUser();
+    if (!user || user.role === 'admin') return { earnedPoints: 0, taskAlreadyCompleted: false };
+    let pointsMap = {};
+    try { pointsMap = JSON.parse(localStorage.getItem('localPoints') || '{}'); } catch {}
+    const points = pointsMap[user.id] || {
+      userId: user.id, userName: user.name, total: 0, history: [], watchedVideos: [],
+      completedTests: [], testScores: {}, dailyTasks: {}, lastLoginDate: null,
+    };
+    const result = applyLocalDailyTask(points, taskId, options);
+    pointsMap[user.id] = points;
+    localStorage.setItem('localPoints', JSON.stringify(pointsMap));
+    const users = readLocalList('localUsers');
+    const userIndex = users.findIndex(item => String(item.id) === String(user.id));
+    if (userIndex >= 0) {
+      users[userIndex].points = points.total;
+      writeLocalList('localUsers', users);
+    }
+    return { ...result, points };
+  }
+
   function localFallback(method, path, body) {
     ensureDemoData();
     const clean = path.replace(/^\/+/, '').replace(/^api\//, '').split('?')[0];
@@ -330,7 +387,26 @@ const API = (() => {
 
     if (segment === 'videos') {
       const items = readLocalList('localVideos');
-      const viewAction = String(path).includes('action=view');
+      const action = new URLSearchParams((path.split('?')[1] || '').trim()).get('action');
+      if (method === 'POST' && second && (action === 'watch-start' || action === 'watch-complete')) {
+        const user = getCurrentLocalUser();
+        if (!user) throw Object.assign(new Error('Giriş tələb olunur'), { status: 401 });
+        const video = items.find(item => String(item.id) === String(second));
+        if (!video) throw new Error('Video tapılmadı');
+        const sessionKey = `localVideoWatch:${user.id}:${second}`;
+        if (action === 'watch-start') {
+          localStorage.setItem(sessionKey, String(Date.now()));
+          return { started: true };
+        }
+        const startedAt = Number(localStorage.getItem(sessionKey));
+        if (!startedAt) throw new Error('Video izləmə sessiyası tapılmadı');
+        const parts = String(video.duration || '').split(':').map(Number);
+        const duration = parts.length === 2 ? parts[0] * 60 + parts[1] : parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : 0;
+        const minimumSeconds = duration ? Math.max(5, Math.min(120, Math.ceil(duration * 0.8))) : 15;
+        if (Date.now() - startedAt < minimumSeconds * 1000) throw new Error('Video izləmə müddəti tamamlanmayıb');
+        localStorage.removeItem(sessionKey);
+        return { completed: true, ...awardLocalDailyTask('watch-video', { videoId: second }) };
+      }
       if (method === 'GET') {
         if (second) {
           const item = items.find(v => String(v.id) === String(second));
@@ -348,7 +424,7 @@ const API = (() => {
         return { data: filtered };
       }
       if (method === 'POST') {
-        if (viewAction && second) {
+        if (action === 'view' && second) {
           const item = items.find(v => String(v.id) === String(second));
           if (!item) return { views: 0 };
           item.views = Number(item.views || 0) + 1;
@@ -388,6 +464,25 @@ const API = (() => {
 
     if (segment === 'news') {
       const items = readLocalList('localNews');
+      const action = new URLSearchParams((path.split('?')[1] || '').trim()).get('action');
+      if (method === 'POST' && second && action === 'view') {
+        const item = items.find(news => String(news.id) === String(second));
+        if (!item) throw new Error('Xəbər tapılmadı');
+        item.views = Number(item.views || 0) + 1;
+        writeLocalList('localNews', items);
+        const user = getCurrentLocalUser();
+        if (user) localStorage.setItem(`localNewsRead:${user.id}:${second}`, String(Date.now()));
+        return { views: item.views };
+      }
+      if (method === 'POST' && second && action === 'complete-read') {
+        const user = getCurrentLocalUser();
+        if (!user) throw Object.assign(new Error('Giriş tələb olunur'), { status: 401 });
+        const key = `localNewsRead:${user.id}:${second}`;
+        const startedAt = Number(localStorage.getItem(key));
+        if (!startedAt || Date.now() - startedAt < 20000) throw new Error('Xəbəri oxumaq üçün ən azı 20 saniyə səhifədə qalın');
+        localStorage.removeItem(key);
+        return { completed: true, ...awardLocalDailyTask('read-news') };
+      }
       if (method === 'GET') {
         if (second) {
           const item = items.find(n => n.id === second);
@@ -427,10 +522,15 @@ const API = (() => {
         const item = items.find(u => u.id === second);
         const updated = item ? { ...item, ...(body || {}) } : null;
         if (updated) {
+          const profileFields = ['name', 'phone', 'bio', 'profilePicture'];
+          const profileChanged = profileFields.some(field =>
+            Object.prototype.hasOwnProperty.call(body || {}, field) && String(item[field] || '') !== String(updated[field] || '')
+          );
           const index = items.findIndex(u => u.id === second);
           if (index >= 0) items[index] = updated;
           writeLocalList('localUsers', items);
           setCurrentLocalUser(updated);
+          if (profileChanged) awardLocalDailyTask('profile-update');
         }
         return { data: updated || null, user: updated || null };
       }
@@ -527,46 +627,33 @@ const API = (() => {
             current.history.unshift({ amount: 10, reason: 'Gündəlik giriş', date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
             current.history = current.history.slice(0, 50);
           }
+          const dailyTasks = current.dailyTasks && typeof current.dailyTasks === 'object' ? current.dailyTasks : {};
+          const tasksForToday = dailyTasks[todayKey] && typeof dailyTasks[todayKey] === 'object' ? dailyTasks[todayKey] : {};
+          if (!tasksForToday.login) {
+            tasksForToday.login = { taskId: 'login', taskTitle: 'Giriş et', reward: 10, completedAt: new Date().toISOString() };
+            dailyTasks[todayKey] = tasksForToday;
+            current.dailyTasks = dailyTasks;
+          }
         }
 
         if (body?.type === 'daily-task') {
-          const taskId = String(body.taskId || '');
-          const taskTitle = String(body.taskTitle || taskId || 'Tapşırıq');
-          const reward = Number(body.reward || 0);
-          if (!taskId || !reward) throw new Error('Tapşırıq məlumatı düzgün deyil');
-          const dailyTasks = current.dailyTasks && typeof current.dailyTasks === 'object' ? current.dailyTasks : {};
-          const tasksForToday = dailyTasks[todayKey] && typeof dailyTasks[todayKey] === 'object' ? dailyTasks[todayKey] : {};
-          if (!tasksForToday[taskId]) {
-            tasksForToday[taskId] = { taskId, taskTitle, reward, completedAt: new Date().toISOString() };
-            dailyTasks[todayKey] = tasksForToday;
-            current.dailyTasks = dailyTasks;
-            if (taskId === 'watch-video') {
-              const watchedVideos = Array.isArray(current.watchedVideos) ? current.watchedVideos : [];
-              watchedVideos.push(`video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-              current.watchedVideos = watchedVideos;
-            }
-            current.total = (Number(current.total) || 0) + reward;
-            current.history.unshift({ amount: reward, reason: `Gündəlik tapşırıq: ${taskTitle}`, date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
-            current.history = current.history.slice(0, 50);
-            map[currentUser.id] = current;
-            writePoints(map);
-            return { points: current, leaderboard: makeLeaderboard(), earnedPoints: reward };
-          }
-          return { points: current, leaderboard: makeLeaderboard(), earnedPoints: 0, taskAlreadyCompleted: true };
+          throw new Error('Gündəlik tapşırıqlar yalnız təsdiqlənmiş fəaliyyət tamamlandıqda verilir');
         }
 
         if (body?.type === 'test') {
           const testId = String(body.testId || '');
           const answers = Array.isArray(body.answers) ? body.answers : [];
           const completed = Array.isArray(current.completedTests) ? current.completedTests : [];
-          if (!completed.includes(testId)) completed.push(testId);
+          if (completed.includes(testId)) throw new Error('Bu sınaq artıq işlənib');
+          completed.push(testId);
           current.completedTests = completed;
           current.total = (Number(current.total) || 0) + 20;
           current.history.unshift({ amount: 20, reason: 'Sınaq tamamlandı', date: new Date().toLocaleDateString('az-AZ'), time: new Date().toLocaleTimeString('az-AZ'), timestamp: Date.now() });
           current.history = current.history.slice(0, 50);
+          const dailyTaskEarnedPoints = applyLocalDailyTask(current, 'solve-test').earnedPoints;
           map[currentUser.id] = current;
           writePoints(map);
-          return { points: current, leaderboard: makeLeaderboard(), earnedPoints: 20, ballScore: 100, score: answers.length || 1, total: answers.length || 1 };
+          return { points: current, leaderboard: makeLeaderboard(), earnedPoints: 20, dailyTaskEarnedPoints, ballScore: 100, score: answers.length || 1, total: answers.length || 1 };
         }
 
         map[currentUser.id] = current;
@@ -745,6 +832,8 @@ const API = (() => {
     async update(id, data) { return req('PUT', `/api/videos/${id}`, data); },
     async remove(id) { return req('DELETE', `/api/videos/${id}`); },
     async view(id) { return req('POST', `/api/videos/${id}?action=view`); },
+    async startWatch(id) { return req('POST', `/api/videos/${id}?action=watch-start`); },
+    async completeWatch(id) { return req('POST', `/api/videos/${id}?action=watch-complete`); },
   };
 
   const media = {
@@ -762,6 +851,7 @@ const API = (() => {
     async update(id, data) { return req('PUT', `/api/news/${id}`, data); },
     async remove(id) { return req('DELETE', `/api/news/${id}`); },
     async view(id) { return req('POST', `/api/news/${id}?action=view`); },
+    async completeRead(id) { return req('POST', `/api/news/${id}?action=complete-read`); },
   };
 
   const users = {
@@ -806,9 +896,6 @@ const API = (() => {
     async results() { return req('GET', '/api/points?view=results'); },
     async awardTest(testId, answers) { return req('POST', '/api/points', { type: 'test', testId, answers }); },
     async awardDailyLogin() { return req('POST', '/api/points', { type: 'daily-login' }); },
-    async awardDailyTask(taskId, taskTitle, reward) {
-      return req('POST', '/api/points', { type: 'daily-task', taskId, taskTitle, reward });
-    },
   };
 
   const notifications = {

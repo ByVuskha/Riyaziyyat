@@ -2,6 +2,7 @@
 const redis  = require('../../lib/redis');
 const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, genId, paginate } = require('../../lib/helpers');
+const { validateQuestions, validateCurriculum } = require('../../lib/test-validation');
 
 async function hasPremiumAccess(session) {
   if (!session) return false;
@@ -33,13 +34,21 @@ module.exports = async function handler(req, res) {
       const { questions = [], ...test } = tests[idx];
       return res.status(200).json({
         ...test,
-        questions: questions.map(({ correctAnswer, ...question }) => question),
+        questions: questions.map(({ correctAnswer, answerTolerance, explanation, explanationVideo, ...question }) => question),
       });
     }
     const admin = requireAdmin(req, res);
     if (!admin) return;
 
     if (req.method === 'PUT') {
+      if (req.body?.questions) {
+        const questionError = validateQuestions(req.body.questions);
+        if (questionError) return res.status(400).json({ error: questionError });
+      }
+      if (req.body?.grade !== undefined || req.body?.topic !== undefined) {
+        const curriculumError = validateCurriculum(req.body.grade ?? tests[idx].grade, req.body.topic ?? tests[idx].topic ?? tests[idx].category);
+        if (curriculumError) return res.status(400).json({ error: curriculumError });
+      }
       tests[idx] = { ...tests[idx], ...req.body, id: tests[idx].id, updatedAt: new Date().toISOString() };
       await redis.set('tests', JSON.stringify(tests), { ex: 86400 * 30 });
       return res.status(200).json(tests[idx]);
@@ -65,6 +74,10 @@ module.exports = async function handler(req, res) {
 
     let filtered = tests;
     if (cat) filtered = filtered.filter(t => t.category === cat);
+    const gradeFilter = String(req.query?.grade || '');
+    const topicFilter = String(req.query?.topic || '');
+    if (gradeFilter) filtered = filtered.filter(test => String(test.grade || '') === gradeFilter);
+    if (topicFilter) filtered = filtered.filter(test => String(test.topic || '') === topicFilter);
 
     const safeTests = filtered.map(t => {
       return {
@@ -72,6 +85,8 @@ module.exports = async function handler(req, res) {
         title:       t.title,
         emoji:       t.emoji || '📝',
         category:    t.category || 'Ümumi',
+        grade:       t.grade || '',
+        topic:       t.topic || '',
         difficulty:  t.difficulty || 'Orta',
         duration:    t.duration,
         isPremium:   t.isPremium || false,
@@ -91,9 +106,15 @@ module.exports = async function handler(req, res) {
   if (!admin) return;
 
   const { title, category, difficulty, duration, isPremium, description, questions, emoji } = req.body || {};
-  if (!title || !questions || questions.length === 0) {
+  const grade = String(req.body?.grade || '').trim();
+  const topic = String(req.body?.topic || '').trim().slice(0, 100);
+  if (!String(title || '').trim() || String(title).trim().length > 160) {
     return res.status(400).json({ error: 'Başlıq və ən azı 1 sual tələb olunur' });
   }
+  const curriculumError = validateCurriculum(grade, topic);
+  if (curriculumError) return res.status(400).json({ error: curriculumError });
+  const questionError = validateQuestions(questions);
+  if (questionError) return res.status(400).json({ error: questionError });
 
   const raw   = await redis.get('tests');
   const tests = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
@@ -103,6 +124,8 @@ module.exports = async function handler(req, res) {
     title:       title.trim(),
     emoji:       emoji || '📝',
     category:    category || 'Ümumi',
+    grade,
+    topic,
     difficulty:  difficulty || 'Orta',
     duration:    Number(duration) || 30,
     isPremium:   Boolean(isPremium),

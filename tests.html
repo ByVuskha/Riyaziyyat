@@ -18,7 +18,8 @@
     <meta name="twitter:title"       content="Sınaqlar — Bizim Riyaziyyat">
     <meta name="twitter:description" content="Cəbr, həndəsə, analiz üzrə interaktiv riyaziyyat sınaqları. Biliyinizi yoxlayın.">
     <meta name="twitter:image"       content="https://bizimriyaziyyat.vercel.app/og-image.png">
-    <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/tests.html">`n    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/tests.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/math-question-tools.css">
@@ -72,6 +73,7 @@
 </section>
 
 <div class="container" style="padding:40px 0;">
+    <div id="curriculumTestFilters"></div>
     <div id="testsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:25px;"></div>
 </div>
 
@@ -96,17 +98,29 @@
     <script src="js/animations.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/math-question-tools.js"></script>
+    <script src="js/math-curriculum.js"></script>
 
 <script>
 // Load tests from API — replaces MOCK_TESTS + localStorage approach
 let _testsCache = [];
 
 async function initTestsPage() {
+    const filterRoot = document.getElementById('curriculumTestFilters');
+    filterRoot.innerHTML = MathCurriculum.filterMarkup();
+    MathCurriculum.initFilters(filterRoot);
+    filterRoot.addEventListener('change', renderTests);
     const grid = document.getElementById('testsGrid');
     if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin" style="font-size:32px;"></i></div>';
     try {
-        const { data } = await API.tests.list({ limit: 100 });
-        _testsCache = data.map(t => ({
+        const { data = [], total = 0 } = await API.tests.list({ limit: 100, page: 1 });
+        const allData = [...data];
+        for (let page = 2; allData.length < total; page++) {
+            const next = await API.tests.list({ limit: 100, page });
+            const nextPage = Array.isArray(next?.data) ? next.data : [];
+            if (!nextPage.length) break;
+            allData.push(...nextPage);
+        }
+        _testsCache = allData.map(t => ({
             id:         t.id,
             title:      t.title,
             emoji:      t.emoji || '📝',
@@ -115,6 +129,8 @@ async function initTestsPage() {
             time:       t.duration || 30,
             free:       !t.isPremium,
             desc:       t.description || '',
+            grade:      t.grade || '',
+            topic:      t.topic || t.category || '',
             attempts:   t.attempts || 0,
             users:      t.uniqueUsers || 0,
             data:       (t.questions || []).map(q => ({ q: q.question, opts: q.options, ans: q.correctAnswer, figure: q.figure || null })),
@@ -130,15 +146,19 @@ function getAllTests() { return _testsCache; }
 document.addEventListener('DOMContentLoaded', () => { initTestsPage(); updateNavbar(); });
 
 async function renderTests() {
-    const allTests = getAllTests();
+    const filters = MathCurriculum.getFilters();
+    const allTests = getAllTests().filter(test =>
+        (!filters.grade || String(test.grade) === filters.grade) &&
+        (!filters.topic || test.topic === filters.topic)
+    );
     const grid = document.getElementById('testsGrid');
 
     if (allTests.length === 0) {
         grid.innerHTML = `
             <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray);">
                 <div style="font-size:64px;margin-bottom:16px;">📝</div>
-                <h3 style="font-size:20px;margin-bottom:8px;color:#374151;">Hələ sınaq yoxdur</h3>
-                <p style="font-size:14px;">Admin tərəfindən sınaqlar əlavə ediləcək</p>
+                <h3 style="font-size:20px;margin-bottom:8px;color:#374151;">${filters.grade || filters.topic ? 'Bu seçimə uyğun sınaq tapılmadı' : 'Hələ sınaq yoxdur'}</h3>
+                <p style="font-size:14px;">${filters.grade || filters.topic ? 'Başqa sinif və ya mövzu seçin.' : 'Admin tərəfindən sınaqlar əlavə ediləcək'}</p>
             </div>`;
         return;
     }
@@ -177,8 +197,12 @@ async function renderTests() {
                 </span>
             </div>
 
-            <h3 style="font-size:17px;font-weight:700;margin-bottom:6px;color:#1f2937;">${t.title}</h3>
-            <p style="color:#6b7280;font-size:13px;margin-bottom:14px;line-height:1.5;">${t.desc}</p>
+            <h3 style="font-size:17px;font-weight:700;margin-bottom:6px;color:#1f2937;">${escapeTestLabel(t.title)}</h3>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:14px;line-height:1.5;">${escapeTestLabel(t.desc)}</p>
+            ${(t.grade || t.topic) ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:-5px 0 12px;">
+                ${t.grade ? `<span style="padding:4px 9px;background:#eef2ff;color:#4338ca;border-radius:14px;font-size:11px;font-weight:700;">${escapeTestLabel(MathCurriculum.gradeLabels[t.grade] || t.grade)}</span>` : ''}
+                ${t.topic ? `<span style="padding:4px 9px;background:#f1f5f9;color:#475569;border-radius:14px;font-size:11px;font-weight:600;">${escapeTestLabel(t.topic)}</span>` : ''}
+            </div>` : ''}
 
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
                 <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:20px;">
@@ -205,6 +229,12 @@ async function renderTests() {
             </button>
         </div>
     `}).join('');
+}
+
+function escapeTestLabel(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[char]);
 }
 
 let currentTest, currentQ = 0, score = 0, answerSelections = [];
@@ -239,7 +269,8 @@ async function startTest(id) {
             questions: test.questions.length,
             data: test.questions.map(question => ({
                 q: question.question,
-                opts: question.options,
+                opts: question.type === 'true-false' ? ['Doğru', 'Yanlış'] : (question.options || []),
+                type: question.type || 'single-choice',
                 figure: question.figure,
             })),
         };
@@ -252,6 +283,7 @@ async function startTest(id) {
     currentQ = 0;
     score = 0;
     answerSelections = new Array(currentTest.questions).fill(null);
+    _quizDeadline = Date.now() + (Number(currentTest.time || currentTest.duration) || 30) * 60 * 1000;
     showQuestion();
 }
 
@@ -355,16 +387,45 @@ let _quizTimer      = null;   // CircularTimer instance
 let _quizTimerTick  = null;   // setInterval id
 let _quizSecsLeft   = 0;
 let _quizTotalSecs  = 0;
+let _quizDeadline   = 0;
 
 function showQuestion() {
     const q         = currentTest.data[currentQ];
     const totalQs   = currentTest.questions;
     const progress  = Math.round(((currentQ) / totalQs) * 100);
+    const questionType = q.type || 'single-choice';
+    const isMulti = questionType === 'multiple-choice';
+    const hasTextAnswer = questionType === 'short-answer' || questionType === 'numeric';
+    const answerInput = hasTextAnswer
+        ? `<label style="display:grid;gap:8px;margin-top:12px;color:#475569;font-weight:600;">
+            ${questionType === 'numeric' ? 'Ədədi cavabınızı daxil edin' : 'Qısa cavabınızı daxil edin'}
+            <input id="writtenAnswer" type="${questionType === 'numeric' ? 'number' : 'text'}" step="any" class="form-control" autocomplete="off">
+           </label>
+           <button id="confirmAnswerBtn" type="button" class="btn btn-primary" onclick="confirmCurrentAnswer()" style="margin-top:12px;">Cavabı təsdiqlə</button>`
+        : '';
+    const answerOptions = (q.opts || []).map((opt, i) => isMulti
+        ? `<label class="answer-option answer-option-check" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;">
+                <input type="checkbox" name="quizAnswer" value="${i}">
+                <span>${['A','B','C','D','E','F'][i]})</span>
+                <span style="flex:1;">${escapeTestLabel(opt)}</span>
+           </label>`
+        : `<button class="answer-option" data-idx="${i}" onclick="selectAnswer(${i})"
+                style="width:100%;padding:14px 16px;border:2px solid #e2e8f0;border-radius:10px;background:white;text-align:left;cursor:pointer;font-size:15px;color:#1e293b;display:flex;align-items:center;gap:12px;transition:all 0.22s;"
+                onmouseover="if(!this.disabled){this.style.borderColor='#4338ca';this.style.background='rgba(67,56,202,0.04)'}"
+                onmouseout="if(!this.disabled){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                <span style="width:28px;height:28px;border-radius:8px;background:#f1f5f9;color:#64748b;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${['A','B','C','D','E','F'][i]}</span>
+                <span style="flex:1;">${escapeTestLabel(opt)}</span>
+           </button>`
+    ).join('');
 
-    /* Total seconds for this test (duration in minutes × 60 / questions) */
-    const secsPerQ  = Math.max(20, Math.floor(((currentTest.time || 30) * 60) / totalQs));
-    _quizSecsLeft   = secsPerQ;
-    _quizTotalSecs  = secsPerQ;
+    _quizSecsLeft   = Math.max(0, Math.ceil((_quizDeadline - Date.now()) / 1000));
+    _quizTotalSecs  = Math.max(1, Math.ceil(((Number(currentTest.time || currentTest.duration) || 30) * 60)));
+    if (_quizSecsLeft <= 0) {
+        closeQuiz();
+        currentQ = totalQs;
+        showResult();
+        return;
+    }
 
     const modal = document.createElement('div');
     modal.id = 'quizModal';
@@ -397,7 +458,7 @@ function showQuestion() {
                     <!-- Progress bar -->
                     <div style="display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;margin-bottom:5px;">
                         <span>Sual ${currentQ + 1} / ${totalQs}</span>
-                        <span>${currentTest.title}</span>
+                        <span>${escapeTestLabel(currentTest.title)}</span>
                     </div>
                     <div style="background:#f1f5f9;border-radius:10px;height:6px;overflow:hidden;">
                         <div id="qProgress" style="
@@ -423,34 +484,13 @@ function showQuestion() {
             <h3 style="
                 font-size:18px;font-weight:700;margin:0 0 22px;
                 color:#1e293b;line-height:1.5;
-            ">${q.q}</h3>
+            ">${escapeTestLabel(q.q)}</h3>
             ${MathQuestionTools.renderFigure(q.figure) ? `<div class="question-figure">${MathQuestionTools.renderFigure(q.figure)}</div>` : ''}
 
             <!-- Options -->
-            <div id="options" style="display:flex;flex-direction:column;gap:10px;">
-                ${q.opts.map((opt, i) => `
-                <button class="answer-option" data-idx="${i}" onclick="selectAnswer(${i})"
-                    style="
-                        width:100%;padding:14px 16px;
-                        border:2px solid #e2e8f0;border-radius:10px;
-                        background:white;text-align:left;cursor:pointer;
-                        font-size:15px;color:#1e293b;
-                        display:flex;align-items:center;gap:12px;
-                        transition:all 0.22s;
-                    "
-                    onmouseover="if(!this.disabled){this.style.borderColor='#4338ca';this.style.background='rgba(67,56,202,0.04)'}"
-                    onmouseout="if(!this.disabled&&!this.classList.contains('correct')&&!this.classList.contains('wrong')){this.style.borderColor='#e2e8f0';this.style.background='white'}"
-                >
-                    <span style="
-                        width:28px;height:28px;border-radius:8px;
-                        background:#f1f5f9;color:#64748b;
-                        font-size:13px;font-weight:700;
-                        display:flex;align-items:center;justify-content:center;
-                        flex-shrink:0;
-                    ">${['A','B','C','D','E'][i]}</span>
-                    <span style="flex:1;">${opt}</span>
-                </button>`).join('')}
-            </div>
+            <div id="options" style="display:flex;flex-direction:column;gap:10px;">${answerOptions}</div>
+            ${answerInput}
+            ${isMulti ? '<button id="confirmAnswerBtn" type="button" class="btn btn-primary" onclick="confirmCurrentAnswer()" style="margin-top:12px;">Cavabları təsdiqlə</button>' : ''}
 
             <!-- Feedback + Next -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;min-height:38px;">
@@ -485,35 +525,76 @@ function showQuestion() {
             if (_quizTimer) _quizTimer.update(_quizSecsLeft);
             if (_quizSecsLeft <= 0) {
                 clearInterval(_quizTimerTick);
-                /* Auto-advance: treat as wrong answer */
-                const btns = document.querySelectorAll('#options button');
-                btns.forEach(b => b.disabled = true);
+                document.querySelectorAll('#options button, #options input, #writtenAnswer, #confirmAnswerBtn').forEach(control => control.disabled = true);
                 const fb = document.getElementById('feedback');
                 if (fb) fb.innerHTML = '<span style="color:#f59e0b;">Vaxt bitdi. Cavab qeydə alınmadı.</span>';
-                const nb = document.getElementById('nextBtn');
-                if (nb) nb.style.display = 'block';
+                answerSelections[currentQ] = null;
+                closeQuiz();
+                currentQ = totalQs;
+                showResult();
             }
         }, 1000);
     }
 }
 
 function selectAnswer(idx) {
-    const btns = document.querySelectorAll('#options button');
-    btns.forEach(b => b.disabled = true);
+    submitQuizAnswer(idx);
+}
 
-    clearInterval(_quizTimerTick);
-    answerSelections[currentQ] = idx;
+function confirmCurrentAnswer() {
+    const question = currentTest.data[currentQ];
+    let answer;
+    if (question.type === 'multiple-choice') {
+        answer = [...document.querySelectorAll('input[name="quizAnswer"]:checked')].map(input => Number(input.value));
+        if (!answer.length) {
+            showNotification('Ən azı bir cavab seçin.', 'warning');
+            return;
+        }
+    } else {
+        const input = document.getElementById('writtenAnswer');
+        if (!input || !input.value.trim()) {
+            showNotification('Cavabınızı daxil edin.', 'warning');
+            return;
+        }
+        answer = question.type === 'numeric' ? Number(input.value) : input.value.trim();
+        if (question.type === 'numeric' && !Number.isFinite(answer)) {
+            showNotification('Düzgün ədədi cavab daxil edin.', 'warning');
+            return;
+        }
+    }
+    submitQuizAnswer(answer);
+}
+
+function submitQuizAnswer(answer) {
+    document.querySelectorAll('#options button, #options input, #writtenAnswer, #confirmAnswerBtn').forEach(control => control.disabled = true);
+    answerSelections[currentQ] = answer;
     const fb = document.getElementById('feedback');
-    if (btns[idx]) btns[idx].classList.add('selected');
     if (fb) fb.innerHTML = '<span style="color:#0f766e;">Cavab qeydə alındı.</span>';
 
     const nb = document.getElementById('nextBtn');
     if (nb) nb.style.display = 'block';
 }
 
+function formatReviewAnswer(type, answer, options) {
+    if (answer === null || answer === undefined || answer === '') return 'Cavab verilməyib';
+    if (type === 'multiple-choice') {
+        return (Array.isArray(answer) ? answer : []).map(index => options[index] || '').filter(Boolean).map(escapeTestLabel).join(', ') || 'Cavab verilməyib';
+    }
+    if (type === 'single-choice' || type === 'true-false') {
+        return escapeTestLabel(options[Number(answer)] ?? answer);
+    }
+    return escapeTestLabel(answer);
+}
+
 function nextQuestion() {
     clearInterval(_quizTimerTick);
     if (_quizTimer) { _quizTimer.destroy(); _quizTimer = null; }
+    if (Date.now() >= _quizDeadline) {
+        currentQ = currentTest.questions;
+        closeQuiz();
+        showResult();
+        return;
+    }
     currentQ++;
     closeQuiz();
     if (currentQ < currentTest.questions) {
@@ -557,9 +638,23 @@ async function showResult() {
         await renderTests();
     }
 
-    try {
-        await API.points.awardDailyTask('solve-test', 'Sınaq həll et', 20);
-    } catch {}
+    const dailyTaskEarnedPoints = result.dailyTaskEarnedPoints || 0;
+
+    const reviewMarkup = Array.isArray(result.questionResults) ? result.questionResults.map((item, index) => {
+        const options = item.options || [];
+        const statusColor = item.correct ? '#047857' : '#b91c1c';
+        const statusLabel = item.correct ? 'Düzgün' : 'Yanlış';
+        return `<article style="text-align:left;padding:14px;border:1px solid #e2e8f0;border-left:4px solid ${statusColor};border-radius:10px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;">
+                <strong>Sual ${index + 1}</strong><span style="color:${statusColor};font-weight:700;">${statusLabel}</span>
+            </div>
+            <div>${escapeTestLabel(item.question)}</div>
+            ${MathQuestionTools.renderFigure(item.figure) ? `<div class="question-figure">${MathQuestionTools.renderFigure(item.figure)}</div>` : ''}
+            <div style="font-size:12px;color:#475569;margin-top:7px;">Sizin cavabınız: ${formatReviewAnswer(item.type, item.selectedAnswer, options)}</div>
+            ${!item.correct ? `<div style="font-size:12px;color:#047857;margin-top:4px;">Düzgün cavab: ${formatReviewAnswer(item.type, item.correctAnswer, options)}${item.type === 'numeric' && item.answerTolerance ? ` (±${escapeTestLabel(item.answerTolerance)})` : ''}</div>` : ''}
+            ${item.explanation ? `<div style="font-size:12px;color:#475569;margin-top:7px;"><strong>İzah:</strong> ${escapeTestLabel(item.explanation)}</div>` : ''}
+        </article>`;
+    }).join('') : '';
 
     const modal = document.createElement('div');
     modal.id = 'resultModal';
@@ -588,7 +683,7 @@ async function showResult() {
                 </div>
             </div>
 
-            <h3 style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:4px;">${currentTest.title}</h3>
+            <h3 style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:4px;">${escapeTestLabel(currentTest.title)}</h3>
             <p style="color:#9ca3af;font-size:13px;margin-bottom:18px;">${currentTest.questions} sual · ${currentTest.time || currentTest.duration || '?'} dəq</p>
 
             <!-- Stats üçlüyü -->
@@ -608,16 +703,21 @@ async function showResult() {
             </div>
 
             <!-- Qazanılan xal -->
-            ${earnedPoints > 0 ? `
+            ${earnedPoints > 0 || dailyTaskEarnedPoints > 0 ? `
                 <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:12px;padding:11px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px;">
                     <span style="font-size:20px;">🎉</span>
-                    <span style="color:white;font-weight:700;font-size:16px;">+${earnedPoints} xal qazandınız!</span>
+                    <span style="color:white;font-weight:700;font-size:16px;">+${earnedPoints + dailyTaskEarnedPoints} xal qazandınız!</span>
                 </div>
             ` : alreadyEarned ? `
                 <div style="background:#f3f4f6;border-radius:12px;padding:10px 16px;margin-bottom:18px;">
                     <div style="color:#6b7280;font-size:13px;"><i class="fas fa-info-circle"></i> Bu sınaqdan artıq xal qazanmısınız</div>
                 </div>
             ` : ''}
+
+            ${reviewMarkup ? `<details style="margin-bottom:18px;text-align:left;">
+                <summary style="cursor:pointer;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;font-weight:700;color:#334155;">Cavabları və izahları nəzərdən keçir</summary>
+                <div style="margin-top:10px;">${reviewMarkup}</div>
+            </details>` : ''}
 
             <!-- Buttons -->
             <div style="display:flex;gap:10px;">
@@ -631,6 +731,15 @@ async function showResult() {
         </div>
     `;
     document.body.appendChild(modal);
+    if (typeof renderMathInElement === 'function') {
+        renderMathInElement(modal, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false },
+            ],
+            throwOnError: false,
+        });
+    }
 
     /* ── Animated progress bar ── */
     requestAnimationFrame(() => {

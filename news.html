@@ -167,8 +167,10 @@ async function loadNews() {
             statThisMonth.textContent = `${Number(thisMonthCount || 0).toLocaleString('az-AZ')}`;
         }
 
-        if (!news.length && list) { list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px;">Xəbər tapılmadı</p>'; return; }
-        if (list) list.innerHTML = news.map(n => `
+        const requestedId = new URLSearchParams(window.location.search).get('id');
+        const visibleNews = requestedId ? news.filter(item => String(item.id) === requestedId) : news;
+        if (!visibleNews.length && list) { list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px;">Xəbər tapılmadı</p>'; return; }
+        if (list) list.innerHTML = visibleNews.map(n => `
             <div class="news-card">
                 ${n.imageUrl ? `<img src="${n.imageUrl}" alt="${n.title}" class="news-img" style="background:#eef2ff;object-fit:cover;">` : `<div class="news-img" style="background:#eef2ff;">${n.emoji||'📰'}</div>`}
                 <div class="news-body">
@@ -179,6 +181,7 @@ async function loadNews() {
                         <span><i class="fas fa-user"></i> ${n.author||'Admin'}</span>
                         <span><i class="fas fa-eye"></i> ${n.views||0} baxış</span>
                     </div>
+                    ${requestedId ? '' : `<a class="news-read-link" href="news.html?id=${encodeURIComponent(n.id)}">Xəbəri oxu</a>`}
                 </div>
             </div>`).join('');
         if (sidebar) sidebar.innerHTML = news.slice(0,4).map(n => `
@@ -186,8 +189,27 @@ async function loadNews() {
                 <div class="sidebar-news-emoji">${n.emoji||'📰'}</div>
                 <div><h5>${n.title}</h5><span>${formatNewsDate(n.createdAt||n.date)}</span></div>
             </div>`).join('');
-        const id = new URLSearchParams(window.location.search).get('id');
-        if (id) API.news.view(id).catch(()=>{});
+        const id = requestedId;
+        if (id) {
+            const completeReading = async () => {
+                if (document.hidden) {
+                    window.setTimeout(completeReading, 5000);
+                    return;
+                }
+                try {
+                    const result = await API.news.completeRead(id);
+                    if (result.earnedPoints > 0) {
+                        showNotification(`Xəbər oxundu: +${result.earnedPoints} xal`, 'success');
+                        window.dispatchEvent(new CustomEvent('points:updated'));
+                    }
+                } catch (error) {
+                    if (error.status !== 401) console.warn('Xəbər oxunması təsdiqlənmədi:', error);
+                }
+            };
+            API.news.view(id)
+                .then(() => window.setTimeout(completeReading, 20000))
+                .catch(error => console.warn('Xəbər baxışı qeydə alınmadı:', error));
+        }
     } catch(e) {
         if (list) list.innerHTML = `<p style="text-align:center;color:#ef4444;padding:40px;">${e.message}</p>`;
         if (statUsers) statUsers.textContent = '0';

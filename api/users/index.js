@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const redis  = require('../../lib/redis');
 const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, sanitizeUser, paginate } = require('../../lib/helpers');
+const { awardDailyTask } = require('../../lib/daily-tasks');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
@@ -51,6 +52,12 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx], { includePassword: session.role === 'admin' }));
 
   if (req.method === 'PUT') {
+    const previousProfile = {
+      name: users[idx].name || '',
+      phone: users[idx].phone || '',
+      bio: users[idx].bio || '',
+      profilePicture: users[idx].profilePicture || '',
+    };
     const { name, password, currentPassword, balance, role, premium, premiumExpiresAt,
       frozen, canAddTests, userType, phone, bio, profilePicture, testAccessRequested,
       testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail,
@@ -131,6 +138,12 @@ module.exports = async function handler(req, res) {
 
     users[idx].updatedAt = new Date().toISOString();
     await redis.set('allUsers', JSON.stringify(users));
+    const profileChanged = session.role !== 'admin' && ['name', 'phone', 'bio', 'profilePicture']
+      .some(field => Object.prototype.hasOwnProperty.call(req.body || {}, field) && String(users[idx][field] || '') !== String(previousProfile[field]));
+    if (profileChanged) {
+      const taskResult = await awardDailyTask(session, 'profile-update');
+      if (taskResult.points) users[idx].points = taskResult.points.total;
+    }
     return res.status(200).json(sanitizeUser(users[idx]));
   }
 

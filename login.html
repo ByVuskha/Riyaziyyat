@@ -210,9 +210,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const { user } = await API.auth.login(email, password);
-            try {
-                await API.points.awardDailyTask('login', 'Giriş et', 10);
-            } catch {}
             showAlert('Uğurla daxil oldunuz!', 'success');
 
             // Read redirect param if present

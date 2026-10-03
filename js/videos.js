@@ -56,6 +56,47 @@ function syncFilterButtons() {
     });
 }
 
+let youtubeApiPromise = null;
+let youtubePlayer = null;
+
+function loadYouTubeApi() {
+    if (window.YT?.Player) return Promise.resolve(window.YT);
+    if (youtubeApiPromise) return youtubeApiPromise;
+    youtubeApiPromise = new Promise((resolve, reject) => {
+        const previousReady = window.onYouTubeIframeAPIReady;
+        const timeout = window.setTimeout(() => reject(new Error('YouTube player yüklənmədi')), 15000);
+        window.onYouTubeIframeAPIReady = () => {
+            if (typeof previousReady === 'function') previousReady();
+            window.clearTimeout(timeout);
+            resolve(window.YT);
+        };
+        if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+            const script = document.createElement('script');
+            script.src = 'https://www.youtube.com/iframe_api';
+            script.onerror = () => {
+                window.clearTimeout(timeout);
+                reject(new Error('YouTube player yüklənmədi'));
+            };
+            document.head.appendChild(script);
+        }
+    });
+    return youtubeApiPromise;
+}
+
+async function completeVideoWatch(videoId) {
+    try {
+        const result = await API.videos.completeWatch(videoId);
+        if (result.earnedPoints > 0) {
+            showNotification(`Video tamamlandı: +${result.earnedPoints} xal`, 'success');
+            window.dispatchEvent(new CustomEvent('points:updated'));
+        }
+        return true;
+    } catch (error) {
+        showNotification(error.message || 'Video izlənməsi təsdiqlənmədi.', 'error');
+        return false;
+    }
+}
+
 async function loadVideos() {
     const grid = document.getElementById('videosGrid');
     if (!grid) return;
@@ -174,17 +215,55 @@ async function playVideo(id) {
         title.textContent = fullVideo.title || video.title;
         description.textContent = fullVideo.description || '';
         const youtubeId = youtubeVideoId(fullVideo.youtubeUrl || '');
+        let watchSessionStarted = false;
+        let watchSessionPromise = null;
+        let completionRequested = false;
+        const startWatchSession = () => {
+            if (watchSessionPromise) return watchSessionPromise;
+            watchSessionPromise = API.videos.startWatch(id)
+                .then(() => { watchSessionStarted = true; })
+                .catch(error => {
+                    watchSessionPromise = null;
+                    if (error.status !== 401) showNotification(error.message || 'Video izlənməsi qeydə alınmadı.', 'warning');
+                });
+            return watchSessionPromise;
+        };
+        const finishWatchSession = async () => {
+            if (completionRequested) return;
+            completionRequested = true;
+            if (watchSessionPromise) await watchSessionPromise;
+            if (watchSessionStarted) await completeVideoWatch(id);
+        };
         if (youtubeId) {
-            player.innerHTML = `<div class="video-player-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}" title="${escapeVideoText(fullVideo.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+            const hostId = `youtube-player-${Date.now()}`;
+            player.innerHTML = `<div class="video-player-frame"><div id="${hostId}"></div></div>`;
+            try {
+                const YT = await loadYouTubeApi();
+                youtubePlayer = new YT.Player(hostId, {
+                    width: '100%',
+                    height: '390',
+                    videoId: youtubeId,
+                    playerVars: { rel: 0 },
+                    events: {
+                        onStateChange: event => {
+                            if (event.data === YT.PlayerState.PLAYING) startWatchSession();
+                            if (event.data === YT.PlayerState.ENDED) finishWatchSession();
+                        },
+                    },
+                });
+            } catch (error) {
+                player.innerHTML = `<div class="video-player-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}" title="${escapeVideoText(fullVideo.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+                showNotification(error.message || 'YouTube player yüklənmədi.', 'warning');
+            }
         } else if (fullVideo.videoUrl && /^https:\/\//i.test(fullVideo.videoUrl)) {
             player.innerHTML = `<video controls playsinline preload="metadata" style="width:100%;max-height:70vh;background:#000"><source src="${escapeVideoText(fullVideo.videoUrl)}">Brauzer videonu aça bilmədi.</video>`;
+            const nativePlayer = player.querySelector('video');
+            nativePlayer.addEventListener('play', startWatchSession);
+            nativePlayer.addEventListener('ended', finishWatchSession, { once: true });
         } else {
             throw new Error('Video ünvanı düzgün deyil');
         }
         API.videos.view(id).catch(() => {});
-        try {
-            await API.points.awardDailyTask('watch-video', 'Video izlə', 15);
-        } catch {}
         modal.style.display = 'flex';
     } catch (error) {
         if (error.status === 403) {
@@ -201,6 +280,10 @@ async function playVideo(id) {
 function closeModal() {
     const modal = document.getElementById('videoModal');
     const player = document.getElementById('videoPlayerContainer');
+    if (youtubePlayer) {
+        youtubePlayer.destroy();
+        youtubePlayer = null;
+    }
     if (player) player.replaceChildren();
     if (modal) modal.style.display = 'none';
 }

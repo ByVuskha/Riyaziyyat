@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="js/math-question-tools.js"></script>
+    <script defer src="js/math-curriculum.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
             onload="renderMathInDocument()"></script>
     <style>
@@ -263,6 +264,11 @@
                         </div>
 
                         <form id="testForm" onsubmit="submitTest(event)">
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="MathQuestionTools.downloadQuestionCsvTemplate()">CSV şablonunu endir</button>
+                                <label class="btn btn-sm btn-secondary" for="teacherQuestionCsv">Sualları CSV-dən yüklə</label>
+                                <input id="teacherQuestionCsv" type="file" accept=".csv,text/csv" hidden onchange="importTeacherQuestionCsv(this)">
+                            </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
                                 <div class="form-group" style="margin:0;">
                                     <label>Sınaq Adı *</label>
@@ -278,6 +284,7 @@
                                     </select>
                                 </div>
                             </div>
+                            <div id="teacherCurriculumFields"></div>
                             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;">
                                 <div class="form-group" style="margin:0;">
                                     <label>Çətinlik</label>
@@ -531,6 +538,8 @@ function updateMathPreview(inputId) {
 //  Access check
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('teacherCurriculumFields').innerHTML = MathCurriculum.fieldsMarkup('teacher');
+    MathCurriculum.initCurriculumFields();
     const user = await API.getCurrentUser();
     if (!user) { window.location.href = 'login.html'; return; }
     if (user.userType !== 'teacher' && user.role !== 'admin') {
@@ -622,23 +631,6 @@ function addQuestion() {
     div.className = 'question-row';
     div.id = 'q_' + n;
 
-    // Build option rows
-    const optionLetters = ['A', 'B', 'C', 'D'];
-    const optionsHtml = optionLetters.map((ltr, i) => `
-        <div class="math-option-tools">
-            <div class="option-row">
-                <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Bu variantı düzgün cavab kimi seç" id="r_${n}_${i}">
-                <label class="opt-label" for="r_${n}_${i}">${ltr})</label>
-                <input type="text" class="form-control" id="q${n}_opt${i}"
-                       placeholder="Variant ${ltr} (riyazi ifadə: $x^2$)"
-                       oninput="updateMathPreview('q${n}_opt${i}')"
-                       required>
-            </div>
-            ${MathQuestionTools.toolbarMarkup(`q${n}_opt${i}`)}
-            <div class="math-preview" id="q${n}_opt${i}_preview"></div>
-        </div>
-    `).join('');
-
     div.innerHTML = `
         <span class="q-num">Sual ${n}</span>
         <button type="button" onclick="removeQuestion(${n})"
@@ -659,15 +651,36 @@ function addQuestion() {
             </div>
         </div>
 
-        <div style="margin-bottom:8px;">
-            <label style="font-size:13px;font-weight:600;color:#374151;">Variantlar — düzgün cavabın yanındakı dairəni işarələ</label>
-        </div>
-        <div class="options-grid">
-            ${optionsHtml}
-        </div>
+        ${MathQuestionTools.answerEditorMarkup(`q${n}_answer`)}
+        <label style="display:grid;gap:5px;margin-top:10px;font-size:12px;font-weight:700;color:#475569;">
+            Həll / izah (istəyə bağlı)
+            <textarea id="q${n}_explanation" class="form-control" rows="2" maxlength="2000" placeholder="Cavabın həllini qısa izah edin"></textarea>
+        </label>
     `;
     document.getElementById('questionsContainer').appendChild(div);
     div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function importTeacherQuestionCsv(input) {
+    try {
+        const questions = MathQuestionTools.parseQuestionCsv(await input.files[0].text());
+        if (document.querySelectorAll('.question-row').length + questions.length > 200) {
+            throw new Error('Bir sınaqda ən çox 200 sual ola bilər.');
+        }
+        questions.forEach(question => {
+            addQuestion();
+            const id = qCount;
+            document.getElementById(`q${id}_text`).value = question.question;
+            document.getElementById(`q${id}_text`).dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector(`#q_${id} [data-answer-editor]`).outerHTML = MathQuestionTools.answerEditorMarkup(`q${id}_answer`, question);
+            document.getElementById(`q${id}_explanation`).value = question.explanation || '';
+        });
+        showNotification(`${questions.length} sual CSV-dən əlavə edildi.`, 'success');
+    } catch (error) {
+        showNotification(error.message || 'CSV faylını oxumaq mümkün olmadı.', 'error');
+    } finally {
+        input.value = '';
+    }
 }
 
 function removeQuestion(n) {
@@ -697,6 +710,7 @@ async function submitTest(e) {
     const duration   = parseInt(document.getElementById('testDuration').value);
     const isPremium  = document.getElementById('testType').value === 'premium';
     const desc       = document.getElementById('testDesc').value.trim();
+    const curriculum = MathCurriculum.getMetadata('teacher');
 
     if (!title) {
         showNotification('Sınaq adını daxil edin!', 'error');
@@ -716,12 +730,22 @@ async function submitTest(e) {
     qRows.forEach((row, idx) => {
         const id = row.id.replace('q_', '');
         const qText = document.getElementById(`q${id}_text`)?.value.trim() || '';
-        const opts  = [0,1,2,3].map(i => (document.getElementById(`q${id}_opt${i}`)?.value.trim() || ''));
-        const corrEl = document.querySelector(`input[name="correct_${id}"]:checked`);
-        const correct = corrEl ? parseInt(corrEl.value) : 0;
+        const answer = MathQuestionTools.readAnswer(`q${id}_answer`);
         if (!qText) { valid = false; errMsg = `Sual ${idx+1}: sual mətni boşdur.`; return; }
-        if (opts.some(o => !o)) { valid = false; errMsg = `Sual ${idx+1}: bütün 4 variant doldurulmalıdır.`; return; }
-        questions.push({ question: qText, options: opts, correctAnswer: correct, figure: MathQuestionTools.readFigure(`q${id}`) });
+        if (['single-choice', 'multiple-choice'].includes(answer.type) && (answer.options.length < 2 || answer.options.some(o => !o))) {
+            valid = false; errMsg = `Sual ${idx+1}: ən azı 2 cavab variantı yazın.`; return;
+        }
+        if (answer.type === 'multiple-choice' && !answer.correctAnswer.length) {
+            valid = false; errMsg = `Sual ${idx+1}: ən azı bir düzgün cavab seçin.`; return;
+        }
+        if (answer.type === 'short-answer' && !answer.correctAnswer) {
+            valid = false; errMsg = `Sual ${idx+1}: düzgün cavabı yazın.`; return;
+        }
+        if (answer.type === 'numeric' && !Number.isFinite(answer.correctAnswer)) {
+            valid = false; errMsg = `Sual ${idx+1}: düzgün ədədi cavabı daxil edin.`; return;
+        }
+        const explanation = (document.getElementById(`q${id}_explanation`)?.value || '').trim();
+        questions.push({ question: qText, ...answer, explanation, figure: MathQuestionTools.readFigure(`q${id}`) });
     });
 
     if (!valid) {
@@ -733,6 +757,7 @@ async function submitTest(e) {
     const newTest = {
         title, emoji, difficulty, duration, isPremium,
         description: desc,
+        ...curriculum,
         questions
     };
     try {
@@ -756,6 +781,8 @@ async function submitTest(e) {
 
 function resetTestForm() {
     document.getElementById('testForm').reset();
+    document.getElementById('teacherCurriculumFields').innerHTML = MathCurriculum.fieldsMarkup('teacher');
+    MathCurriculum.initCurriculumFields();
     document.getElementById('questionsContainer').innerHTML = '';
     document.getElementById('addTestAlert').innerHTML = '';
     qCount = 0;
@@ -797,7 +824,7 @@ async function loadMyTests() {
             <div class="ti-emoji">${t.emoji || '📝'}</div>
             <div class="ti-info">
                 <h5>${escapeHtml(t.title)}</h5>
-                <span>${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
+                <span>${t.grade === 'all' ? 'Siniflərarası' : t.grade ? `Sinif ${escapeHtml(t.grade)}` : 'Sinif göstərilməyib'} · ${escapeHtml(t.topic || 'Mövzu göstərilməyib')} · ${t.questions.length} sual · ${t.duration} dəq · ${t.difficulty} · ${dateStr}</span>
                 ${t.adminNote ? `<br><span style="color:#ef4444;font-size:12px;"><i class="fas fa-comment"></i> ${escapeHtml(t.adminNote)}</span>` : ''}
             </div>
             <span class="ti-badge ${cls}">${label}</span>

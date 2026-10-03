@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="js/math-question-tools.js"></script>
+    <script defer src="js/math-curriculum.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         body { background: #f1f5f9; }
@@ -439,6 +440,11 @@
             <h4><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Sınaq Göndər</h4>
             <div id="addTestAlert"></div>
             <form id="testForm" onsubmit="submitTest(event)">
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="MathQuestionTools.downloadQuestionCsvTemplate()">CSV şablonunu endir</button>
+                    <label class="btn btn-sm btn-secondary" for="dashboardQuestionCsv">Sualları CSV-dən yüklə</label>
+                    <input id="dashboardQuestionCsv" type="file" accept=".csv,text/csv" hidden onchange="importDashboardQuestionCsv(this)">
+                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div class="form-group" style="margin:0;">
                         <label style="font-size:12px;">Sınaq Adı *</label>
@@ -453,6 +459,7 @@
                         </select>
                     </div>
                 </div>
+                <div id="dashboardCurriculumFields"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div class="form-group" style="margin:0;">
                         <label style="font-size:12px;">Çətinlik</label>
@@ -525,6 +532,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── API-based auth guard ──────────────────────────────────────────────
 const user = await requireLogin(); // from app.js — redirects if not logged in
 if (!user) return;
+document.getElementById('dashboardCurriculumFields').innerHTML = MathCurriculum.fieldsMarkup('dashboard');
+MathCurriculum.initCurriculumFields();
 
 /* ── Avatar & name ─────────────────────────────────────────────────── */
 document.getElementById('welcomeName').textContent = user.name;
@@ -564,11 +573,11 @@ const sdEl = document.getElementById('statDemo');
 if (sdEl) sdEl.textContent = user.demoTests ?? 3;
 
 const DAILY_TASKS = [
-    { id: 'login', icon: '🔐', title: 'Giriş et', reward: 10, description: 'Hesabınıza daxil olun' },
-    { id: 'watch-video', icon: '📹', title: 'Video izlə', reward: 15, description: 'Bir dərs izləyin' },
-    { id: 'solve-test', icon: '📝', title: 'Sınaq həll et', reward: 20, description: 'Bir sınaq tamamlayın' },
-    { id: 'read-news', icon: '📰', title: 'Xəbər oxu', reward: 10, description: 'Yeni xəbəri nəzərdən keçirin' },
-    { id: 'profile-update', icon: '👤', title: 'Profil yenilə', reward: 10, description: 'Məlumatlarınızı tamamlayın' },
+    { id: 'login', icon: '🔐', title: 'Giriş et', reward: 10, description: 'Hesabınıza daxil olun', href: '', action: 'Gündəlik girişdə avtomatik tamamlanır' },
+    { id: 'watch-video', icon: '📹', title: 'Video izlə', reward: 15, description: 'Bir dərsi sonadək izləyin', href: 'videos.html', action: 'Videolara bax' },
+    { id: 'solve-test', icon: '📝', title: 'Sınaq həll et', reward: 20, description: 'Bir sınağı tamamlayın', href: 'tests.html', action: 'Sınaqlara keç' },
+    { id: 'read-news', icon: '📰', title: 'Xəbər oxu', reward: 10, description: 'Bir xəbəri açıb oxuyun', href: 'news.html', action: 'Xəbərlərə bax' },
+    { id: 'profile-update', icon: '👤', title: 'Profil yenilə', reward: 10, description: 'Profil məlumatlarınızdan birini yeniləyin', href: 'profile-edit.html', action: 'Profili yenilə' },
 ];
 
 function getTodayTaskMap(dailyTasks) {
@@ -593,35 +602,14 @@ function renderDailyTasks(myData = {}) {
                     </div>
                 </div>
                 <p class="task-desc">${task.description}</p>
-                <button type="button" class="task-btn ${isDone ? 'success' : 'primary'}" data-task-id="${task.id}" ${isDone ? 'disabled' : ''}>
-                    ${isDone ? 'Tamamlandı' : 'Tamamla'}
-                </button>
+                ${isDone
+                    ? '<span class="task-btn success">Tamamlandı</span>'
+                    : task.href
+                        ? `<a class="task-btn primary" href="${task.href}">${task.action}</a>`
+                        : `<span class="task-btn">${task.action}</span>`}
             </div>
         `;
     }).join('');
-
-    taskList.querySelectorAll('[data-task-id]').forEach(button => {
-        button.addEventListener('click', async () => {
-            const task = DAILY_TASKS.find(item => item.id === button.dataset.taskId);
-            if (!task) return;
-
-            button.disabled = true;
-            button.textContent = 'Yüklənir...';
-            try {
-                const result = await API.points.awardDailyTask(task.id, task.title, task.reward);
-                if (result.taskAlreadyCompleted || result.earnedPoints === 0) {
-                    showNotification('Bu tapşırıq artıq tamamlanıb.', 'warning');
-                } else {
-                    showNotification(`+${result.earnedPoints || task.reward} xal qazandınız!`, 'success');
-                }
-                await renderDashboard();
-            } catch (error) {
-                showNotification(error.data?.error || error.message || 'Tapşırıq tamamlanmadı.', 'error');
-                button.disabled = false;
-                button.textContent = 'Tamamla';
-            }
-        });
-    });
 }
 
 /* ── Main dashboard render (points-based) ────────────────────────────── */
@@ -747,6 +735,14 @@ renderDashboard().catch(error => {
         if (element) element.textContent = '—';
     });
 });
+window.addEventListener('points:updated', async () => {
+    try {
+        const { points } = await API.points.get();
+        renderDailyTasks(points || {});
+    } catch (error) {
+        console.warn('Gündəlik tapşırıqlar yenilənmədi:', error);
+    }
+});
 // Teacher section: only show if teacher/admin
 if (user.userType === 'teacher' || user.role === 'admin') {
     renderTeacherSection(user);
@@ -830,19 +826,34 @@ function addQuestion() {
             <div class="math-preview" id="q${n}_text_preview"></div>
             ${MathQuestionTools.editorMarkup(`q${n}`)}
         </div>
-        <p style="font-size:11px;color:#6b7280;margin-bottom:6px;">Düzgün cavabı radio ilə seçin:</p>
-        <div class="options-2col">
-            ${[0,1,2,3].map(i=>`
-            <div class="math-option-tools">
-                <div class="opt-row">
-                    <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
-                    <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variantı" oninput="MathQuestionTools.updatePreview('q${n}_opt${i}','q${n}_opt${i}_preview')" required>
-                </div>
-                ${MathQuestionTools.toolbarMarkup(`q${n}_opt${i}`)}
-                <div class="math-preview" id="q${n}_opt${i}_preview"></div>
-            </div>`).join('')}
-        </div>`;
+        ${MathQuestionTools.answerEditorMarkup(`q${n}_answer`)}
+        <label style="display:grid;gap:5px;margin-top:10px;font-size:12px;font-weight:700;color:#475569;">
+            Həll / izah (istəyə bağlı)
+            <textarea id="q${n}_explanation" class="form-control" rows="2" maxlength="2000" placeholder="Cavabın həllini qısa izah edin"></textarea>
+        </label>`;
     document.getElementById('questionsContainer').appendChild(div);
+}
+
+async function importDashboardQuestionCsv(input) {
+    try {
+        const questions = MathQuestionTools.parseQuestionCsv(await input.files[0].text());
+        if (document.querySelectorAll('.question-row').length + questions.length > 200) {
+            throw new Error('Bir sınaqda ən çox 200 sual ola bilər.');
+        }
+        questions.forEach(question => {
+            addQuestion();
+            const id = qCount;
+            document.getElementById(`q${id}_text`).value = question.question;
+            document.getElementById(`q${id}_text`).dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector(`#q_${id} [data-answer-editor]`).outerHTML = MathQuestionTools.answerEditorMarkup(`q${id}_answer`, question);
+            document.getElementById(`q${id}_explanation`).value = question.explanation || '';
+        });
+        showNotification(`${questions.length} sual CSV-dən əlavə edildi.`, 'success');
+    } catch (error) {
+        showNotification(error.message || 'CSV faylını oxumaq mümkün olmadı.', 'error');
+    } finally {
+        input.value = '';
+    }
 }
 
 function removeQ(n) {
@@ -860,6 +871,7 @@ async function submitTest(e) {
     const duration   = parseInt(document.getElementById('tDuration').value);
     const isPremium  = document.getElementById('tType').value === 'premium';
     const desc       = document.getElementById('tDesc').value.trim();
+    const curriculum = MathCurriculum.getMetadata('dashboard');
 
     const qRows = document.querySelectorAll('.question-row');
     if (qRows.length === 0) {
@@ -873,11 +885,14 @@ async function submitTest(e) {
     qRows.forEach(row => {
         const id   = row.id.replace('q_', '');
         const text = (document.getElementById(`q${id}_text`)?.value || '').trim();
-        const opts = [0,1,2,3].map(i => (document.getElementById(`q${id}_opt${i}`)?.value || '').trim());
-        const corEl = document.querySelector(`input[name="cor_${id}"]:checked`);
-        const correct = corEl ? parseInt(corEl.value) : 0;
-        if (!text || opts.some(o => !o)) { valid = false; return; }
-        questions.push({ question: text, options: opts, correctAnswer: correct, figure: MathQuestionTools.readFigure(`q${id}`) });
+        const answer = MathQuestionTools.readAnswer(`q${id}_answer`);
+        if (!text) { valid = false; return; }
+        if (['single-choice', 'multiple-choice'].includes(answer.type) && (answer.options.length < 2 || answer.options.some(o => !o))) { valid = false; return; }
+        if (answer.type === 'multiple-choice' && !answer.correctAnswer.length) { valid = false; return; }
+        if (answer.type === 'short-answer' && !answer.correctAnswer) { valid = false; return; }
+        if (answer.type === 'numeric' && !Number.isFinite(answer.correctAnswer)) { valid = false; return; }
+        const explanation = (document.getElementById(`q${id}_explanation`)?.value || '').trim();
+        questions.push({ question: text, ...answer, explanation, figure: MathQuestionTools.readFigure(`q${id}`) });
     });
 
     if (!valid) {
@@ -887,7 +902,7 @@ async function submitTest(e) {
     }
 
     try {
-        await API.teacherTests.submit({ title, emoji, difficulty, duration, isPremium, description: desc, questions });
+        await API.teacherTests.submit({ title, emoji, difficulty, duration, isPremium, description: desc, ...curriculum, questions });
         document.getElementById('addTestAlert').innerHTML =
             '<div class="alert alert-success" style="margin-bottom:12px;"><i class="fas fa-check-circle"></i> Sınaq admin yoxlamasına göndərildi!</div>';
         resetTestForm();
@@ -901,6 +916,8 @@ async function submitTest(e) {
 
 function resetTestForm() {
     document.getElementById('testForm').reset();
+    document.getElementById('dashboardCurriculumFields').innerHTML = MathCurriculum.fieldsMarkup('dashboard');
+    MathCurriculum.initCurriculumFields();
     document.getElementById('questionsContainer').innerHTML = '';
     qCount = 0;
     addQuestion();

@@ -1,6 +1,7 @@
 const redis = require('../../lib/redis');
-const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
+const { getUserFromRequest, requireAuth, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, genId, paginate } = require('../../lib/helpers');
+const { awardDailyTask } = require('../../lib/daily-tasks');
 
 async function canAccessPremium(session) {
   if (!session) return false;
@@ -20,6 +21,14 @@ function publicVideo(video, access) {
   return { ...locked, locked: true };
 }
 
+function durationInSeconds(value) {
+  const parts = String(value || '').split(':').map(Number);
+  if (!parts.length || parts.some(part => !Number.isInteger(part) || part < 0)) return 0;
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return 0;
+}
+
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
   const { id, action } = req.query || {};
@@ -35,6 +44,36 @@ module.exports = async function handler(req, res) {
     videos[index].views = (videos[index].views || 0) + 1;
     await redis.set('videos', JSON.stringify(videos), { ex: 86400 * 30 });
     return res.status(200).json({ views: videos[index].views });
+  }
+
+  if (id && req.method === 'POST' && (action === 'watch-start' || action === 'watch-complete')) {
+    if (!allowMethods(req, res, ['POST'])) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const videos = parseList(await redis.get('videos'));
+    const video = videos.find(item => String(item.id) === String(id) && item.isActive !== false);
+    if (!video) return res.status(404).json({ error: 'Video tapılmadı' });
+    if (video.isPremium && !access) return res.status(403).json({ error: 'Bu video Premium üzvlər üçündür' });
+
+    const sessionKey = `videoWatch:${user.id}:${id}`;
+    if (action === 'watch-start') {
+      await redis.set(sessionKey, JSON.stringify({ startedAt: Date.now() }), { ex: 7200 });
+      return res.status(200).json({ started: true });
+    }
+
+    const rawWatch = await redis.get(sessionKey);
+    const watch = rawWatch && typeof rawWatch === 'object' ? rawWatch : (rawWatch ? JSON.parse(rawWatch) : null);
+    if (!watch?.startedAt) return res.status(400).json({ error: 'Video izləmə sessiyası tapılmadı' });
+    const videoDuration = durationInSeconds(video.duration);
+    const minimumWatchSeconds = videoDuration
+      ? Math.max(5, Math.min(120, Math.ceil(videoDuration * 0.8)))
+      : 15;
+    if (Date.now() - Number(watch.startedAt) < minimumWatchSeconds * 1000) {
+      return res.status(400).json({ error: 'Video izləmə müddəti tamamlanmayıb' });
+    }
+    await redis.del(sessionKey);
+    const taskResult = await awardDailyTask(user, 'watch-video', { videoId: id });
+    return res.status(200).json({ completed: true, ...taskResult });
   }
 
   if (id) {

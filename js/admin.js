@@ -846,6 +846,7 @@ async function loadTeacherSubmissions() {
                     <div style="flex:1;">
                         <strong>${escapeHtml(t.title)}</strong>
                         <div style="font-size:12px;color:#6b7280;">👨‍🏫 ${escapeHtml(t.teacherName)} · ${t.questions?.length||0} sual · ${t.duration} dəq · ${t.difficulty}</div>
+                        <div style="font-size:12px;color:#475569;margin-top:3px;">${escapeHtml(t.grade === 'all' ? 'Siniflərarası' : t.grade ? `Sinif ${t.grade}` : 'Sinif göstərilməyib')} · ${escapeHtml(t.topic || 'Mövzu göstərilməyib')}</div>
                         ${t.adminNote?`<div style="font-size:12px;color:#ef4444;margin-top:4px;"><i class="fas fa-comment"></i> ${escapeHtml(t.adminNote)}</div>`:''}
                     </div>
                     <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${bg};color:${color};">${label}</span>

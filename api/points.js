@@ -1,9 +1,9 @@
 const redis = require('../lib/redis');
 const { getUserFromRequest, requireAuth, setCommonHeaders } = require('../lib/auth');
 const { allowMethods } = require('../lib/helpers');
+const { applyDailyTask } = require('../lib/daily-tasks');
 
 const POINTS = { perfect: 50, good: 30, pass: 15, fail: 5, dailyLogin: 10 };
-const DAILY_TASK_REWARDS = { 'watch-video': 15, 'solve-test': 20, 'read-news': 10, 'profile-update': 10, 'login': 10 };
 
 function parseList(value) {
   return Array.isArray(value) ? value : (value ? JSON.parse(value) : []);
@@ -56,7 +56,38 @@ function makeLeaderboard(users, points) {
 
 function correctAnswerIndex(value) {
   if (Number.isInteger(value)) return value;
-  return ['A', 'B', 'C', 'D', 'E'].indexOf(String(value || '').toUpperCase());
+  return ['A', 'B', 'C', 'D', 'E', 'F'].indexOf(String(value || '').toUpperCase());
+}
+
+function normalizeShortAnswer(value) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('az');
+}
+
+function isQuestionAnswerCorrect(question, submitted) {
+  const type = question.type || 'single-choice';
+  if (type === 'multiple-choice') {
+    if (!Array.isArray(submitted) || submitted.length > 6 || !Array.isArray(question.correctAnswer)) return false;
+    const selected = [...new Set(submitted.map(value => Number.isInteger(value) ? value : (/^\d+$/.test(String(value)) ? Number(value) : Number.NaN)))].sort((a, b) => a - b);
+    const expected = [...new Set(question.correctAnswer.map(Number))].sort((a, b) => a - b);
+    return selected.length > 0 && selected.every(value => Number.isInteger(value)) && selected.length === expected.length && selected.every((value, index) => value === expected[index]);
+  }
+  if (type === 'short-answer') {
+    if (typeof submitted !== 'string') return false;
+    const expectedAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer];
+    const normalizedSubmitted = normalizeShortAnswer(submitted);
+    return Boolean(normalizedSubmitted) && expectedAnswers.some(value => normalizeShortAnswer(value) === normalizedSubmitted);
+  }
+  if (type === 'numeric') {
+    if (!(typeof submitted === 'number' || typeof submitted === 'string') || String(submitted).trim() === '') return false;
+    const actual = Number(submitted);
+    const expected = Number(question.correctAnswer);
+    const tolerance = Math.max(0, Number(question.answerTolerance) || 0);
+    return submitted !== null && submitted !== '' && Number.isFinite(actual) && Number.isFinite(expected) && Math.abs(actual - expected) <= tolerance;
+  }
+  const selected = Number.isInteger(submitted)
+    ? submitted
+    : (typeof submitted === 'string' && /^\d+$/.test(submitted) ? Number(submitted) : Number.NaN);
+  return Number.isInteger(selected) && selected === correctAnswerIndex(question.correctAnswer);
 }
 
 function pointsForTestScore(ballScore) {
@@ -116,6 +147,7 @@ module.exports = async function handler(req, res) {
   const data = points[user.id] || emptyPoints(user);
   let earnedPoints = 0;
   let scoreResult = null;
+  let dailyTaskEarnedPoints = 0;
 
   if (req.body?.type === 'daily-login') {
     if (user.role !== 'admin') {
@@ -125,41 +157,10 @@ module.exports = async function handler(req, res) {
         earnedPoints = POINTS.dailyLogin;
         addPoints(data, earnedPoints, 'Gündəlik giriş');
       }
+      applyDailyTask(data, 'login', { award: false });
     }
   } else if (req.body?.type === 'daily-task') {
-    const taskId = String(req.body?.taskId || '');
-    const taskTitle = String(req.body?.taskTitle || taskId || 'Tapşırıq');
-    const taskReward = Number(req.body?.reward || DAILY_TASK_REWARDS[taskId] || 0);
-
-    if (!taskId || !taskReward) {
-      return res.status(400).json({ error: 'Tapşırıq məlumatı düzgün deyil' });
-    }
-
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const dailyTasks = data.dailyTasks && typeof data.dailyTasks === 'object' ? data.dailyTasks : {};
-    const todayTasks = dailyTasks[todayKey] && typeof dailyTasks[todayKey] === 'object' ? dailyTasks[todayKey] : {};
-
-    if (todayTasks[taskId]) {
-      return res.status(200).json({ points: data, leaderboard: makeLeaderboard(users, points), earnedPoints: 0, taskAlreadyCompleted: true });
-    }
-
-    todayTasks[taskId] = {
-      taskId,
-      taskTitle,
-      reward: taskReward,
-      completedAt: new Date().toISOString(),
-    };
-    dailyTasks[todayKey] = todayTasks;
-    data.dailyTasks = dailyTasks;
-
-    if (taskId === 'watch-video') {
-      const watchedVideos = Array.isArray(data.watchedVideos) ? data.watchedVideos : [];
-      watchedVideos.push(`video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      data.watchedVideos = watchedVideos;
-    }
-
-    earnedPoints = taskReward;
-    addPoints(data, earnedPoints, `Gündəlik tapşırıq: ${taskTitle}`);
+    return res.status(400).json({ error: 'Gündəlik tapşırıqlar yalnız təsdiqlənmiş fəaliyyət tamamlandıqda avtomatik verilir' });
   } else if (req.body?.type === 'test') {
     const testId = String(req.body?.testId || '');
     const answers = req.body?.answers;
@@ -179,10 +180,19 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Sınaq cavablarının sayı uyğun deyil' });
     }
 
-    const score = questions.reduce((total, question, index) => {
-      const selected = answers[index];
-      return total + (selected !== null && selected !== undefined && Number(selected) === correctAnswerIndex(question.correctAnswer) ? 1 : 0);
-    }, 0);
+    const questionResults = questions.map((question, index) => ({
+      index,
+      question: question.question || question.text || '',
+      type: question.type || 'single-choice',
+      options: question.type === 'true-false' ? ['Doğru', 'Yanlış'] : (question.options || []),
+      selectedAnswer: answers[index] ?? null,
+      correctAnswer: question.correctAnswer,
+      answerTolerance: Number(question.answerTolerance) || 0,
+      explanation: question.explanation || '',
+      figure: question.figure || null,
+      correct: isQuestionAnswerCorrect(question, answers[index]),
+    }));
+    const score = questionResults.reduce((total, result) => total + (result.correct ? 1 : 0), 0);
     const ballScore = Math.round((score / questions.length) * 100);
     const completed = Array.isArray(data.completedTests) ? data.completedTests : [];
     const alreadyCompleted = completed.includes(testId);
@@ -203,6 +213,10 @@ module.exports = async function handler(req, res) {
       }
       earnedPoints = Math.max(0, scorePoints - previousPoints);
       if (earnedPoints > 0) addPoints(data, earnedPoints, `"${test.title}" sınağı (${ballScore}%)`);
+      if (!alreadyCompleted) {
+        const taskResult = applyDailyTask(data, 'solve-test');
+        dailyTaskEarnedPoints = taskResult.earnedPoints;
+      }
     }
 
     if (!previous || ballScore >= previous.ballScore) {
@@ -236,11 +250,12 @@ module.exports = async function handler(req, res) {
       percentage: ballScore,
       ballScore,
       earnedPoints,
+      questionResults,
       date: new Date().toISOString(),
       timestamp: Date.now(),
     });
     await redis.set('testResults', JSON.stringify(results.slice(0, 5000)), { ex: 86400 * 90 });
-    scoreResult = { score, total: questions.length, ballScore, alreadyCompleted };
+    scoreResult = { score, total: questions.length, ballScore, alreadyCompleted, questionResults, dailyTaskEarnedPoints };
   } else {
     return res.status(400).json({ error: 'Xal əməliyyatı dəstəklənmir' });
   }
