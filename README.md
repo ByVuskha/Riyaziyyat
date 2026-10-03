@@ -124,8 +124,8 @@ Bütün cihazlarda mükəmməl işləyir:
 
 ## 🔄 Konfiqurasiya
 
-### Şifrə Bərpası EmailJS
-Giriş səhifəsindəki şifrə bərpa linki üçün EmailJS Service ID, reset template ID və Public Key-i Vercel Environment Variables-da konfiqurasiya edin. Addımlar: `EMAILJS-QURASDIRMA.md` və `DEPLOYMENT.md`.
+### EmailJS
+Qeydiyyat təsdiq kodları və şifrə bərpa linkləri üçün EmailJS Service ID, uyğun template ID-lər (`EMAILJS_VERIFY_TEMPLATE_ID`, `EMAILJS_RESET_TEMPLATE_ID`) və Public Key-i Vercel Environment Variables-da konfiqurasiya edin. Dəyərləri əlavə etdikdən sonra deployment-i yeniləyin. Addımlar: `EMAILJS-QURASDIRMA.md` və `DEPLOYMENT.md`.
 
 ### Upstash Quraşdırma
 Cloud storage üçün:

@@ -10,7 +10,7 @@ Deploy the repository root to Vercel and configure these project environment var
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `JWT_SECRET` (use a newly generated random secret)
-- `EMAILJS_SERVICE_ID`, `EMAILJS_RESET_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY` (required for password-reset email)
+- `EMAILJS_SERVICE_ID`, `EMAILJS_RESET_TEMPLATE_ID`, `EMAILJS_VERIFY_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY` (required for password-reset and registration verification emails)
 - `APP_URL` (public site origin used to construct reset links)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required only for direct video-file uploads)
 
@@ -28,6 +28,8 @@ Save the variable and redeploy so the serverless functions receive it. Do not pu
 Registration stores users in Upstash Redis (`allUsers`) with bcrypt-hashed passwords, and login verifies the submitted password against that record. Keep `JWT_SECRET` separate from the database: it signs session cookies and must remain a Vercel environment variable.
 
 Password reset requires an EmailJS service and a template with `to_email`, `reset_url`, and `site_name` parameters. Add the three EmailJS values above to Vercel and redeploy. Reset links expire after 15 minutes and can be used once.
+
+Registration verification requires a separate EmailJS template configured with `to_email`, `user_name`, and `verification_code` parameters. Set `EMAILJS_VERIFY_TEMPLATE_ID` to that template's ID in Vercel and redeploy. Verification codes expire after 10 minutes; resend requests are limited to one per minute. See `EMAILJS-QURASDIRMA.md` for the Gmail service and template setup.
 
 YouTube video links and all other API-backed content use the Vercel/Upstash backend. Video-file uploads remain unavailable until Cloudinary is configured. Card payments are intentionally disabled until a real payment provider and its verified callback are integrated; the app must not credit balances based on a browser-only success screen.
 
