@@ -668,6 +668,7 @@ const API = (() => {
       const looksLikeJson = contentType.includes('application/json') || /^[\[{]/.test(trimmedText);
       const looksLikeHtml = /<\s*(!doctype|html|body|head|table|script)|<\/?[a-z]/i.test(trimmedText) || contentType.includes('text/html');
       let data = {};
+      const isRegistrationVerificationRequest = /^\/api\/auth\/(?:register-code|register)(?:\?|$)/.test(requestPath);
 
       if (looksLikeJson && trimmedText) {
         try {
@@ -678,9 +679,11 @@ const API = (() => {
       }
 
       const shouldFallbackToLocal =
-        (!r.ok && [404, 405].includes(r.status)) ||
-        (requestPath.startsWith('/api/') && (looksLikeHtml || (!looksLikeJson && !trimmedText))) ||
-        shouldUseLocalFallbackForEmptyData(path, data);
+        !isRegistrationVerificationRequest && (
+          (!r.ok && [404, 405].includes(r.status)) ||
+          (requestPath.startsWith('/api/') && (looksLikeHtml || (!looksLikeJson && !trimmedText))) ||
+          shouldUseLocalFallbackForEmptyData(path, data)
+        );
 
       if (shouldFallbackToLocal) {
         const fallback = tryLocalFallback(method, path, body);
@@ -691,6 +694,9 @@ const API = (() => {
       return data;
     } catch (error) {
       if (error.status) throw error;
+      if (/^\/api\/auth\/(?:register-code|register)(?:\?|$)/.test(buildRequestPath(path))) {
+        throw new Error('Email doğrulaması üçün serverə qoşulmaq mümkün olmadı. Bir az sonra yenidən cəhd edin.');
+      }
       const fallback = tryLocalFallback(method, path, body);
       if (fallback !== undefined) return fallback;
       throw error;
@@ -704,8 +710,11 @@ const API = (() => {
       setCachedUser(result.user);
       return result;
     },
-    async register(name, email, password, userType) {
-      const result = await req('POST', '/api/auth/register', { name, email, password, userType, deviceInfo: getDeviceInfo() });
+    async sendRegistrationCode(name, email, password, userType) {
+      return req('POST', '/api/auth/register-code', { name, email, password, userType, deviceInfo: getDeviceInfo() });
+    },
+    async register(email, verificationCode) {
+      const result = await req('POST', '/api/auth/register', { email, verificationCode });
       setCachedUser(result.user);
       return result;
     },

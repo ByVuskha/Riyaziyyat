@@ -24,6 +24,9 @@ const ADMIN_FALLBACK = {
 };
 const PASSWORD_RESET_TTL = 15 * 60;
 const PASSWORD_RESET_MESSAGE = 'Əgər bu email qeydiyyatlıdırsa, şifrə bərpa linki göndərildi.';
+const REGISTRATION_CODE_TTL = 10 * 60;
+const REGISTRATION_CODE_ATTEMPTS = 5;
+const REGISTRATION_CODE_RESEND_DELAY = 60;
 
 function parseUsers(value) {
   if (!value) return [];
@@ -84,6 +87,47 @@ function freezeDeviceMismatch(user, reason) {
   user.pendingDeviceInfo = user.pendingDeviceInfo || { requestedAt: new Date().toISOString() };
   user.updatedAt = new Date().toISOString();
   return user;
+}
+
+function parseStoredObject(value) {
+  if (!value || Array.isArray(value)) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && !Array.isArray(parsed) && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendEmailJsTemplate(templateId, templateParams) {
+  const emailConfig = {
+    service_id: process.env.EMAILJS_SERVICE_ID,
+    template_id: templateId,
+    user_id: process.env.EMAILJS_PUBLIC_KEY,
+  };
+  if (Object.values(emailConfig).some(value => !value)) {
+    return { configured: false };
+  }
+
+  let response;
+  try {
+    response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...emailConfig, template_params: templateParams }),
+    });
+  } catch (error) {
+    console.error('[auth] EmailJS request failed:', error.message);
+    return { configured: true, sent: false };
+  }
+
+  if (!response.ok) {
+    console.error('[auth] EmailJS rejected email with status:', response.status);
+    return { configured: true, sent: false };
+  }
+  return { configured: true, sent: true };
 }
 
 async function login(req, res) {
@@ -255,10 +299,13 @@ async function approveDevice(req, res) {
   return res.status(200).json({ ok: true, user: sanitizeUser(targetUser) });
 }
 
-async function register(req, res) {
+async function sendRegistrationCode(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { name, email, password, userType = 'student', deviceInfo } = req.body || {};
-  if (!name || !email || !password) return res.status(400).json({ error: 'Ad, email və şifrə tələb olunur' });
+  if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string' ||
+      !name.trim() || !email.trim() || !password) {
+    return res.status(400).json({ error: 'Ad, email və şifrə tələb olunur' });
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email düzgün deyil' });
   if (password.length < 6) return res.status(400).json({ error: 'Şifrə minimum 6 simvol olmalıdır' });
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -272,6 +319,20 @@ async function register(req, res) {
   const users = parseUsers(await redis.get('allUsers'));
   if (users.some(user => user.email === normalizedEmail)) return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
 
+  const verifyTemplateId = process.env.EMAILJS_VERIFY_TEMPLATE_ID;
+  if (!verifyTemplateId || !process.env.EMAILJS_SERVICE_ID || !process.env.EMAILJS_PUBLIC_KEY) {
+    return res.status(503).json({ error: 'Qeydiyyat email təsdiqi konfiqurasiya edilməyib. Adminlə əlaqə saxlayın.' });
+  }
+
+  const emailHash = crypto.createHash('sha256').update(normalizedEmail).digest('hex');
+  const rateKey = `registrationCodeRate:${emailHash}`;
+  if (await redis.get(rateKey)) {
+    return res.status(429).json({ error: 'Yeni kod istəməzdən əvvəl bir dəqiqə gözləyin.' });
+  }
+
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const codeHash = crypto.createHash('sha256').update(`${salt}:${code}`).digest('hex');
   const normalizedDeviceInfo = normalizeDeviceInfo(deviceInfo || {
     userAgent: req.headers['user-agent'],
     platform: req.headers['x-device-platform'],
@@ -280,15 +341,99 @@ async function register(req, res) {
     screen: req.headers['x-device-screen'],
     timezone: req.headers['x-device-timezone'],
   });
+  const pendingRegistration = {
+    name: name.trim().slice(0, 120),
+    email: normalizedEmail,
+    passwordHash: await bcrypt.hash(password, 12),
+    userType: userType === 'teacher' ? 'teacher' : 'student',
+    deviceInfo: normalizedDeviceInfo,
+    codeSalt: salt,
+    codeHash,
+    attempts: 0,
+    expiresAt: Date.now() + REGISTRATION_CODE_TTL * 1000,
+  };
+  const pendingKey = `registrationCode:${emailHash}`;
+  await redis.set(pendingKey, JSON.stringify(pendingRegistration), { ex: REGISTRATION_CODE_TTL });
+  await redis.set(rateKey, '1', { ex: REGISTRATION_CODE_RESEND_DELAY });
+
+  const emailResult = await sendEmailJsTemplate(verifyTemplateId, {
+    to_email: normalizedEmail,
+    user_name: pendingRegistration.name,
+    verification_code: code,
+    code,
+    expires_minutes: Math.floor(REGISTRATION_CODE_TTL / 60),
+    site_name: 'Bizim Riyaziyyat',
+  });
+  if (!emailResult.sent) {
+    await redis.del(pendingKey);
+    await redis.del(rateKey);
+    const error = emailResult.configured
+      ? 'Təsdiq kodunu emailə göndərmək mümkün olmadı. Bir az sonra yenidən cəhd edin.'
+      : 'Qeydiyyat email təsdiqi konfiqurasiya edilməyib. Adminlə əlaqə saxlayın.';
+    return res.status(emailResult.configured ? 502 : 503).json({ error });
+  }
+  return res.status(200).json({
+    ok: true,
+    message: 'Təsdiq kodu email ünvanınıza göndərildi.',
+    expiresIn: REGISTRATION_CODE_TTL,
+    resendAfter: REGISTRATION_CODE_RESEND_DELAY,
+  });
+}
+
+async function register(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const code = String(req.body?.verificationCode || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email düzgün deyil' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Emailə göndərilən 6 rəqəmli kodu daxil edin.' });
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    return res.status(503).json({ error: 'JWT_SECRET Vercel-də konfiqurasiya edilməyib' });
+  }
+
+  const emailHash = crypto.createHash('sha256').update(email).digest('hex');
+  const pendingKey = `registrationCode:${emailHash}`;
+  const pending = parseStoredObject(await redis.get(pendingKey));
+  if (!pending || pending.email !== email || pending.expiresAt <= Date.now()) {
+    await redis.del(pendingKey);
+    return res.status(400).json({ error: 'Təsdiq kodu yanlışdır və ya vaxtı bitib. Yenidən kod istəyin.' });
+  }
+  if (pending.attempts >= REGISTRATION_CODE_ATTEMPTS) {
+    await redis.del(pendingKey);
+    return res.status(429).json({ error: 'Çox sayda yanlış kod daxil edildi. Yeni kod istəyin.' });
+  }
+
+  const submittedHash = crypto.createHash('sha256').update(`${pending.codeSalt}:${code}`).digest();
+  const expectedHash = Buffer.from(String(pending.codeHash || ''), 'hex');
+  if (submittedHash.length !== expectedHash.length || !crypto.timingSafeEqual(submittedHash, expectedHash)) {
+    pending.attempts += 1;
+    const remainingTtl = Math.max(1, Math.ceil((pending.expiresAt - Date.now()) / 1000));
+    if (pending.attempts >= REGISTRATION_CODE_ATTEMPTS) {
+      await redis.del(pendingKey);
+      return res.status(429).json({ error: 'Çox sayda yanlış kod daxil edildi. Yeni kod istəyin.' });
+    }
+    await redis.set(pendingKey, JSON.stringify(pending), { ex: remainingTtl });
+    return res.status(400).json({ error: `Təsdiq kodu yanlışdır. Qalan cəhd: ${REGISTRATION_CODE_ATTEMPTS - pending.attempts}.` });
+  }
+
+  const consumedPending = parseStoredObject(await redis.getdel(pendingKey));
+  if (!consumedPending || consumedPending.codeHash !== pending.codeHash) {
+    return res.status(400).json({ error: 'Təsdiq kodu artıq istifadə olunub və ya vaxtı bitib. Yeni kod istəyin.' });
+  }
+
+  const users = parseUsers(await redis.get('allUsers'));
+  if (users.some(user => user.email === email)) {
+    return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
+  }
+
+  const normalizedDeviceInfo = consumedPending.deviceInfo;
   const sessionId = generateSessionId();
   const newUser = {
     id: genId(),
-    name: name.trim(),
-    email: normalizedEmail,
-    password: await bcrypt.hash(password, 12),
-    passwordPlain: password,
+    name: consumedPending.name,
+    email,
+    password: consumedPending.passwordHash,
     role: 'user',
-    userType,
+    userType: consumedPending.userType,
     premium: false,
     balance: 0,
     points: 0,
@@ -314,7 +459,7 @@ async function register(req, res) {
   users.push(newUser);
   await redis.set('allUsers', JSON.stringify(users));
 
-  if (userType === 'teacher') {
+  if (newUser.userType === 'teacher') {
     const teachers = parseUsers(await redis.get('teachers'));
     teachers.push({
       id: newUser.id,
@@ -480,6 +625,7 @@ module.exports = async function handler(req, res) {
     const action = req.query?.action;
     if (action === 'login') return await login(req, res);
     if (action === 'approve-device') return await approveDevice(req, res);
+    if (action === 'register-code') return await sendRegistrationCode(req, res);
     if (action === 'register') return await register(req, res);
     if (action === 'forgot-password') return await requestPasswordReset(req, res);
     if (action === 'reset-password') return await resetPassword(req, res);

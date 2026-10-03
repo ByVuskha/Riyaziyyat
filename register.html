@@ -47,9 +47,16 @@
         .input-icon .form-control { padding-left: 42px; }
         .auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--gray); }
         .auth-footer a { color: var(--primary); font-weight: 600; }
-        .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+        .alert i { margin-top: 2px; }
+        .alert-content { min-width: 0; }
         .alert-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+        .verification-note { margin: 0 0 18px; color: var(--gray); font-size: 14px; line-height: 1.6; }
+        .verification-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+        .verification-secondary { border: 0; background: transparent; color: var(--primary); font: inherit; font-size: 14px; cursor: pointer; padding: 8px; }
+        .verification-secondary:disabled { opacity: .55; cursor: wait; }
 
         /* User type selector */
         .type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
@@ -127,6 +134,26 @@
             </button>
         </form>
 
+        <form id="verificationForm" novalidate hidden>
+            <p class="verification-note" id="verificationNote">Email ünvanınıza göndərilən 6 rəqəmli kodu daxil edin. Kod 10 dəqiqə etibarlıdır.</p>
+            <div class="form-group">
+                <label for="verificationCode">Email təsdiq kodu</label>
+                <div class="input-icon">
+                    <i class="fas fa-shield-alt"></i>
+                    <input type="text" class="form-control" id="verificationCode"
+                           placeholder="123456" inputmode="numeric" autocomplete="one-time-code"
+                           pattern="[0-9]{6}" maxlength="6" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="verifyBtn">
+                <i class="fas fa-check-circle"></i> Kodu Təsdiqlə və Qeydiyyatı Bitir
+            </button>
+            <div class="verification-actions">
+                <button type="button" class="verification-secondary" id="resendCodeBtn">Kodu yenidən göndər</button>
+                <button type="button" class="verification-secondary" id="editRegistrationBtn">Məlumatları dəyiş</button>
+            </div>
+        </form>
+
         <div class="auth-footer">
             Artıq hesabınız var? <a href="login.html">Giriş</a>
         </div>
@@ -147,9 +174,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const form     = document.getElementById('registerForm');
     const btn      = document.getElementById('submitBtn');
     const alertBox = document.getElementById('alertBox');
+    const verificationForm = document.getElementById('verificationForm');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resendBtn = document.getElementById('resendCodeBtn');
+    const subtitle = document.querySelector('.auth-subtitle');
 
     function showAlert(msg, type = 'error') {
-        alertBox.innerHTML = `<div class="alert alert-${type}"><i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}</div>`;
+        const icons = { error: 'fa-exclamation-circle', success: 'fa-check-circle', warning: 'fa-exclamation-triangle' };
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const icon = document.createElement('i');
+        icon.className = `fas ${icons[type] || icons.error}`;
+        icon.setAttribute('aria-hidden', 'true');
+        const content = document.createElement('span');
+        content.className = 'alert-content';
+        content.textContent = msg;
+        alert.replaceChildren(icon, content);
+        alertBox.replaceChildren(alert);
     }
 
     window.selectType = function(type) {
@@ -178,19 +220,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (password.length < 6) { showAlert('Şifrə minimum 6 simvol olmalıdır'); return; }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Qeydiyyat...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Kod göndərilir...';
         alertBox.innerHTML = '';
 
         try {
-            await API.auth.register(name, email, password, userType);
-            showAlert('Qeydiyyat uğurla tamamlandı!', 'success');
-            setTimeout(() => window.location.href = 'dashboard.html', 700);
+            const result = await API.auth.sendRegistrationCode(name, email, password, userType);
+            form.hidden = true;
+            verificationForm.hidden = false;
+            subtitle.textContent = 'Email ünvanınızı təsdiqləyin';
+            document.getElementById('verificationNote').textContent = `${result.message || 'Təsdiq kodu email ünvanınıza göndərildi.'} Kod 10 dəqiqə etibarlıdır.`;
+            document.getElementById('verificationCode').focus();
+            showAlert(`Təsdiq kodu ${email} ünvanına göndərildi.`, 'success');
         } catch (err) {
             const msg = err.data?.error || err.message || 'Qeydiyyat mümkün olmadı';
             showAlert(msg);
+        } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-user-plus"></i> Qeydiyyat';
         }
+    });
+
+    verificationForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const verificationCode = document.getElementById('verificationCode').value.trim();
+        if (!/^\d{6}$/.test(verificationCode)) {
+            showAlert('Emailə göndərilən 6 rəqəmli kodu daxil edin.');
+            return;
+        }
+
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Yoxlanılır...';
+        try {
+            await API.auth.register(email, verificationCode);
+            showAlert('Email təsdiqləndi və qeydiyyat tamamlandı!', 'success');
+            setTimeout(() => window.location.href = 'dashboard.html', 700);
+        } catch (err) {
+            showAlert(err.data?.error || err.message || 'Kodu yoxlamaq mümkün olmadı.');
+        } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Kodu Təsdiqlə və Qeydiyyatı Bitir';
+        }
+    });
+
+    resendBtn.addEventListener('click', async () => {
+        resendBtn.disabled = true;
+        const previousLabel = resendBtn.textContent;
+        resendBtn.textContent = 'Göndərilir...';
+        try {
+            const result = await API.auth.sendRegistrationCode(
+                document.getElementById('name').value.trim(),
+                document.getElementById('email').value.trim(),
+                document.getElementById('password').value,
+                document.getElementById('userType').value
+            );
+            document.getElementById('verificationCode').value = '';
+            showAlert(result.message || 'Yeni təsdiq kodu göndərildi.', 'success');
+        } catch (err) {
+            showAlert(err.data?.error || err.message || 'Yeni kod göndərilmədi.', 'warning');
+        } finally {
+            resendBtn.disabled = false;
+            resendBtn.textContent = previousLabel;
+        }
+    });
+
+    document.getElementById('editRegistrationBtn').addEventListener('click', () => {
+        verificationForm.hidden = true;
+        form.hidden = false;
+        subtitle.textContent = 'Pulsuz qeydiyyatdan keçin';
+        document.getElementById('verificationCode').value = '';
+        alertBox.replaceChildren();
     });
 });
 </script>
