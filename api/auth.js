@@ -320,8 +320,15 @@ async function sendRegistrationCode(req, res) {
   if (users.some(user => user.email === normalizedEmail)) return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
 
   const verifyTemplateId = process.env.EMAILJS_VERIFY_TEMPLATE_ID;
-  if (!verifyTemplateId || !process.env.EMAILJS_SERVICE_ID || !process.env.EMAILJS_PUBLIC_KEY) {
-    return res.status(503).json({ error: 'Qeydiyyat email təsdiqi konfiqurasiya edilməyib. Adminlə əlaqə saxlayın.' });
+  const missingEmailConfig = [
+    ['EMAILJS_SERVICE_ID', process.env.EMAILJS_SERVICE_ID],
+    ['EMAILJS_VERIFY_TEMPLATE_ID', verifyTemplateId],
+    ['EMAILJS_PUBLIC_KEY', process.env.EMAILJS_PUBLIC_KEY],
+  ].filter(([, value]) => !value).map(([name]) => name);
+  if (missingEmailConfig.length) {
+    return res.status(503).json({
+      error: `Qeydiyyat email təsdiqi konfiqurasiya edilməyib. Vercel Environment Variables bölməsində bunları əlavə edin: ${missingEmailConfig.join(', ')}. Sonra deployment-i yeniləyin.`,
+    });
   }
 
   const emailHash = crypto.createHash('sha256').update(normalizedEmail).digest('hex');

@@ -60,7 +60,7 @@ Giriş səhifəsində **Şifrəmi unutdum?** seçin, qeydiyyatlı email ünvanı
 
 Qeydiyyat səhifəsində məlumatları daxil edin. Emailə göndərilən 6 rəqəmli kodu təsdiqləyənədək hesab yaradılmayacaq. Kod 10 dəqiqə etibarlıdır, beş yanlış cəhddən sonra ləğv olunur və yeni kod istəkləri arasında 60 saniyə gözləmə tətbiq edilir.
 
-EmailJS dəyişənləri konfiqurasiya edilməyibsə API `503` qaytaracaq. EmailJS maili rədd edərsə `502` görünəcək; EmailJS Dashboard-dakı Logs bölməsini yoxlayın.
+EmailJS dəyişənləri konfiqurasiya edilməyibsə API `503` qaytaracaq və çatışmayan dəyişənlərin adlarını göstərəcək. Onları Vercel **Project Settings → Environment Variables** bölməsində əlavə edin, sonra deployment-i yeniləyin. EmailJS maili rədd edərsə `502` görünəcək; EmailJS Dashboard-dakı Logs bölməsini yoxlayın.
 
 ## 💰 Qiymətlər
 
