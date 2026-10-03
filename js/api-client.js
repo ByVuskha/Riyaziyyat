@@ -805,7 +805,7 @@ const API = (() => {
       const contentType = r.headers.get('content-type') || '';
       const trimmedText = responseText.trim();
       const looksLikeJson = contentType.includes('application/json') || /^[\[{]/.test(trimmedText);
-      const looksLikeHtml = /<\s*(!doctype|html|body|head|table|script)|<\/?[a-z]/i.test(trimmedText) || contentType.includes('text/html');
+      const looksLikeHtml = contentType.includes('text/html') || /^\s*<(?:!doctype\s+html|html|head|body)\b/i.test(trimmedText);
       let data = {};
       const isRegistrationVerificationRequest = /^\/api\/auth\/(?:register-code|register)(?:\?|$)/.test(requestPath);
 
