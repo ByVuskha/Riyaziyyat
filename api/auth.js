@@ -126,7 +126,7 @@ async function sendEmailJsTemplate(templateId, templateParams) {
   if (!response.ok) {
     const errorDetails = (await response.text()).slice(0, 500);
     console.error('[auth] EmailJS rejected email with status:', response.status, errorDetails);
-    return { configured: true, sent: false };
+    return { configured: true, sent: false, status: response.status };
   }
   return { configured: true, sent: true };
 }
@@ -375,8 +375,10 @@ async function sendRegistrationCode(req, res) {
   if (!emailResult.sent) {
     await redis.del(pendingKey);
     await redis.del(rateKey);
-    const error = emailResult.configured
-      ? 'Təsdiq kodunu emailə göndərmək mümkün olmadı. Bir az sonra yenidən cəhd edin.'
+    const error = emailResult.status === 403
+      ? 'EmailJS serverdən məktub göndərilməsinə icazə vermir. Admin EmailJS → Account → Security bölməsində “API access from non-browser environments” seçimini aktiv etməlidir.'
+      : emailResult.configured
+        ? 'Təsdiq kodunu emailə göndərmək mümkün olmadı. Bir az sonra yenidən cəhd edin.'
       : 'Qeydiyyat email təsdiqi konfiqurasiya edilməyib. Adminlə əlaqə saxlayın.';
     return res.status(emailResult.configured ? 502 : 503).json({ error });
   }
