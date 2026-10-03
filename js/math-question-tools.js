@@ -149,7 +149,10 @@
     function renderFigure(raw) {
         const figure = normalizeFigure(raw);
         if (!figure) return '';
-        if (figure.type === 'svg') return figure.svg;
+        if (figure.type === 'svg') {
+            const source = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(figure.svg)}`;
+            return `<img class="geometry-diagram" src="${source}" alt="Sualın həndəsi fiquru" loading="lazy">`;
+        }
         const labels = figure.vertices.split(',').map(value => value.trim()).filter(Boolean);
         const vertex = (text, x, y) => `<text x="${x}" y="${y}" class="diagram-label">${escapeHtml(text)}</text>`;
         const mark = figure.measure ? `<text x="160" y="186" class="diagram-measure">${escapeHtml(figure.measure)}</text>` : '';
