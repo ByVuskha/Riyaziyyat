@@ -121,6 +121,36 @@ a { text-decoration: none; color: inherit; }
     color: var(--primary);
 }
 
+.navbar-menu .nav-group {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+.navbar-menu .nav-group + .nav-group {
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.navbar-menu .nav-group h3 {
+    margin: 0;
+    padding: 10px 24px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray);
+}
+
+.navbar-menu .nav-group a {
+    display: block;
+    padding: 10px 24px;
+    margin: 0;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
 .navbar-actions {
     display: flex;
     align-items: center;
