@@ -313,7 +313,7 @@
                             <div style="margin-bottom:15px;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                                     <label style="margin:0;font-weight:700;font-size:15px;">Suallar *</label>
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="addQuestion()">
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addQuestionFromButton()">
                                         <i class="fas fa-plus"></i> Sual Əlavə Et
                                     </button>
                                 </div>
@@ -659,6 +659,19 @@ function addQuestion() {
     `;
     document.getElementById('questionsContainer').appendChild(div);
     div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById(`q${n}_text`).focus();
+}
+
+function addQuestionFromButton() {
+    try {
+        addQuestion();
+    } catch (error) {
+        console.error('Sual redaktoru açıla bilmədi:', error);
+        const message = 'Sual sahəsi açıla bilmədi. Səhifəni yeniləyin; problem qalarsa yenidən cəhd edin.';
+        const alert = document.getElementById('addTestAlert');
+        if (alert) alert.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${message}</div>`;
+        showNotification(message, 'error');
+    }
 }
 
 async function importTeacherQuestionCsv(input) {
@@ -674,6 +687,7 @@ async function importTeacherQuestionCsv(input) {
             document.getElementById(`q${id}_text`).dispatchEvent(new Event('input', { bubbles: true }));
             document.querySelector(`#q_${id} [data-answer-editor]`).outerHTML = MathQuestionTools.answerEditorMarkup(`q${id}_answer`, question);
             document.getElementById(`q${id}_explanation`).value = question.explanation || '';
+            MathQuestionTools.setImportedFigure(`q${id}`, question.figure);
         });
         showNotification(`${questions.length} sual CSV-dən əlavə edildi.`, 'success');
     } catch (error) {

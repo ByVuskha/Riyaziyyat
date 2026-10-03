@@ -618,7 +618,7 @@ async function importAdminQuestionCsv(input) {
             answerTolerance: question.answerTolerance || 0,
             explanation: question.explanation || '',
             explanationVideo: '',
-            figure: null,
+            figure: question.figure || null,
         })));
         renderQuestions();
         showNotification(`${imported.length} sual CSV-dən əlavə edildi.`, 'success');
@@ -649,10 +649,10 @@ function editQuestion(idx) {
 
     document.getElementById('questionText').value = q.text || '';
     const figure = MathQuestionTools.normalizeFigure(q.figure);
-    document.getElementById('questionFigure_shape').value = figure?.type || '';
+    document.getElementById('questionFigure_shape').value = figure?.type !== 'svg' ? figure?.type || '' : '';
     document.getElementById('questionFigure_vertices').value = figure?.vertices || 'A, B, C';
     document.getElementById('questionFigure_measure').value = figure?.measure || '';
-    MathQuestionTools.refreshPreview('questionFigure');
+    MathQuestionTools.setImportedFigure('questionFigure', figure);
     document.getElementById('questionAnswerTools').innerHTML = MathQuestionTools.answerEditorMarkup('adminQuestionAnswer', q);
     document.getElementById('explanation').value = q.explanation || '';
     document.getElementById('explanationVideo').value = q.explanationVideo || '';
@@ -674,6 +674,7 @@ function clearModal() {
     document.getElementById('questionFigure_shape').value = '';
     document.getElementById('questionFigure_vertices').value = 'A, B, C';
     document.getElementById('questionFigure_measure').value = '';
+    document.getElementById('questionFigure_svg').value = '';
     MathQuestionTools.refreshPreview('questionFigure');
     ['qtext_preview'].forEach(id => {
         const el = document.getElementById(id);

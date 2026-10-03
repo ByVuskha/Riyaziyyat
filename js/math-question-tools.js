@@ -37,7 +37,7 @@
         const figure = normalizeFigure(initial);
         return `
             <div class="math-question-tools">
-                <details class="geometry-editor">
+                <details class="geometry-editor" ${figure?.type === 'svg' ? 'open' : ''}>
                     <summary><i class="fas fa-draw-polygon"></i> Həndəsi fiqur əlavə et</summary>
                     <div class="geometry-fields">
                         <label>Fiqur
@@ -54,12 +54,77 @@
                         </label>
                         <button type="button" class="btn btn-sm btn-secondary" data-clear-figure="${id}">Fiquru sil</button>
                     </div>
+                    <input type="hidden" id="${id}_svg" value="${escapeHtml(figure?.svg || '')}">
                     <div class="geometry-preview" id="${id}_figurePreview" aria-live="polite"></div>
                 </details>
             </div>`;
     }
 
+    function sanitizeSvgMarkup(markup) {
+        if (typeof DOMParser !== 'function' || typeof XMLSerializer !== 'function') return '';
+        const document = new DOMParser().parseFromString(String(markup || ''), 'image/svg+xml');
+        const source = document.documentElement;
+        if (source?.localName !== 'svg' || document.querySelector('parsererror')) return '';
+
+        const allowedTags = new Set(['svg', 'g', 'path', 'polygon', 'polyline', 'line', 'circle', 'ellipse', 'rect', 'text', 'tspan']);
+        const numericAttributes = new Set(['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'stroke-width', 'font-size', 'opacity']);
+        const colorAttributes = new Set(['fill', 'stroke']);
+        const safeColor = value => /^(?:#[0-9a-f]{3,8}|none|transparent|black|white|red|green|blue|gray|grey|orange|purple|yellow|currentcolor)$/i.test(value);
+        const safeNumbers = value => /^-?(?:\d+\.?\d*|\.\d+)(?:[ ,]+-?(?:\d+\.?\d*|\.\d+))*$/.test(value);
+        const safeAttribute = (name, value) => {
+            const normalized = value.trim();
+            if (colorAttributes.has(name)) return safeColor(normalized);
+            if (numericAttributes.has(name)) return name === 'opacity'
+                ? Number.isFinite(Number(normalized)) && Number(normalized) >= 0 && Number(normalized) <= 1
+                : safeNumbers(normalized);
+            if (name === 'viewBox' || name === 'points') return safeNumbers(normalized);
+            if (name === 'd') return /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]+$/.test(normalized);
+            if (name === 'stroke-dasharray') return /^(?:none|[\d.,\s]+)$/.test(normalized);
+            if (name === 'font-weight') return /^(?:normal|bold|[1-9]00)$/.test(normalized);
+            if (name === 'text-anchor') return /^(?:start|middle|end)$/.test(normalized);
+            return false;
+        };
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.setAttribute('class', 'geometry-diagram');
+        const width = Number.parseFloat(source.getAttribute('width'));
+        const height = Number.parseFloat(source.getAttribute('height'));
+        svg.setAttribute('width', String(Number.isFinite(width) && width > 0 && width <= 800 ? width : 320));
+        svg.setAttribute('height', String(Number.isFinite(height) && height > 0 && height <= 800 ? height : 210));
+        const viewBox = source.getAttribute('viewBox') || source.getAttribute('viewbox');
+        if (viewBox && safeAttribute('viewBox', viewBox)) svg.setAttribute('viewBox', viewBox.trim());
+
+        const copyChildren = (sourceNode, targetNode) => {
+            for (const child of sourceNode.childNodes) {
+                if (child.nodeType === 3) {
+                    targetNode.appendChild(document.createTextNode(child.nodeValue || ''));
+                    continue;
+                }
+                if (child.nodeType !== 1 || !allowedTags.has(child.localName)) continue;
+                const element = document.createElementNS('http://www.w3.org/2000/svg', child.localName);
+                const safeStyles = [];
+                for (const attribute of child.attributes) {
+                    if (!safeAttribute(attribute.name, attribute.value)) continue;
+                    const value = attribute.value.trim();
+                    element.setAttribute(attribute.name, value);
+                    if (['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'font-size', 'font-weight', 'text-anchor'].includes(attribute.name)) {
+                        safeStyles.push(`${attribute.name}:${value}`);
+                    }
+                }
+                if (safeStyles.length) element.setAttribute('style', safeStyles.join(';'));
+                copyChildren(child, element);
+                targetNode.appendChild(element);
+            }
+        };
+        copyChildren(source, svg);
+        return new XMLSerializer().serializeToString(svg);
+    }
+
     function normalizeFigure(raw) {
+        if (raw?.type === 'svg') {
+            const svg = sanitizeSvgMarkup(raw.svg);
+            return svg ? { type: 'svg', svg } : null;
+        }
         if (!raw || !shapes.some(([value]) => value === raw.type)) return null;
         return {
             type: raw.type,
@@ -70,7 +135,10 @@
 
     function readFigure(id) {
         const type = document.getElementById(`${id}_shape`)?.value || '';
-        if (!type) return null;
+        if (!type) {
+            const svg = document.getElementById(`${id}_svg`)?.value || '';
+            return svg ? normalizeFigure({ type: 'svg', svg }) : null;
+        }
         return normalizeFigure({
             type,
             vertices: document.getElementById(`${id}_vertices`)?.value || '',
@@ -81,6 +149,7 @@
     function renderFigure(raw) {
         const figure = normalizeFigure(raw);
         if (!figure) return '';
+        if (figure.type === 'svg') return figure.svg;
         const labels = figure.vertices.split(',').map(value => value.trim()).filter(Boolean);
         const vertex = (text, x, y) => `<text x="${x}" y="${y}" class="diagram-label">${escapeHtml(text)}</text>`;
         const mark = figure.measure ? `<text x="160" y="186" class="diagram-measure">${escapeHtml(figure.measure)}</text>` : '';
@@ -111,6 +180,15 @@
     function refreshPreview(id) {
         const preview = document.getElementById(`${id}_figurePreview`);
         if (preview) preview.innerHTML = renderFigure(readFigure(id));
+    }
+
+    function setImportedFigure(id, rawFigure) {
+        const figure = normalizeFigure(rawFigure);
+        const shape = document.getElementById(`${id}_shape`);
+        const svg = document.getElementById(`${id}_svg`);
+        if (shape) shape.value = figure && figure.type !== 'svg' ? figure.type : '';
+        if (svg) svg.value = figure?.type === 'svg' ? figure.svg : '';
+        refreshPreview(id);
     }
 
     function insertSymbol(inputId, symbol) {
@@ -323,7 +401,17 @@
         return rows.map((cells, index) => {
             const rowNumber = index + 2;
             const value = columnIndex => columnIndex < 0 ? '' : String(cells[columnIndex] || '').trim();
-            const question = value(questionColumn);
+            let question = value(questionColumn);
+            const svgMatches = question.match(/<svg\b[\s\S]*?<\/svg\s*>/gi) || [];
+            if (svgMatches.length > 1) throw new Error(`${rowNumber}-ci sətirdə yalnız bir SVG fiqur ola bilər.`);
+            let figure = null;
+            if (svgMatches.length) {
+                const svg = sanitizeSvgMarkup(svgMatches[0]);
+                if (!svg) throw new Error(`${rowNumber}-ci sətirdə SVG fiqur formatı düzgün deyil.`);
+                figure = { type: 'svg', svg };
+                question = question.replace(svgMatches[0], '').replace(/<br\s*\/?>/gi, '\n');
+                question = new DOMParser().parseFromString(question, 'text/html').body.textContent.trim();
+            }
             const type = value(typeColumn) || 'single-choice';
             if (!question) throw new Error(`${rowNumber}-ci sətirdə sual mətni boşdur.`);
             if (!['single-choice', 'multiple-choice', 'true-false', 'short-answer', 'numeric'].includes(type)) {
@@ -372,6 +460,7 @@
                 correctAnswer: type === 'short-answer' ? correctAnswer : correctAnswer,
                 ...(type === 'numeric' ? { answerTolerance } : {}),
                 explanation: value(explanationColumn),
+                figure,
             };
         });
     }
@@ -404,6 +493,8 @@
             const id = clearButton.dataset.clearFigure;
             const shape = document.getElementById(`${id}_shape`);
             if (shape) shape.value = '';
+            const svg = document.getElementById(`${id}_svg`);
+            if (svg) svg.value = '';
             refreshPreview(id);
         }
         const addOption = event.target.closest('[data-add-answer-option]');
@@ -438,14 +529,18 @@
     });
     document.addEventListener('change', event => {
         const field = event.target.closest('[data-figure-field]');
-        if (field) refreshPreview(field.dataset.figureField);
+        if (field) {
+            const svg = document.getElementById(`${field.dataset.figureField}_svg`);
+            if (svg) svg.value = '';
+            refreshPreview(field.dataset.figureField);
+        }
         const typeSelect = event.target.closest('[data-question-type]');
         if (typeSelect) updateAnswerEditor(typeSelect.dataset.questionType, typeSelect.value);
     });
 
     window.MathQuestionTools = {
         editorMarkup, toolbarMarkup, readFigure, renderFigure, normalizeFigure, refreshPreview,
-        updatePreview, escapeHtml, answerEditorMarkup, readAnswer, renderQuestionAnswer,
+        updatePreview, escapeHtml, answerEditorMarkup, readAnswer, renderQuestionAnswer, sanitizeSvgMarkup, setImportedFigure,
         parseQuestionCsv, downloadQuestionCsvTemplate,
     };
 })();
