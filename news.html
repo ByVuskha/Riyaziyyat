@@ -141,20 +141,15 @@ async function loadNews() {
     const statThisMonth = document.getElementById('statThisMonth');
     if (list) list.innerHTML = '<div style="padding:60px;text-align:center;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
     try {
-        const [usersRes, videosRes, testsRes, newsRes] = await Promise.all([
-            API.users ? API.users.list({ limit: 200 }) : { data: [] },
-            API.videos ? API.videos.list({ limit: 200 }) : { data: [] },
-            API.tests ? API.tests.list({ limit: 200 }) : { data: [] },
+        const [stats, newsRes] = await Promise.all([
+            API.stats.get(),
             API.news ? API.news.list({ limit: 50 }) : { data: [] }
         ]);
-        const users = Array.isArray(usersRes?.data) ? usersRes.data : [];
-        const videos = Array.isArray(videosRes?.data) ? videosRes.data : [];
-        const tests = Array.isArray(testsRes?.data) ? testsRes.data : [];
         const news = Array.isArray(newsRes?.data) ? newsRes.data : [];
 
-        if (statUsers) statUsers.textContent = Number(users.length || 0).toLocaleString('az-AZ');
-        if (statNews) statNews.textContent = Number(news.length || 0).toLocaleString('az-AZ');
-        if (statVideos) statVideos.textContent = Number(videos.length || 0).toLocaleString('az-AZ');
+        if (statUsers) statUsers.textContent = Number(stats.users || 0).toLocaleString('az-AZ');
+        if (statNews) statNews.textContent = Number(stats.news ?? news.length).toLocaleString('az-AZ');
+        if (statVideos) statVideos.textContent = Number(stats.videos || 0).toLocaleString('az-AZ');
         if (statThisMonth) {
             const current = new Date();
             const thisMonthCount = news.filter(item => {

@@ -424,12 +424,12 @@
                     <div class="access-badge badge-none" id="accessBadge">
                         <i class="fas fa-lock"></i> İcazəsiz
                     </div>
-                    <div class="access-title" id="accessTitle">Sınaq Əlavəetmə İcazəsi</div>
-                    <p class="access-desc" id="accessDesc">Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.</p>
+                    <div class="access-title" id="accessTitle">Sınaq yaratmaq üçün icazə lazımdır</div>
+                    <p class="access-desc" id="accessDesc">Sual əlavəetmə formu admin təsdiqindən sonra açılacaq. Əvvəlcə icazə istəyin; təsdiqdən sonra səhifəni yeniləyin.</p>
                 </div>
                 <div>
                     <button id="requestAccessBtn" class="btn btn-primary" onclick="requestTestAccess()" style="white-space:nowrap;">
-                        <i class="fas fa-paper-plane"></i> İcazə İstə
+                        <i class="fas fa-paper-plane"></i> Adminə icazə müraciəti göndər
                     </button>
                 </div>
             </div>
@@ -778,14 +778,14 @@ function renderTeacherSection(u) {
 
         if (u.testAccessRequested) {
             if (badge) { badge.className = 'access-badge badge-pending'; badge.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; }
-            if (title) title.textContent = 'Müraciətiniz İcmalda';
-            if (desc)  desc.textContent  = 'Admin müraciətinizi nəzərdən keçirir.';
+            if (title) title.textContent = 'Admin təsdiqi gözlənilir';
+            if (desc)  desc.textContent  = 'Müraciətiniz göndərilib. Admin təsdiqlədikdən sonra sual əlavəetmə formu açılacaq; təsdiqdən sonra səhifəni yeniləyin.';
             if (btn)   { btn.disabled = true; btn.innerHTML = '<i class="fas fa-clock"></i> Gözlənilir'; btn.style.opacity = '.6'; }
         } else {
             if (badge) { badge.className = 'access-badge badge-none'; badge.innerHTML = '<i class="fas fa-lock"></i> İcazəsiz'; }
-            if (title) title.textContent = 'Sınaq Əlavəetmə İcazəsi';
-            if (desc)  desc.textContent  = 'Sayta sınaq əlavə etmək üçün admin icazəsi tələb olunur.';
-            if (btn)   { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə'; btn.style.opacity = '1'; }
+            if (title) title.textContent = 'Sınaq yaratmaq üçün icazə lazımdır';
+            if (desc)  desc.textContent  = 'Sual əlavəetmə formu admin təsdiqindən sonra açılacaq. Əvvəlcə icazə istəyin; təsdiqdən sonra səhifəni yeniləyin.';
+            if (btn)   { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Adminə icazə müraciəti göndər'; btn.style.opacity = '1'; }
         }
     }
 }

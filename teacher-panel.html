@@ -236,11 +236,10 @@
                     <!-- Locked state -->
                     <div id="lockedState" class="locked-overlay" style="display:none;">
                         <div class="lock-icon">🔒</div>
-                        <h4>Sınaq Əlavəetmə Gözləyir</h4>
-                        <p>Sınaq əlavə etmək hüququ almaq üçün admin tərəfindən icazə gözləyirsiniz.<br>
-                        Müraciət etdikdən sonra admin yoxlayıb aktiv edəcək.</p>
+                        <h4 id="accessTitle">Sınaq yaratmaq üçün icazə lazımdır</h4>
+                        <p id="accessDescription">Sual əlavəetmə formu admin təsdiqindən sonra açılacaq. Əvvəlcə icazə istəyin; təsdiqdən sonra bu səhifəni yeniləyin.</p>
                         <button class="btn btn-primary" id="requestAccessBtn" onclick="requestTestAccess()">
-                            <i class="fas fa-paper-plane"></i> İcazə İstə
+                            <i class="fas fa-paper-plane"></i> Adminə icazə müraciəti göndər
                         </button>
                     </div>
 
@@ -572,6 +571,8 @@ function checkAccessState(user) {
     const locked = document.getElementById('lockedState');
     const formEl = document.getElementById('addTestForm');
     const reqBtn = document.getElementById('requestAccessBtn');
+    const accessTitle = document.getElementById('accessTitle');
+    const accessDescription = document.getElementById('accessDescription');
 
     if (user.canAddTests === true) {
         locked.style.display = 'none';
@@ -579,16 +580,20 @@ function checkAccessState(user) {
     } else if (user.testAccessRequested) {
         locked.style.display = 'block';
         formEl.style.display = 'none';
+        if (accessTitle) accessTitle.textContent = 'Admin təsdiqi gözlənilir';
+        if (accessDescription) accessDescription.textContent = 'Müraciətiniz göndərilib. Admin təsdiqlədikdən sonra sual əlavəetmə formu açılacaq; təsdiqdən sonra səhifəni yeniləyin.';
         if (reqBtn) {
             reqBtn.disabled = true;
-            reqBtn.innerHTML = '<i class="fas fa-clock"></i> Müraciət göndərildi — gözlənilir';
+            reqBtn.innerHTML = '<i class="fas fa-clock"></i> Admin təsdiqi gözlənilir';
         }
     } else {
         locked.style.display = 'block';
         formEl.style.display = 'none';
+        if (accessTitle) accessTitle.textContent = 'Sınaq yaratmaq üçün icazə lazımdır';
+        if (accessDescription) accessDescription.textContent = 'Sual əlavəetmə formu admin təsdiqindən sonra açılacaq. Əvvəlcə icazə istəyin; təsdiqdən sonra bu səhifəni yeniləyin.';
         if (reqBtn) {
             reqBtn.disabled = false;
-            reqBtn.innerHTML = '<i class="fas fa-paper-plane"></i> İcazə İstə';
+            reqBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Adminə icazə müraciəti göndər';
         }
     }
 }
