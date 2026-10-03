@@ -124,7 +124,8 @@ async function sendEmailJsTemplate(templateId, templateParams) {
   }
 
   if (!response.ok) {
-    console.error('[auth] EmailJS rejected email with status:', response.status);
+    const errorDetails = (await response.text()).slice(0, 500);
+    console.error('[auth] EmailJS rejected email with status:', response.status, errorDetails);
     return { configured: true, sent: false };
   }
   return { configured: true, sent: true };
