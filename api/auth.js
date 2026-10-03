@@ -65,6 +65,7 @@ function normalizeDeviceInfo(rawDeviceInfo = {}) {
 }
 
 function buildKnownDeviceEntry(deviceInfo) {
+  const now = new Date().toISOString();
   return {
     deviceId: deviceInfo.deviceId,
     browser: deviceInfo.browser || 'Unknown browser',
@@ -72,8 +73,9 @@ function buildKnownDeviceEntry(deviceInfo) {
     language: deviceInfo.language || 'az-AZ',
     screen: deviceInfo.screen || '',
     userAgent: deviceInfo.userAgent || '',
-    firstSeenAt: new Date().toISOString(),
-    lastSeenAt: new Date().toISOString(),
+    firstSeenAt: now,
+    lastSeenAt: now,
+    lastLoginAt: now,
   };
 }
 
@@ -151,10 +153,12 @@ async function login(req, res) {
 
   let passwordOk = false;
   let passwordMigrated = false;
+  let passwordMatchedLegacyPlain = false;
   if (user.password?.startsWith('$2')) {
     passwordOk = await bcrypt.compare(password, user.password);
     if (!passwordOk && typeof user.passwordPlain === 'string' && user.passwordPlain === password) {
       passwordOk = true;
+      passwordMatchedLegacyPlain = true;
     }
   } else {
     passwordOk = user.password === password || user.passwordPlain === password;
@@ -162,12 +166,18 @@ async function login(req, res) {
       const index = users.findIndex(item => item.email === normalizedEmail);
       if (index >= 0) {
         users[index].password = await bcrypt.hash(password, 12);
-        users[index].passwordPlain = password;
         passwordMigrated = true;
       }
     }
   }
   if (!passwordOk) return res.status(401).json({ error: 'Email və ya şifrə yanlışdır' });
+
+  if (user.passwordPlain !== undefined || user.passwordDisplay !== undefined) {
+    if (passwordMatchedLegacyPlain) user.password = await bcrypt.hash(password, 12);
+    delete user.passwordPlain;
+    delete user.passwordDisplay;
+    passwordMigrated = true;
+  }
 
   await redis.persist('allUsers');
   if (!hasAdminFallback || passwordMigrated) {
@@ -228,6 +238,7 @@ async function login(req, res) {
 
     const nextSessionId = generateSessionId();
     const pendingOtherDevice = Boolean(activeUser.pendingDeviceId && String(activeUser.pendingDeviceId) !== String(deviceHash));
+    const loginAt = new Date().toISOString();
     activeUser.sessionId = nextSessionId;
     if (!pendingOtherDevice) {
       activeUser.deviceId = deviceHash;
@@ -236,9 +247,26 @@ async function login(req, res) {
       activeUser.pendingDeviceInfo = null;
       activeUser.deviceMismatchCount = 0;
     }
-    activeUser.deviceLastSeenAt = new Date().toISOString();
+    activeUser.deviceLastSeenAt = loginAt;
+    activeUser.lastLoginAt = loginAt;
+    activeUser.lastLoginDevice = {
+      deviceId: deviceHash,
+      browser: deviceInfo.browser || 'Unknown browser',
+      platform: deviceInfo.platform || 'Unknown platform',
+      screen: deviceInfo.screen || '',
+      userAgent: deviceInfo.userAgent || '',
+      lastSeenAt: loginAt,
+    };
     activeUser.knownDevices = Array.isArray(activeUser.knownDevices) ? activeUser.knownDevices : [];
-    if (!activeUser.knownDevices.some(device => String(device.deviceId) === String(deviceHash))) {
+    const knownDevice = activeUser.knownDevices.find(device => String(device.deviceId) === String(deviceHash));
+    if (knownDevice) {
+      knownDevice.browser = deviceInfo.browser || knownDevice.browser || 'Unknown browser';
+      knownDevice.platform = deviceInfo.platform || knownDevice.platform || 'Unknown platform';
+      knownDevice.screen = deviceInfo.screen || knownDevice.screen || '';
+      knownDevice.userAgent = deviceInfo.userAgent || knownDevice.userAgent || '';
+      knownDevice.lastSeenAt = loginAt;
+      knownDevice.lastLoginAt = loginAt;
+    } else {
       activeUser.knownDevices.push(buildKnownDeviceEntry(deviceInfo));
     }
     activeUser.updatedAt = new Date().toISOString();
@@ -290,7 +318,9 @@ async function approveDevice(req, res) {
       screen: pendingDeviceInfo.screen || '',
       userAgent: pendingDeviceInfo.userAgent || '',
       firstSeenAt: new Date().toISOString(),
-      lastSeenAt: new Date().toISOString(),
+      lastSeenAt: null,
+      lastLoginAt: null,
+      approvedAt: new Date().toISOString(),
     });
     targetUser.knownDevices = known;
   }
@@ -457,6 +487,15 @@ async function register(req, res) {
     pendingDeviceInfo: null,
     deviceId: normalizedDeviceInfo.deviceId,
     knownDevices: [buildKnownDeviceEntry(normalizedDeviceInfo)],
+    lastLoginAt: new Date().toISOString(),
+    lastLoginDevice: {
+      deviceId: normalizedDeviceInfo.deviceId,
+      browser: normalizedDeviceInfo.browser || 'Unknown browser',
+      platform: normalizedDeviceInfo.platform || 'Unknown platform',
+      screen: normalizedDeviceInfo.screen || '',
+      userAgent: normalizedDeviceInfo.userAgent || '',
+      lastSeenAt: new Date().toISOString(),
+    },
     deviceStatus: 'approved',
     deviceMismatchCount: 0,
     deviceLastSeenAt: new Date().toISOString(),
@@ -579,7 +618,8 @@ async function resetPassword(req, res) {
   }
 
   user.password = await bcrypt.hash(password, 12);
-  user.passwordPlain = password;
+  delete user.passwordPlain;
+  delete user.passwordDisplay;
   user.updatedAt = new Date().toISOString();
   await redis.set('allUsers', JSON.stringify(users));
   return res.status(200).json({ ok: true, message: 'Şifrəniz yeniləndi. İndi yeni şifrənizlə daxil ola bilərsiniz.' });

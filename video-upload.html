@@ -137,7 +137,7 @@
 <div class="upload-container">
     <div class="upload-card">
         <h1><i class="fab fa-youtube"></i> Video Yükləmə</h1>
-        <p>YouTube video linkini daxil edin və ya yeni video yükləyin</p>
+        <p>YouTube video və ya canlı yayım linkini daxil edin və ya yeni video yükləyin</p>
         
         <div class="form-group">
             <label>Video Başlığı *</label>
@@ -186,10 +186,10 @@
         
         <div id="youtubeSection">
             <div class="form-group">
-                <label>YouTube Video Linki *</label>
-                <input type="url" class="form-control" id="youtubeUrl" placeholder="https://youtube.com/watch?v=..." onchange="previewVideo()">
+                <label>YouTube Video / Canlı Yayım Linki *</label>
+                <input type="url" class="form-control" id="youtubeUrl" placeholder="https://youtube.com/watch?v=... və ya https://youtube.com/live/..." onchange="previewVideo()">
                 <small style="color:var(--gray);font-size:12px;">
-                    <i class="fas fa-info-circle"></i> YouTube video linkini buraya yapışdırın
+                    <i class="fas fa-info-circle"></i> Adi video, paylaşım və ya youtube.com/live/... linki əlavə edə bilərsiniz
                 </small>
             </div>
         </div>
@@ -430,9 +430,10 @@ function previewVideo() {
     const videoId = extractYouTubeId(url);
     
     if (videoId) {
+        const isLiveLink = /\/live\//i.test(new URL(url).pathname);
         preview.innerHTML = `
             <p style="color:var(--success);font-weight:600;margin-bottom:10px;">
-                <i class="fas fa-check-circle"></i> Video tapıldı!
+                <i class="fas fa-check-circle"></i> ${isLiveLink ? 'Canlı yayım linki tapıldı!' : 'YouTube video linki tapıldı!'}
             </p>
             <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" style="width:100%;border-radius:12px;margin-bottom:15px;" alt="Video thumbnail">
             <div style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;">
@@ -471,7 +472,7 @@ async function saveVideo() {
     }
     
     if (source === 'youtube') {
-        videoData.youtubeUrl = document.getElementById('youtubeUrl').value;
+        videoData.youtubeUrl = document.getElementById('youtubeUrl').value.trim();
         if (!extractYouTubeId(videoData.youtubeUrl)) {
             showNotification('Düzgün YouTube linki daxil edin!', 'warning');
             return;
@@ -586,13 +587,21 @@ async function loadVideos() {
 }
 
 function extractYouTubeId(url) {
-    if (!url) return null;
-    if (url.includes('youtube.com/watch?v=')) {
-        return url.split('v=')[1].split('&')[0];
-    } else if (url.includes('youtu.be/')) {
-        return url.split('youtu.be/')[1].split('?')[0];
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return null;
+        const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+        let videoId = '';
+        if (host === 'youtu.be') {
+            videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
+        } else if (['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(host)) {
+            if (parsed.pathname === '/watch') videoId = parsed.searchParams.get('v') || '';
+            else videoId = parsed.pathname.match(/^\/(?:live|embed|shorts|v)\/([^/]+)/i)?.[1] || '';
+        }
+        return /^[\w-]{11}$/.test(videoId) ? videoId : null;
+    } catch {
+        return null;
     }
-    return null;
 }
 
 async function editVideo(id) {

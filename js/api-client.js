@@ -158,7 +158,6 @@ const API = (() => {
     'watch-video': { title: 'Video izlə', reward: 15 },
     'solve-test': { title: 'Sınaq həll et', reward: 20 },
     'read-news': { title: 'Xəbər oxu', reward: 10 },
-    'profile-update': { title: 'Profil yenilə', reward: 10 },
     login: { title: 'Giriş et', reward: 10 },
   };
 
@@ -503,15 +502,10 @@ const API = (() => {
         const item = items.find(u => u.id === second);
         const updated = item ? { ...item, ...(body || {}) } : null;
         if (updated) {
-          const profileFields = ['name', 'phone', 'bio', 'profilePicture'];
-          const profileChanged = profileFields.some(field =>
-            Object.prototype.hasOwnProperty.call(body || {}, field) && String(item[field] || '') !== String(updated[field] || '')
-          );
           const index = items.findIndex(u => u.id === second);
           if (index >= 0) items[index] = updated;
           writeLocalList('localUsers', items);
           setCurrentLocalUser(updated);
-          if (profileChanged) awardLocalDailyTask('profile-update');
         }
         return { data: updated || null, user: updated || null };
       }

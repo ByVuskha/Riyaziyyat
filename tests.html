@@ -421,10 +421,10 @@ function showQuestion() {
                 <span>${['A','B','C','D','E','F'][i]})</span>
                 <span style="flex:1;">${escapeTestLabel(opt)}</span>
            </label>`
-        : `<button class="answer-option" data-idx="${i}" onclick="selectAnswer(${i})"
+        : `<button class="answer-option" data-idx="${i}" aria-pressed="false" onclick="selectAnswer(${i})"
                 style="width:100%;padding:14px 16px;border:2px solid #e2e8f0;border-radius:10px;background:white;text-align:left;cursor:pointer;font-size:15px;color:#1e293b;display:flex;align-items:center;gap:12px;transition:all 0.22s;"
-                onmouseover="if(!this.disabled){this.style.borderColor='#4338ca';this.style.background='rgba(67,56,202,0.04)'}"
-                onmouseout="if(!this.disabled){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                onmouseover="if(!this.disabled&&this.getAttribute('aria-pressed')!=='true'){this.style.borderColor='#4338ca';this.style.background='rgba(67,56,202,0.04)'}"
+                onmouseout="if(!this.disabled&&this.getAttribute('aria-pressed')!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
                 <span style="width:28px;height:28px;border-radius:8px;background:#f1f5f9;color:#64748b;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${['A','B','C','D','E','F'][i]}</span>
                 <span style="flex:1;">${escapeTestLabel(opt)}</span>
            </button>`
@@ -515,6 +515,20 @@ function showQuestion() {
         </div>
     `;
     document.body.appendChild(modal);
+    document.querySelectorAll('input[name="quizAnswer"]').forEach(input => {
+        input.addEventListener('change', () => {
+            if (answerSelections[currentQ] !== null) invalidateQuizAnswer();
+            document.querySelectorAll('.answer-option-check').forEach(label => {
+                label.style.borderColor = label.querySelector('input').checked ? '#4338ca' : '#e2e8f0';
+            });
+        });
+    });
+    const writtenAnswer = document.getElementById('writtenAnswer');
+    if (writtenAnswer) {
+        writtenAnswer.addEventListener('input', () => {
+            if (answerSelections[currentQ] !== null) invalidateQuizAnswer();
+        });
+    }
     if (typeof renderMathInElement === 'function') {
         renderMathInElement(modal, {
             delimiters: [
@@ -578,13 +592,30 @@ function confirmCurrentAnswer() {
 }
 
 function submitQuizAnswer(answer) {
-    document.querySelectorAll('#options button, #options input, #writtenAnswer, #confirmAnswerBtn').forEach(control => control.disabled = true);
     answerSelections[currentQ] = answer;
+    document.querySelectorAll('.answer-option[data-idx]').forEach(option => {
+        const selected = Number(option.dataset.idx) === Number(answer);
+        option.setAttribute('aria-pressed', String(selected));
+        option.style.borderColor = selected ? '#4338ca' : '#e2e8f0';
+        option.style.background = selected ? 'rgba(67,56,202,0.08)' : 'white';
+    });
+    const confirmButton = document.getElementById('confirmAnswerBtn');
+    if (confirmButton) confirmButton.textContent = currentTest.data[currentQ].type === 'multiple-choice'
+        ? 'Seçimləri yenilə'
+        : 'Cavabı yenilə';
     const fb = document.getElementById('feedback');
-    if (fb) fb.innerHTML = '<span style="color:#0f766e;">Cavab qeydə alındı.</span>';
+    if (fb) fb.innerHTML = '<span style="color:#0f766e;">Cavab qeydə alındı. Növbəti suala keçənədək dəyişə bilərsiniz.</span>';
 
     const nb = document.getElementById('nextBtn');
     if (nb) nb.style.display = 'block';
+}
+
+function invalidateQuizAnswer() {
+    answerSelections[currentQ] = null;
+    const fb = document.getElementById('feedback');
+    if (fb) fb.innerHTML = '<span style="color:#b45309;">Cavabınızı dəyişdirdiniz. Davam etmək üçün yenidən təsdiqləyin.</span>';
+    const next = document.getElementById('nextBtn');
+    if (next) next.style.display = 'none';
 }
 
 function formatReviewAnswer(type, answer, options) {

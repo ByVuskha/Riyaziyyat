@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const redis  = require('../../lib/redis');
 const { getUserFromRequest, requireAdmin, setCommonHeaders } = require('../../lib/auth');
 const { allowMethods, sanitizeUser, paginate } = require('../../lib/helpers');
-const { awardDailyTask } = require('../../lib/daily-tasks');
 
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
@@ -20,8 +19,6 @@ module.exports = async function handler(req, res) {
     const page  = parseInt(req.query?.page)  || 1;
     const limit = parseInt(req.query?.limit) || 50;
     const q     = (req.query?.q || '').toLowerCase();
-    const includeSensitive = admin.role === 'admin';
-
     let filtered = users;
     if (q) {
       filtered = users.filter(u =>
@@ -31,7 +28,7 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(200).json(
-      paginate(filtered.map(user => sanitizeUser(user, { includePassword: includeSensitive })), page, limit)
+      paginate(filtered.map(user => sanitizeUser(user)), page, limit)
     );
   }
 
@@ -49,15 +46,9 @@ module.exports = async function handler(req, res) {
     return res.status(403).json({ error: 'İcazəniz yoxdur' });
   }
 
-  if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx], { includePassword: session.role === 'admin' }));
+  if (req.method === 'GET') return res.status(200).json(sanitizeUser(users[idx]));
 
   if (req.method === 'PUT') {
-    const previousProfile = {
-      name: users[idx].name || '',
-      phone: users[idx].phone || '',
-      bio: users[idx].bio || '',
-      profilePicture: users[idx].profilePicture || '',
-    };
     const { name, password, currentPassword, balance, role, premium, premiumExpiresAt,
       frozen, canAddTests, userType, phone, bio, profilePicture, testAccessRequested,
       testAccessRequestedAt, teacherTitle, subjects, experience, publicProfile, publicEmail,
@@ -132,18 +123,13 @@ module.exports = async function handler(req, res) {
       if (loginRequestedAt !== undefined) users[idx].loginRequestedAt = loginRequestedAt;
       if (password && password.length >= 6) {
         users[idx].password = await bcrypt.hash(password, 12);
-        users[idx].passwordPlain = password;
+        delete users[idx].passwordPlain;
+        delete users[idx].passwordDisplay;
       }
     }
 
     users[idx].updatedAt = new Date().toISOString();
     await redis.set('allUsers', JSON.stringify(users));
-    const profileChanged = session.role !== 'admin' && ['name', 'phone', 'bio', 'profilePicture']
-      .some(field => Object.prototype.hasOwnProperty.call(req.body || {}, field) && String(users[idx][field] || '') !== String(previousProfile[field]));
-    if (profileChanged) {
-      const taskResult = await awardDailyTask(session, 'profile-update');
-      if (taskResult.points) users[idx].points = taskResult.points.total;
-    }
     return res.status(200).json(sanitizeUser(users[idx]));
   }
 

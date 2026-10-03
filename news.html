@@ -182,39 +182,47 @@ function getReadNewsIds() {
     }
 }
 
-function setNewsRead(button) {
-    const id = button.dataset.newsId;
+async function setNewsRead(button) {
+    if (button.disabled || button.dataset.reading === 'true') return;
+    const readKey = button.dataset.newsId || '';
+    const id = decodeURIComponent(readKey);
+    button.dataset.reading = 'true';
     button.classList.add('is-read');
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Oxundu';
 
     const readIds = getReadNewsIds();
-    readIds.add(String(id));
+    readIds.add(readKey);
     try {
         localStorage.setItem(getNewsReadKey(), JSON.stringify([...readIds]));
     } catch (error) {
         console.warn('Oxunmuş xəbərləri yadda saxlamaq mümkün olmadı:', error);
     }
 
-    API.news.view(id)
-        .then(() => window.setTimeout(async () => {
-            if (document.hidden) {
-                window.setTimeout(() => API.news.completeRead(id).catch(error => {
-                    if (error.status !== 401) console.warn('Xəbər oxunması təsdiqlənmədi:', error);
-                }), 5000);
-                return;
-            }
+    try {
+        await API.news.view(id);
+        await new Promise(resolve => window.setTimeout(resolve, 20500));
+        const result = await API.news.completeRead(id);
+        if (result.earnedPoints > 0) {
+            showNotification(`Xəbər oxundu: +${result.earnedPoints} xal`, 'success');
+        }
+        window.dispatchEvent(new CustomEvent('points:updated'));
+    } catch (error) {
+        if (error.status !== 401) {
+            readIds.delete(readKey);
             try {
-                const result = await API.news.completeRead(id);
-                if (result.earnedPoints > 0) {
-                    showNotification(`Xəbər oxundu: +${result.earnedPoints} xal`, 'success');
-                    window.dispatchEvent(new CustomEvent('points:updated'));
-                }
-            } catch (error) {
-                if (error.status !== 401) console.warn('Xəbər oxunması təsdiqlənmədi:', error);
+                localStorage.setItem(getNewsReadKey(), JSON.stringify([...readIds]));
+            } catch (storageError) {
+                console.warn('Oxunmuş xəbərləri yeniləmək mümkün olmadı:', storageError);
             }
-        }, 20000))
-        .catch(error => console.warn('Xəbər baxışı qeydə alınmadı:', error));
+            button.classList.remove('is-read');
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-book-open" aria-hidden="true"></i> Xəbəri oxu';
+            showNotification(error.message || 'Xəbərin oxunmasını təsdiqləmək mümkün olmadı. Yenidən cəhd edin.', 'error');
+        }
+    } finally {
+        delete button.dataset.reading;
+    }
 }
 
 async function loadNews() {

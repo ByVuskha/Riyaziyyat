@@ -238,17 +238,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            min-width: 0;
             padding: 10px 12px;
             border: 1px solid var(--border);
             border-radius: 10px;
             background: #f8fafc;
         }
+        .mini-user-row > div { min-width: 0; overflow-wrap: anywhere; }
         .mini-user-row small {
             display: block;
             color: var(--gray);
             margin-top: 2px;
         }
+        .mini-user-row > small { flex: 0 0 auto; white-space: nowrap; }
         
         @media (max-width: 768px) {
             .admin-sidebar { width: 70px; }
@@ -336,6 +339,34 @@
             font-size: clamp(19px, 2vw, 23px);
             letter-spacing: -0.03em;
         }
+        #adminPage .admin-header {
+            padding-left: 20px;
+            gap: 18px;
+        }
+        #adminPage .admin-header h1#pageTitle {
+            flex: 0 0 auto;
+            margin: 0;
+        }
+        #adminPage .admin-header .standalone-shared-nav {
+            position: static;
+            top: auto;
+            left: auto;
+            z-index: auto;
+            flex: 0 1 auto;
+            margin: 0 0 0 auto;
+            transform: none;
+            order: 2;
+        }
+        #adminPage .admin-header .admin-user {
+            flex: 0 0 auto;
+            margin-left: 0;
+            order: 3;
+        }
+        #adminPage .admin-header .standalone-shared-nav .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         .stats-row {
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
             gap: 14px;
@@ -403,6 +434,16 @@
         .admin-section .form-grid {
             gap: 14px;
         }
+        #dashboard > div[style*="grid-template-columns:2fr 1fr"] {
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
+        }
+        #dashboard > div[style*="grid-template-columns:2fr 1fr"] > div {
+            min-width: 0;
+        }
+        .mini-user-row strong,
+        .mini-user-row small {
+            overflow-wrap: anywhere;
+        }
         .admin-menu-item:focus-visible,
         .admin-section button:focus-visible,
         .admin-section a:focus-visible {
@@ -412,6 +453,9 @@
         @media (max-width: 768px) {
             .admin-sidebar { width: 64px; }
             .admin-main { margin-left: 64px; padding: 16px 14px; }
+            #adminPage #dashboard .stats-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
             .admin-menu-item {
                 justify-content: center;
                 min-height: 42px;
@@ -424,7 +468,7 @@
             .admin-user { gap: 8px; }
             .admin-section { padding: 16px; }
             #dashboard > div[style*="grid-template-columns:2fr 1fr"] {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: minmax(0, 1fr) !important;
                 gap: 14px !important;
                 margin-bottom: 16px !important;
             }
@@ -435,6 +479,27 @@
             #testResults > div[style*="align-items:end"] {
                 flex-wrap: wrap;
                 align-items: stretch !important;
+            }
+        }
+        @media (max-width: 900px) {
+            #adminPage .admin-header {
+                flex-wrap: wrap;
+                row-gap: 12px;
+            }
+            #adminPage .admin-header h1#pageTitle {
+                order: 1;
+            }
+            #adminPage .admin-header .admin-user {
+                order: 2;
+                margin-left: auto;
+            }
+            #adminPage .admin-header .standalone-shared-nav {
+                flex: 1 0 100%;
+                margin: 0;
+                order: 3;
+            }
+            #adminPage .admin-header .standalone-shared-nav .navbar-actions {
+                justify-content: flex-start;
             }
         }
         @media (max-width: 480px) {
@@ -454,6 +519,15 @@
             }
             .admin-section .btn { white-space: nowrap; }
             .stat-box { padding: 15px; }
+            #adminPage #dashboard .stats-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px;
+            }
+            #adminPage #dashboard .stat-box { padding: 13px; }
+            #adminPage #dashboard .stat-box h3 { font-size: 23px; }
+            #adminPage #dashboard > div[style*="grid-template-columns:2fr 1fr"] > div {
+                padding: 16px !important;
+            }
         }
 
     </style>
@@ -730,7 +804,6 @@
                         <th>ID</th>
                         <th>Ad</th>
                         <th>Email</th>
-                        <th>Şifrə</th>
                         <th>Rol</th>
                         <th>Tip</th>
                         <th>Balans</th>
@@ -741,7 +814,7 @@
                 </thead>
                 <tbody id="usersTable">
                     <tr>
-                        <td colspan="10" style="text-align:center;color:var(--gray);">Yüklənir...</td>
+                        <td colspan="9" style="text-align:center;color:var(--gray);">Yüklənir...</td>
                     </tr>
                 </tbody>
             </table>
@@ -1068,6 +1141,7 @@
             <div style="margin-bottom:16px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:13px;line-height:1.5;">
                 <strong style="display:block;margin-bottom:3px;">Yeni cihaz müraciətləri</strong>
                 İlk fərqli cihazdan giriş cəhdi burada görünəcək. Cihazı təsdiqlədikdən sonra həmin cihazdan yenidən giriş etmək lazımdır; ikinci təsdiqsiz cəhddə hesab bloklanır.
+                <br>İcazəli cihazların sayı və hər cihazdan son uğurlu giriş göstərilir. Əvvəlki giriş vaxtları saxlanmadığı üçün dəqiq tarixçə hər istifadəçinin növbəti girişindən etibarən yenilənəcək.
             </div>
             <div id="devicesContainer">
                 <div style="text-align:center;padding:40px;color:#9ca3af;">Yüklənir...</div>

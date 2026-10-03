@@ -341,7 +341,7 @@
             <div>
                 <div class="goal-label">
                     <span>📹 Video izlə</span>
-                    <span id="goalVideoText">0 / 2</span>
+                    <span id="goalVideoText">0 / 1</span>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="goalVideoBar" style="width:0%;background:linear-gradient(90deg,#667eea,#764ba2);"></div>
@@ -577,7 +577,6 @@ const DAILY_TASKS = [
     { id: 'watch-video', icon: '📹', title: 'Video izlə', reward: 15, description: 'Bir dərsi sonadək izləyin', href: 'videos.html', action: 'Videolara bax' },
     { id: 'solve-test', icon: '📝', title: 'Sınaq həll et', reward: 20, description: 'Bir sınağı tamamlayın', href: 'tests.html', action: 'Sınaqlara keç' },
     { id: 'read-news', icon: '📰', title: 'Xəbər oxu', reward: 10, description: 'Bir xəbəri açıb oxuyun', href: 'news.html', action: 'Xəbərlərə bax' },
-    { id: 'profile-update', icon: '👤', title: 'Profil yenilə', reward: 10, description: 'Profil məlumatlarınızdan birini yeniləyin', href: 'profile-edit.html', action: 'Profili yenilə' },
 ];
 
 function getTodayTaskMap(dailyTasks) {
@@ -658,28 +657,27 @@ async function renderDashboard() {
     /* Daily goal */
     const todayKey = new Date().toISOString().slice(0, 10);
     const todayH   = history.filter(h => h.timestamp && new Date(h.timestamp).toISOString().slice(0,10) === todayKey);
-    const todayVideoCount = todayH.filter(h => h.reason && /video|videosu|izlə|izlən/i.test(String(h.reason))).length;
-    const todayTestCountFromHistory = todayH.filter(h => h.reason && /sınaq|test|quiz/i.test(String(h.reason))).length;
-    const todayTestCountFromScores = Object.values(myData?.testScores || {}).filter(entry => String(entry.date || '') === todayKey).length;
-    const tVid = todayVideoCount;
-    const tTst = Math.max(todayTestCountFromHistory, todayTestCountFromScores);
+    const todayTasks = getTodayTaskMap(myData.dailyTasks || {});
+    const tVid = todayTasks['watch-video'] ? 1 : 0;
+    const tTst = todayTasks['solve-test'] ? 1 : 0;
     const tPts = todayH.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
 
-    document.getElementById('goalVideoText').textContent  = `${Math.min(tVid,2)} / 2`;
+    document.getElementById('goalVideoText').textContent  = `${tVid} / 1`;
     document.getElementById('goalTestText').textContent   = `${Math.min(tTst,1)} / 1`;
     document.getElementById('goalPointsText').textContent = `${Math.min(tPts,10)} / 10`;
-    document.getElementById('goalVideoBar').style.width   = `${Math.min(tVid/2,1)*100}%`;
+    document.getElementById('goalVideoBar').style.width   = `${tVid * 100}%`;
     document.getElementById('goalTestBar').style.width    = `${Math.min(tTst/1,1)*100}%`;
     document.getElementById('goalPointsBar').style.width  = `${Math.min(tPts/10,1)*100}%`;
 
     /* Activity feed */
     const feed = document.getElementById('activityFeed');
-    if (!history.length) {
+    const visibleHistory = history.filter(item => !/profil yenilə/i.test(String(item.reason || '')));
+    if (!visibleHistory.length) {
         feed.innerHTML = `<div style="text-align:center;padding:28px;color:#9ca3af;">
             <i class="fas fa-history" style="font-size:28px;opacity:.2;display:block;margin-bottom:9px;"></i>
             Hələ fəaliyyət yoxdur</div>`;
     } else {
-        feed.innerHTML = history.slice(0, 6).map(h => {
+        feed.innerHTML = visibleHistory.slice(0, 6).map(h => {
             let bg = '#f1f5f9', ic = '⭐';
             if (h.reason) {
                 if (h.reason.includes('videosu'))   { bg = '#eef2ff'; ic = '📹'; }
@@ -748,7 +746,7 @@ if (user.userType === 'teacher' || user.role === 'admin') {
     renderTeacherSection(user);
 }
 updateNavbar();
-})(); // end async IIFE
+});
 
 /* ══════════════════════════════════════════════════════════════════════
    MÜƏLLİM BÖLMƏSİ (functions defined outside IIFE so onclick works)

@@ -29,6 +29,24 @@ function durationInSeconds(value) {
   return 0;
 }
 
+function youtubeVideoId(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return '';
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    let videoId = '';
+    if (host === 'youtu.be') {
+      videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(host)) {
+      if (url.pathname === '/watch') videoId = url.searchParams.get('v') || '';
+      else videoId = url.pathname.match(/^\/(?:live|embed|shorts|v)\/([^/]+)/i)?.[1] || '';
+    }
+    return /^[\w-]{11}$/.test(videoId) ? videoId : '';
+  } catch {
+    return '';
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCommonHeaders(res);
   const { id, action } = req.query || {};
@@ -92,6 +110,9 @@ module.exports = async function handler(req, res) {
     const admin = requireAdmin(req, res);
     if (!admin) return;
     if (req.method === 'PUT') {
+      if (req.body?.source === 'youtube' && !youtubeVideoId(req.body.youtubeUrl)) {
+        return res.status(400).json({ error: 'Etibarlı YouTube video və ya canlı yayım linki daxil edin' });
+      }
       videos[index] = { ...videos[index], ...req.body, id: videos[index].id, updatedAt: new Date().toISOString() };
       await redis.set('videos', JSON.stringify(videos), { ex: 86400 * 30 });
       return res.status(200).json(videos[index]);
@@ -125,6 +146,9 @@ module.exports = async function handler(req, res) {
   const sourceUrl = body.source === 'youtube' ? body.youtubeUrl : body.videoUrl;
   if (!sourceUrl || !/^https:\/\//i.test(sourceUrl)) {
     return res.status(400).json({ error: 'Etibarlı HTTPS video ünvanı tələb olunur' });
+  }
+  if (body.source === 'youtube' && !youtubeVideoId(sourceUrl)) {
+    return res.status(400).json({ error: 'Etibarlı YouTube video və ya canlı yayım linki daxil edin' });
   }
 
   const video = {

@@ -12,6 +12,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAdminPage();   // from app.js — redirects if not admin
     if (!user) return;
+    initializeAdminNavigation();
     renderAdminUser(user);
     await Promise.all([
         loadDashboardStats(),
@@ -29,6 +30,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
     _updateTeacherTestsBadge();
 });
+
+function initializeAdminNavigation() {
+    document.querySelectorAll('.admin-menu-item').forEach(item => {
+        const label = item.textContent.replace(/\s+/g, ' ').trim();
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('aria-label', label);
+        item.title = label;
+        item.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                item.click();
+            }
+        });
+    });
+}
 
 function renderAdminUser(user) {
     const el = document.getElementById('adminUserName');
@@ -56,7 +73,11 @@ function showSection(section) {
 
     document.querySelectorAll('.admin-menu-item').forEach(i => i.classList.remove('active'));
     const currentItem = document.querySelector(`.admin-menu-item[onclick*="'${section}'"]`);
-    if (currentItem) currentItem.classList.add('active');
+    document.querySelectorAll('.admin-menu-item').forEach(item => item.removeAttribute('aria-current'));
+    if (currentItem) {
+        currentItem.classList.add('active');
+        currentItem.setAttribute('aria-current', 'page');
+    }
 
     const titles = {
         dashboard:'Dashboard', users:'İstifadəçilər', teachers:'Müəllimlər',
@@ -302,21 +323,19 @@ function showAddVideoModal() {
 async function loadUsers() {
     const tbody = document.getElementById('usersTable');
     if (!tbody) return;
-    showTableLoading(tbody, 10);
+    showTableLoading(tbody, 9);
     try {
         const { data: users } = await API.users.list({ limit: 100 });
         if (!users.length) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
             return;
         }
         tbody.innerHTML = users.map(u => {
-            const visiblePassword = u.passwordPlain || u.passwordDisplay || u.password || '—';
             return `
             <tr>
                 <td style="font-size:12px;color:#94a3b8;">${String(u.id).slice(0,8)}</td>
                 <td><strong>${escapeHtml(u.name)}</strong></td>
                 <td>${escapeHtml(u.email)}</td>
-                <td style="font-family:monospace;max-width:120px;word-break:break-all;">${escapeHtml(String(visiblePassword))}</td>
                 <td><span class="badge badge-${u.role==='admin'?'danger':'primary'}">${u.role==='admin'?'Admin':'İstifadəçi'}</span></td>
                 <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':'Şagird'}</td>
                 <td>${u.balance||0} ₼</td>
@@ -325,6 +344,7 @@ async function loadUsers() {
                 <td>
                     <div class="action-btns">
                         <button class="btn-icon btn-view"   onclick="viewUser('${u.id}')"   title="Bax"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon btn-edit"   onclick="sendUserPasswordReset('${u.id}')" title="Parol sıfırlama linki göndər"><i class="fas fa-key"></i></button>
                         <button class="btn-icon btn-edit"   onclick="editUserModal('${u.id}')" title="Redaktə"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon btn-delete" onclick="deleteUser('${u.id}')" title="Sil"><i class="fas fa-trash"></i></button>
                     </div>
@@ -332,16 +352,27 @@ async function loadUsers() {
             </tr>`;
         }).join('');
     } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
     }
 }
 
 async function viewUser(id) {
     try {
         const { user: u } = await API.users.get(id);
-        const passwordText = u.passwordPlain || u.passwordDisplay || u.password ? ` • Şifrə: ${u.passwordPlain || u.passwordDisplay || u.password}` : ' • Şifrə: yoxdur';
-        showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}${passwordText}`, 'info', 7000);
+        showNotification(`${u.name} · ${u.email} · Balans: ${u.balance||0} ₼ · ${u.premium?'Premium':'Pulsuz'}`, 'info', 7000);
     } catch(e) { showNotification(e.message, 'error'); }
+}
+
+function sendUserPasswordReset(id) {
+    showConfirm('İstifadəçinin emailinə parol sıfırlama linki göndərilsin?', async () => {
+        try {
+            const { user } = await API.users.get(id);
+            const result = await API.auth.requestPasswordReset(user.email);
+            showNotification(result.message || 'Parol bərpa sorğusu qəbul edildi.', 'success');
+        } catch (error) {
+            showNotification(error.message || 'Bərpa linki göndərilmədi.', 'error');
+        }
+    });
 }
 
 async function editUserModal(id) {
@@ -378,10 +409,6 @@ async function editUserModal(id) {
                     <span>Balans (₼)</span>
                     <input id="editUserBalance" type="number" step="0.01" value="${Number(u.balance || 0)}" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
                 </label>
-                <label style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569;">
-                    <span>Şifrə</span>
-                    <input id="editUserPassword" type="text" value="${escapeHtml(String(u.passwordPlain || u.passwordDisplay || u.password || ''))}" placeholder="Yeni şifrə yazın" style="padding:10px 12px;border:1px solid #dfe7ef;border-radius:10px;" />
-                </label>
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px;">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('[data-admin-user-modal]')?.remove()">Ləğv et</button>
@@ -398,7 +425,6 @@ async function editUserModal(id) {
             const email = document.getElementById('editUserEmail').value.trim();
             const role = document.getElementById('editUserRole').value;
             const balance = Number.parseFloat(document.getElementById('editUserBalance').value);
-            const password = document.getElementById('editUserPassword').value.trim();
 
             if (!name) { showNotification('Ad boş ola bilməz', 'error'); return; }
             if (!email) { showNotification('E-poçt boş ola bilməz', 'error'); return; }
@@ -407,8 +433,6 @@ async function editUserModal(id) {
             payload.email = email;
             payload.role = role;
             payload.balance = Number.isFinite(balance) ? balance : 0;
-            if (password) payload.password = password;
-
             try {
                 await API.users.update(id, payload);
                 showNotification('İstifadəçi uğurla yeniləndi!', 'success');
@@ -956,9 +980,19 @@ async function loadDevicesSection() {
                 const status = user.frozen ? 'blocked' : (user.deviceStatus || 'approved');
                 const pendingId = user.pendingDeviceId || user.pendingDeviceInfo?.deviceId || '';
                 const pendingInfo = user.pendingDeviceInfo || {};
+                const knownDevices = Array.isArray(user.knownDevices) ? user.knownDevices : [];
+                const authorizedDevices = knownDevices.length ? knownDevices : (user.deviceId ? [{
+                    deviceId: user.deviceId,
+                    browser: user.lastLoginDevice?.browser,
+                    platform: user.lastLoginDevice?.platform,
+                    lastLoginAt: user.lastLoginAt || null,
+                }] : []);
                 return {
                     id: user.id,
                     deviceId: user.deviceId || '',
+                    lastLoginAt: user.lastLoginAt || '',
+                    lastLoginDevice: user.lastLoginDevice || null,
+                    authorizedDevices,
                     name: user.name || 'İstifadəçi',
                     email: user.email || '',
                     status,
@@ -982,7 +1016,8 @@ async function loadDevicesSection() {
                     <thead>
                         <tr>
                             <th>İstifadəçi</th>
-                            <th>Etibarlı cihaz</th>
+                            <th>Son giriş</th>
+                            <th>İcazəli cihazlar</th>
                             <th>Yeni cihaz müraciəti</th>
                             <th>Cəhd Sayı</th>
                             <th>Əməliyyat</th>
@@ -998,6 +1033,20 @@ async function loadDevicesSection() {
                             const activeDevice = user.deviceId
                                 ? `<code title="${escapeHtml(user.deviceId)}" style="font-size:11px;">${escapeHtml(user.deviceId.slice(0, 14))}…</code>`
                                 : '<small style="color:#64748b;">Qeyd olunmayıb</small>';
+                            const lastLogin = user.lastLoginDevice;
+                            const lastLoginLabel = lastLogin
+                                ? [lastLogin.browser, lastLogin.platform].filter(Boolean).map(escapeHtml).join(' · ')
+                                : 'Cihaz məlumatı yoxdur';
+                            const authorizedDeviceList = user.authorizedDevices.length
+                                ? user.authorizedDevices.map(device => {
+                                    const label = [device.browser, device.platform].filter(Boolean).map(escapeHtml).join(' · ') || 'Cihaz';
+                                    const lastLogin = device.lastLoginAt ? formatDate(device.lastLoginAt) : 'Uğurlu giriş qeydə alınmayıb';
+                                    return `<div style="padding:5px 0;border-bottom:1px solid #eef2f7;"><strong>${label}</strong><br><small style="color:#64748b;">Son uğurlu giriş: ${escapeHtml(lastLogin)}</small></div>`;
+                                }).join('')
+                                : '<small style="color:#64748b;">İcazəli cihaz qeydə alınmayıb</small>';
+                            const accessBadge = user.authorizedDevices.length >= 2
+                                ? `<span class="badge badge-success">${user.authorizedDevices.length} cihaz icazəli</span>`
+                                : `<span class="badge badge-primary">${user.authorizedDevices.length} cihaz icazəli</span>`;
                             const pendingDevice = user.pendingDeviceId
                                 ? `<strong>${escapeHtml(user.pendingDeviceName || 'Yeni cihaz')}</strong><br>
                                    <code title="${escapeHtml(user.pendingDeviceId)}" style="font-size:11px;">${escapeHtml(user.pendingDeviceId.slice(0, 14))}…</code>
@@ -1009,7 +1058,8 @@ async function loadDevicesSection() {
                             return `
                                 <tr>
                                     <td><strong>${escapeHtml(user.name)}</strong><br><small>${escapeHtml(user.email)}</small></td>
-                                    <td>${activeDevice}<br>${badge}</td>
+                                    <td><strong>${lastLoginLabel}</strong><br><small style="color:#64748b;">${user.lastLoginAt ? escapeHtml(formatDate(user.lastLoginAt)) : 'Son uğurlu giriş vaxtı qeydə alınmayıb'}</small><br>${activeDevice}<br>${badge}</td>
+                                    <td>${accessBadge}<div style="margin-top:5px;">${authorizedDeviceList}</div></td>
                                     <td>${pendingDevice}</td>
                                     <td>${user.mismatchCount}</td>
                                     <td>

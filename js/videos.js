@@ -20,12 +20,16 @@ function escapeVideoText(value) {
 function youtubeVideoId(url) {
     try {
         const parsed = new URL(url);
-        if (parsed.hostname.endsWith('youtu.be')) return parsed.pathname.slice(1).split('/')[0];
-        if (parsed.hostname.endsWith('youtube.com')) {
-            if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || '';
-            const match = parsed.pathname.match(/^\/(?:embed|shorts)\/([^/]+)/);
-            return match ? match[1] : '';
+        if (parsed.protocol !== 'https:') return '';
+        const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+        let videoId = '';
+        if (host === 'youtu.be') {
+            videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
+        } else if (['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(host)) {
+            if (parsed.pathname === '/watch') videoId = parsed.searchParams.get('v') || '';
+            else videoId = parsed.pathname.match(/^\/(?:live|embed|shorts|v)\/([^/]+)/i)?.[1] || '';
         }
+        return /^[\w-]{11}$/.test(videoId) ? videoId : '';
     } catch {}
     return '';
 }
