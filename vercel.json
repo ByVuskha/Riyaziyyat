@@ -2,6 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/auth/login",           "destination": "/api/auth.js?action=login" },
+    { "source": "/api/auth/approve-device",  "destination": "/api/auth.js?action=approve-device" },
     { "source": "/api/auth/register",        "destination": "/api/auth.js?action=register" },
     { "source": "/api/auth/logout",          "destination": "/api/auth.js?action=logout" },
     { "source": "/api/auth/me",              "destination": "/api/auth.js?action=me" },

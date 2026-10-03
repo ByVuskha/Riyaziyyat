@@ -45,6 +45,30 @@ const API = (() => {
     return safeUser;
   }
 
+  function getDeviceInfo() {
+    try {
+      const rawBrowser = navigator.userAgent || 'unknown';
+      const screen = typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : '';
+      const info = {
+        userAgent: rawBrowser,
+        platform: navigator.platform || '',
+        browser: navigator.userAgentData?.brands?.map(b => b.brand).join(' ') || navigator.appName || 'Browser',
+        language: navigator.language || 'az-AZ',
+        screen,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+      };
+      const storageKey = 'deviceFingerprint';
+      let deviceId = localStorage.getItem(storageKey);
+      if (!deviceId) {
+        deviceId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        localStorage.setItem(storageKey, deviceId);
+      }
+      return { ...info, deviceId };
+    } catch {
+      return { deviceId: `fallback-${Date.now()}` };
+    }
+  }
+
   function normalizeUserRecord(value) {
     if (!value || typeof value !== 'object') return null;
     if (value.user && typeof value.user === 'object' && value.user.id) return value.user;
@@ -158,9 +182,29 @@ const API = (() => {
       if (second === 'me') return { user: getCurrentLocalUser() };
       if (second === 'login') {
         const users = readLocalList('localUsers');
-        const { email, password } = body || {};
+        const { email, password, deviceInfo } = body || {};
         const user = users.find(u => u.email === email && u.password === password);
         if (!user) throw new Error('E-poçt və ya şifrə yanlışdır');
+
+        const deviceId = String((deviceInfo && deviceInfo.deviceId) || localStorage.getItem('deviceFingerprint') || `${Date.now()}`);
+        const knownDevices = Array.isArray(user.knownDevices) ? user.knownDevices : [];
+        if (user.deviceId && user.deviceId !== deviceId && !knownDevices.some(device => String(device.deviceId) === String(deviceId))) {
+          const nextCount = Number(user.deviceMismatchCount || 0) + 1;
+          user.deviceMismatchCount = nextCount;
+          user.deviceStatus = 'pending_review';
+          user.frozen = nextCount >= 2;
+          writeLocalList('localUsers', users);
+          if (user.frozen) throw new Error('Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.');
+          throw new Error('Başqa cihazdan giriş cəhd edildi. Admin icazəsi tələb olunur.');
+        }
+
+        user.deviceId = deviceId;
+        user.deviceStatus = 'approved';
+        user.deviceMismatchCount = 0;
+        user.frozen = false;
+        user.knownDevices = knownDevices.some(device => String(device.deviceId) === String(deviceId)) ? knownDevices : [...knownDevices, { deviceId, browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }];
+        writeLocalList('localUsers', users);
+
         const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         const loggedInUser = { ...user, sessionId, password: undefined };
         setCurrentLocalUser(loggedInUser);
@@ -170,6 +214,9 @@ const API = (() => {
         const users = readLocalList('localUsers');
         const payload = body || {};
         if (users.some(u => u.email === payload.email)) throw new Error('Bu e-poçt artıq qeydiyyatdan keçib');
+
+        const deviceInfo = payload.deviceInfo || { deviceId: localStorage.getItem('deviceFingerprint') || `local-${Date.now()}` };
+        const finalDeviceId = String(deviceInfo.deviceId || localStorage.getItem('deviceFingerprint') || `local-${Date.now()}`);
         const user = {
           id: `user-${Date.now()}`,
           name: payload.name || 'Yeni İstifadəçi',
@@ -180,6 +227,10 @@ const API = (() => {
           premium: false,
           balance: 0,
           points: 0,
+          deviceId: finalDeviceId,
+          deviceStatus: 'approved',
+          deviceMismatchCount: 0,
+          knownDevices: [{ deviceId: finalDeviceId, browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }],
           registeredAt: new Date().toISOString()
         };
         users.push(user);
@@ -592,14 +643,17 @@ const API = (() => {
   const auth = {
     async me() { return req('GET', '/api/auth/me'); },
     async login(email, password) {
-      const result = await req('POST', '/api/auth/login', { email, password });
+      const result = await req('POST', '/api/auth/login', { email, password, deviceInfo: getDeviceInfo() });
       setCachedUser(result.user);
       return result;
     },
     async register(name, email, password, userType) {
-      const result = await req('POST', '/api/auth/register', { name, email, password, userType });
+      const result = await req('POST', '/api/auth/register', { name, email, password, userType, deviceInfo: getDeviceInfo() });
       setCachedUser(result.user);
       return result;
+    },
+    async approveDevice(userId, deviceId) {
+      return req('POST', '/api/auth/approve-device', { userId, deviceId });
     },
     async requestPasswordReset(email) {
       return req('POST', '/api/auth/forgot-password', { email });

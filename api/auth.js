@@ -37,6 +37,53 @@ function generateSessionId() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+function normalizeDeviceInfo(rawDeviceInfo = {}) {
+  const info = rawDeviceInfo && typeof rawDeviceInfo === 'object' ? rawDeviceInfo : {};
+  const userAgent = String(info.userAgent || '').slice(0, 250);
+  const platform = String(info.platform || '').slice(0, 80);
+  const browser = String(info.browser || '').slice(0, 80);
+  const language = String(info.language || '').slice(0, 40);
+  const screen = String(info.screen || '').slice(0, 80);
+  const timezone = String(info.timezone || '').slice(0, 60);
+  const fingerprintSource = [userAgent, platform, browser, language, screen, timezone].join('|');
+  const deviceId = String(info.deviceId || crypto.createHash('sha256').update(fingerprintSource || `${Date.now()}`).digest('hex')).slice(0, 128);
+
+  return {
+    deviceId,
+    userAgent,
+    platform,
+    browser,
+    language,
+    screen,
+    timezone,
+    firstSeenAt: new Date().toISOString(),
+  };
+}
+
+function buildKnownDeviceEntry(deviceInfo) {
+  return {
+    deviceId: deviceInfo.deviceId,
+    browser: deviceInfo.browser || 'Unknown browser',
+    platform: deviceInfo.platform || 'Unknown platform',
+    language: deviceInfo.language || 'az-AZ',
+    screen: deviceInfo.screen || '',
+    userAgent: deviceInfo.userAgent || '',
+    firstSeenAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
+  };
+}
+
+function freezeDeviceMismatch(user, reason) {
+  user.frozen = true;
+  user.deviceStatus = 'blocked';
+  user.loginApproved = false;
+  user.loginRequestStatus = 'rejected';
+  user.loginRejectedReason = reason;
+  user.deviceMismatchCount = Number(user.deviceMismatchCount || 0) + 1;
+  user.updatedAt = new Date().toISOString();
+  return user;
+}
+
 async function login(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { email, password } = req.body || {};
@@ -83,29 +130,119 @@ async function login(req, res) {
     await redis.set('allUsers', JSON.stringify(users));
   }
 
+  const deviceInfo = normalizeDeviceInfo(req.body?.deviceInfo || {
+    userAgent: req.headers['user-agent'],
+    platform: req.headers['x-device-platform'],
+    browser: req.headers['x-device-browser'],
+    language: req.headers['accept-language'],
+    screen: req.headers['x-device-screen'],
+    timezone: req.headers['x-device-timezone'],
+  });
+  const deviceHash = deviceInfo.deviceId;
+  const knownDevices = Array.isArray(user.knownDevices) ? user.knownDevices : [];
+  const existingKnownDevice = knownDevices.find(device => String(device.deviceId) === String(deviceHash));
+  const isDifferentDevice = Boolean(user.deviceId) && String(user.deviceId) !== String(deviceHash) && !existingKnownDevice;
+  const isAdminOverride = user.role === 'admin';
+
   const userIndex = users.findIndex(item => item.email === normalizedEmail);
   if (userIndex >= 0) {
+    const activeUser = users[userIndex];
+    if (isDifferentDevice && !isAdminOverride) {
+      const mismatchCount = Number(activeUser.deviceMismatchCount || 0) + 1;
+      activeUser.deviceMismatchCount = mismatchCount;
+      activeUser.deviceStatus = 'pending_review';
+      activeUser.loginApproved = false;
+      activeUser.loginRequestStatus = 'pending';
+      activeUser.deviceLastSeenAt = new Date().toISOString();
+      activeUser.updatedAt = new Date().toISOString();
+      await redis.set('allUsers', JSON.stringify(users));
+
+      if (mismatchCount >= 2) {
+        freezeDeviceMismatch(activeUser, 'Başqa cihazdan giriş cəhd edildi və hesaba ikinci giriş icazəsi verilmədi.');
+        await redis.set('allUsers', JSON.stringify(users));
+        return res.status(403).json({
+          error: 'Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.',
+          deviceBlocked: true,
+        });
+      }
+
+      return res.status(403).json({
+        error: 'Başqa cihazdan giriş cəhd edildi. Admin icazəsi tələb olunur.',
+        warning: true,
+      });
+    }
+
     const nextSessionId = generateSessionId();
-    users[userIndex].sessionId = nextSessionId;
-    users[userIndex].deviceId = users[userIndex].deviceId || null;
-    users[userIndex].deviceStatus = 'approved';
-    users[userIndex].deviceMismatchCount = 0;
-    users[userIndex].deviceLastSeenAt = new Date().toISOString();
-    users[userIndex].updatedAt = new Date().toISOString();
+    activeUser.sessionId = nextSessionId;
+    activeUser.deviceId = deviceHash;
+    activeUser.deviceStatus = 'approved';
+    activeUser.deviceMismatchCount = 0;
+    activeUser.loginApproved = true;
+    activeUser.loginRequestStatus = 'approved';
+    activeUser.loginRejectedReason = null;
+    activeUser.frozen = false;
+    activeUser.deviceLastSeenAt = new Date().toISOString();
+    activeUser.knownDevices = Array.isArray(activeUser.knownDevices) ? activeUser.knownDevices : [];
+    if (!activeUser.knownDevices.some(device => String(device.deviceId) === String(deviceHash))) {
+      activeUser.knownDevices.push(buildKnownDeviceEntry(deviceInfo));
+    }
+    activeUser.updatedAt = new Date().toISOString();
     await redis.set('allUsers', JSON.stringify(users));
-    const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name, sessionId: nextSessionId });
+    const token = signToken({ id: activeUser.id, email: activeUser.email, role: activeUser.role, name: activeUser.name, sessionId: nextSessionId, deviceId: deviceHash });
     res.setHeader('Set-Cookie', buildCookieHeader(token));
-    return res.status(200).json({ user: sanitizeUser(users[userIndex]) });
+    return res.status(200).json({ user: sanitizeUser(activeUser) });
   }
 
-  const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name, sessionId: generateSessionId() });
+  const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name, sessionId: generateSessionId(), deviceId: deviceHash });
   res.setHeader('Set-Cookie', buildCookieHeader(token));
   return res.status(200).json({ user: sanitizeUser(user) });
 }
 
+async function approveDevice(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const adminUser = requireAdmin(req, res);
+  if (!adminUser) return;
+
+  const { userId, deviceId } = req.body || {};
+  if (!userId || !deviceId) {
+    return res.status(400).json({ error: 'userId və deviceId tələb olunur' });
+  }
+
+  const users = parseUsers(await redis.get('allUsers'));
+  const targetUser = users.find(item => String(item.id) === String(userId));
+  if (!targetUser) return res.status(404).json({ error: 'İstifadəçi tapılmadı' });
+
+  targetUser.deviceId = String(deviceId);
+  targetUser.deviceStatus = 'approved';
+  targetUser.deviceMismatchCount = 0;
+  targetUser.loginApproved = true;
+  targetUser.loginRequestStatus = 'approved';
+  targetUser.loginRejectedReason = null;
+  targetUser.frozen = false;
+  targetUser.updatedAt = new Date().toISOString();
+
+  const known = Array.isArray(targetUser.knownDevices) ? targetUser.knownDevices : [];
+  if (!known.some(device => String(device.deviceId) === String(deviceId))) {
+    known.push({
+      deviceId: String(deviceId),
+      browser: 'Admin approved',
+      platform: 'System approved',
+      language: 'az-AZ',
+      screen: '',
+      userAgent: '',
+      firstSeenAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+    });
+    targetUser.knownDevices = known;
+  }
+
+  await redis.set('allUsers', JSON.stringify(users));
+  return res.status(200).json({ ok: true, user: sanitizeUser(targetUser) });
+}
+
 async function register(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const { name, email, password, userType = 'student' } = req.body || {};
+  const { name, email, password, userType = 'student', deviceInfo } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Ad, email və şifrə tələb olunur' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email düzgün deyil' });
   if (password.length < 6) return res.status(400).json({ error: 'Şifrə minimum 6 simvol olmalıdır' });
@@ -120,6 +257,14 @@ async function register(req, res) {
   const users = parseUsers(await redis.get('allUsers'));
   if (users.some(user => user.email === normalizedEmail)) return res.status(409).json({ error: 'Bu email artıq qeydiyyatdadır' });
 
+  const normalizedDeviceInfo = normalizeDeviceInfo(deviceInfo || {
+    userAgent: req.headers['user-agent'],
+    platform: req.headers['x-device-platform'],
+    browser: req.headers['x-device-browser'],
+    language: req.headers['accept-language'],
+    screen: req.headers['x-device-screen'],
+    timezone: req.headers['x-device-timezone'],
+  });
   const sessionId = generateSessionId();
   const newUser = {
     id: genId(),
@@ -138,11 +283,11 @@ async function register(req, res) {
     loginRequestStatus: 'approved',
     loginRequestedAt: null,
     loginRejectedReason: null,
-    deviceId: null,
-    knownDevices: [],
+    deviceId: normalizedDeviceInfo.deviceId,
+    knownDevices: [buildKnownDeviceEntry(normalizedDeviceInfo)],
     deviceStatus: 'approved',
     deviceMismatchCount: 0,
-    deviceLastSeenAt: null,
+    deviceLastSeenAt: new Date().toISOString(),
     demoTests: 3,
     canAddTests: false,
     frozen: false,
@@ -317,6 +462,7 @@ module.exports = async function handler(req, res) {
   try {
     const action = req.query?.action;
     if (action === 'login') return await login(req, res);
+    if (action === 'approve-device') return await approveDevice(req, res);
     if (action === 'register') return await register(req, res);
     if (action === 'forgot-password') return await requestPasswordReset(req, res);
     if (action === 'reset-password') return await resetPassword(req, res);
