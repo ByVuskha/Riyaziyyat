@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/math-question-tools.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- KaTeX -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -250,6 +251,7 @@
             <textarea class="math-input-field" id="questionText" rows="4"
                       placeholder="Sualı daxil edin. Riyazi ifadə üçün: $2x + 4 = 10$"
                       oninput="livePreview('questionText','qtext_preview')"></textarea>
+            <div id="questionFigureTools"></div>
             <div class="math-preview" id="qtext_preview">
                 <div class="preview-label">Önizləmə:</div>
                 <div class="preview-content"></div>
@@ -268,24 +270,28 @@
                 <input type="text" class="opt-inp" id="optA" placeholder="A variantı ($\frac{1}{2}$, 5, ...)" oninput="livePreview('optA','pA')">
             </div>
             <div class="math-preview" id="pA"><div class="preview-label">Önizləmə A:</div><div class="preview-content"></div></div>
+            <div id="optAToolbar"></div>
             <div class="opt-row">
                 <input type="radio" name="correctOpt" value="1" id="rOpt1">
                 <label for="rOpt1" style="font-weight:700;width:28px;">B)</label>
                 <input type="text" class="opt-inp" id="optB" placeholder="B variantı" oninput="livePreview('optB','pB')">
             </div>
             <div class="math-preview" id="pB"><div class="preview-label">Önizləmə B:</div><div class="preview-content"></div></div>
+            <div id="optBToolbar"></div>
             <div class="opt-row">
                 <input type="radio" name="correctOpt" value="2" id="rOpt2">
                 <label for="rOpt2" style="font-weight:700;width:28px;">C)</label>
                 <input type="text" class="opt-inp" id="optC" placeholder="C variantı" oninput="livePreview('optC','pC')">
             </div>
             <div class="math-preview" id="pC"><div class="preview-label">Önizləmə C:</div><div class="preview-content"></div></div>
+            <div id="optCToolbar"></div>
             <div class="opt-row">
                 <input type="radio" name="correctOpt" value="3" id="rOpt3">
                 <label for="rOpt3" style="font-weight:700;width:28px;">D)</label>
                 <input type="text" class="opt-inp" id="optD" placeholder="D variantı" oninput="livePreview('optD','pD')">
             </div>
             <div class="math-preview" id="pD"><div class="preview-label">Önizləmə D:</div><div class="preview-content"></div></div>
+            <div id="optDToolbar"></div>
         </div>
 
         <!-- Explanation -->
@@ -319,6 +325,7 @@
     <script src="js/math-bg.js?v=20260927"></script>
     <script src="js/animations.js?v=20260927"></script>
     <script src="js/notifications.js?v=20260927"></script>
+<script src="js/math-question-tools.js"></script>
 <script>
 // ════════════════════════════════════════════════════════
 //  KaTeX helpers
@@ -455,6 +462,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAdminPage();
     if (!user) return;
     buildToolbar('questionText');
+    document.getElementById('questionFigureTools').innerHTML = MathQuestionTools.editorMarkup('questionFigure');
+    ['A', 'B', 'C', 'D'].forEach(letter => {
+        document.getElementById(`opt${letter}Toolbar`).innerHTML = MathQuestionTools.toolbarMarkup(`opt${letter}`);
+    });
 
     // Load existing test if ?id= param
     const testId = new URLSearchParams(window.location.search).get('id');
@@ -563,6 +574,7 @@ async function loadTestData(testId) {
     questions = (t.questions || []).map(q => ({
         text: q.question || q.text || '',
         options: q.options || [q.optionA||'', q.optionB||'', q.optionC||'', q.optionD||''],
+        figure: q.figure || null,
         correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : (['A','B','C','D'].indexOf(q.correctAnswer) >= 0 ? ['A','B','C','D'].indexOf(q.correctAnswer) : 0),
         explanation: q.explanation || '',
         explanationVideo: q.explanationVideo || ''
@@ -593,6 +605,7 @@ function renderQuestions() {
                 </div>
             </div>
             <div class="q-text">${q.text}</div>
+            ${MathQuestionTools.renderFigure(q.figure) ? `<div class="question-figure">${MathQuestionTools.renderFigure(q.figure)}</div>` : ''}
             <div class="options-grid">
                 ${q.options.map((opt,oi) => `
                     <div class="opt-display ${oi === q.correctAnswer ? 'correct' : ''}">
@@ -632,6 +645,11 @@ function editQuestion(idx) {
     clearModal();
 
     document.getElementById('questionText').value = q.text || '';
+    const figure = MathQuestionTools.normalizeFigure(q.figure);
+    document.getElementById('questionFigure_shape').value = figure?.type || '';
+    document.getElementById('questionFigure_vertices').value = figure?.vertices || 'A, B, C';
+    document.getElementById('questionFigure_measure').value = figure?.measure || '';
+    MathQuestionTools.refreshPreview('questionFigure');
     const opts = q.options || ['','','',''];
     const ids = ['optA','optB','optC','optD'];
     ids.forEach((id,i) => { document.getElementById(id).value = opts[i] || ''; });
@@ -653,6 +671,10 @@ function clearModal() {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    document.getElementById('questionFigure_shape').value = '';
+    document.getElementById('questionFigure_vertices').value = 'A, B, C';
+    document.getElementById('questionFigure_measure').value = '';
+    MathQuestionTools.refreshPreview('questionFigure');
     document.getElementById('rOpt0').checked = true;
     ['qtext_preview','pA','pB','pC','pD'].forEach(id => {
         const el = document.getElementById(id);
@@ -681,6 +703,7 @@ function saveQuestion() {
         text,
         options: opts,
         correctAnswer: correct,
+        figure: MathQuestionTools.readFigure('questionFigure'),
         explanation: document.getElementById('explanation').value.trim(),
         explanationVideo: document.getElementById('explanationVideo').value.trim()
     };
@@ -725,6 +748,7 @@ async function saveTestInfo() {
             question: q.text,
             options: q.options,
             correctAnswer: q.correctAnswer,
+            figure: q.figure || null,
             explanation: q.explanation || '',
             explanationVideo: q.explanationVideo || ''
         })),

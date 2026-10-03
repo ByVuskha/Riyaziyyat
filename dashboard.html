@@ -22,7 +22,12 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/math-question-tools.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="js/math-question-tools.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         body { background: #f1f5f9; }
 
@@ -820,14 +825,21 @@ function addQuestion() {
             <i class="fas fa-times"></i>
         </button>
         <div style="margin:10px 0 8px;">
-            <input type="text" class="form-control" id="q${n}_text" placeholder="Sual mətnini daxil edin *" required style="font-size:13px;">
+            ${MathQuestionTools.toolbarMarkup(`q${n}_text`)}
+            <textarea class="form-control math-input" id="q${n}_text" rows="3" placeholder="Sual mətnini daxil edin. Riyazi ifadə: $x^2+3x=5$" oninput="MathQuestionTools.updatePreview('q${n}_text','q${n}_text_preview')" required style="font-size:13px;"></textarea>
+            <div class="math-preview" id="q${n}_text_preview"></div>
+            ${MathQuestionTools.editorMarkup(`q${n}`)}
         </div>
         <p style="font-size:11px;color:#6b7280;margin-bottom:6px;">Düzgün cavabı radio ilə seçin:</p>
         <div class="options-2col">
             ${[0,1,2,3].map(i=>`
-            <div class="opt-row">
-                <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
-                <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variantı" required>
+            <div class="math-option-tools">
+                <div class="opt-row">
+                    <input type="radio" name="cor_${n}" value="${i}" ${i===0?'checked':''} title="Düzgün cavab">
+                    <input type="text" id="q${n}_opt${i}" placeholder="${String.fromCharCode(65+i)} variantı" oninput="MathQuestionTools.updatePreview('q${n}_opt${i}','q${n}_opt${i}_preview')" required>
+                </div>
+                ${MathQuestionTools.toolbarMarkup(`q${n}_opt${i}`)}
+                <div class="math-preview" id="q${n}_opt${i}_preview"></div>
             </div>`).join('')}
         </div>`;
     document.getElementById('questionsContainer').appendChild(div);
@@ -865,7 +877,7 @@ async function submitTest(e) {
         const corEl = document.querySelector(`input[name="cor_${id}"]:checked`);
         const correct = corEl ? parseInt(corEl.value) : 0;
         if (!text || opts.some(o => !o)) { valid = false; return; }
-        questions.push({ question: text, options: opts, correctAnswer: correct });
+        questions.push({ question: text, options: opts, correctAnswer: correct, figure: MathQuestionTools.readFigure(`q${id}`) });
     });
 
     if (!valid) {

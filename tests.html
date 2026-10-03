@@ -21,6 +21,10 @@
     <link rel="canonical" href="https://bizimriyaziyyat.vercel.app/tests.html">`n    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/math-question-tools.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -91,6 +95,7 @@
     <script src="js/math-bg.js"></script>
     <script src="js/animations.js"></script>
     <script src="js/notifications.js"></script>
+    <script src="js/math-question-tools.js"></script>
 
 <script>
 // Load tests from API — replaces MOCK_TESTS + localStorage approach
@@ -112,7 +117,7 @@ async function initTestsPage() {
             desc:       t.description || '',
             attempts:   t.attempts || 0,
             users:      t.uniqueUsers || 0,
-            data:       (t.questions || []).map(q => ({ q: q.question, opts: q.options, ans: q.correctAnswer })),
+            data:       (t.questions || []).map(q => ({ q: q.question, opts: q.options, ans: q.correctAnswer, figure: q.figure || null })),
         }));
         renderTests();
     } catch(e) {
@@ -232,7 +237,11 @@ async function startTest(id) {
             id: test.id,
             title: test.title,
             questions: test.questions.length,
-            data: test.questions.map(question => ({ q: question.question, opts: question.options })),
+            data: test.questions.map(question => ({
+                q: question.question,
+                opts: question.options,
+                figure: question.figure,
+            })),
         };
     } catch (error) {
         if (error.status === 403) showPremiumPromptTest();
@@ -415,6 +424,7 @@ function showQuestion() {
                 font-size:18px;font-weight:700;margin:0 0 22px;
                 color:#1e293b;line-height:1.5;
             ">${q.q}</h3>
+            ${MathQuestionTools.renderFigure(q.figure) ? `<div class="question-figure">${MathQuestionTools.renderFigure(q.figure)}</div>` : ''}
 
             <!-- Options -->
             <div id="options" style="display:flex;flex-direction:column;gap:10px;">
@@ -453,6 +463,15 @@ function showQuestion() {
         </div>
     `;
     document.body.appendChild(modal);
+    if (typeof renderMathInElement === 'function') {
+        renderMathInElement(modal, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false },
+            ],
+            throwOnError: false,
+        });
+    }
 
     /* Start circular timer */
     const timerWrap = document.getElementById('timerWrap');

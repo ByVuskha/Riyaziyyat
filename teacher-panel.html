@@ -22,10 +22,12 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/math-question-tools.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- KaTeX for math rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="js/math-question-tools.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
             onload="renderMathInDocument()"></script>
     <style>
@@ -514,10 +516,15 @@ function updateMathPreview(inputId) {
     const preview = document.getElementById(previewId);
     if (!preview || !el) return;
     const val = el.value.trim();
-    if (!val) { preview.classList.remove('active'); return; }
+    if (!val) { preview.replaceChildren(); preview.classList.remove('active'); return; }
+    const label = document.createElement('div');
+    label.className = 'math-preview-label';
+    label.textContent = 'Önizləmə:';
+    const content = document.createElement('div');
+    content.textContent = val;
+    preview.replaceChildren(label, content);
     preview.classList.add('active');
-    preview.innerHTML = `<div class="math-preview-label">Önizləmə:</div>${val}`;
-    renderMathIn(preview);
+    renderMathIn(content);
 }
 
 // ════════════════════════════════════════════════════════
@@ -618,15 +625,18 @@ function addQuestion() {
     // Build option rows
     const optionLetters = ['A', 'B', 'C', 'D'];
     const optionsHtml = optionLetters.map((ltr, i) => `
-        <div class="option-row">
-            <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Bu variantı düzgün cavab kimi seç" id="r_${n}_${i}">
-            <label class="opt-label" for="r_${n}_${i}">${ltr})</label>
-            <input type="text" class="form-control" id="q${n}_opt${i}"
-                   placeholder="Variant ${ltr} (riyazi ifadə: $x^2$)"
-                   oninput="updateMathPreview('q${n}_opt${i}')"
-                   required>
+        <div class="math-option-tools">
+            <div class="option-row">
+                <input type="radio" name="correct_${n}" value="${i}" ${i===0?'checked':''} title="Bu variantı düzgün cavab kimi seç" id="r_${n}_${i}">
+                <label class="opt-label" for="r_${n}_${i}">${ltr})</label>
+                <input type="text" class="form-control" id="q${n}_opt${i}"
+                       placeholder="Variant ${ltr} (riyazi ifadə: $x^2$)"
+                       oninput="updateMathPreview('q${n}_opt${i}')"
+                       required>
+            </div>
+            ${MathQuestionTools.toolbarMarkup(`q${n}_opt${i}`)}
+            <div class="math-preview" id="q${n}_opt${i}_preview"></div>
         </div>
-        <div class="math-preview" id="q${n}_opt${i}_preview"></div>
     `).join('');
 
     div.innerHTML = `
@@ -643,6 +653,7 @@ function addQuestion() {
                       placeholder="Sual mətnini daxil edin. Riyazi ifadə: $2x+4=10$, kəsr: $\\frac{a}{b}$"
                       oninput="updateMathPreview('q${n}_text')" required></textarea>
             <div class="math-preview" id="q${n}_text_preview"></div>
+            ${MathQuestionTools.editorMarkup(`q${n}`)}
             <div class="math-hint">
                 Nümunə: <code>$x^2 + 3x - 10 = 0$</code> · Kəsr: <code>$\frac{3}{4}$</code> · Kök: <code>$\sqrt{16}$</code> · Bucaq: <code>$\angle ABC = 60°$</code>
             </div>
@@ -710,7 +721,7 @@ async function submitTest(e) {
         const correct = corrEl ? parseInt(corrEl.value) : 0;
         if (!qText) { valid = false; errMsg = `Sual ${idx+1}: sual mətni boşdur.`; return; }
         if (opts.some(o => !o)) { valid = false; errMsg = `Sual ${idx+1}: bütün 4 variant doldurulmalıdır.`; return; }
-        questions.push({ question: qText, options: opts, correctAnswer: correct });
+        questions.push({ question: qText, options: opts, correctAnswer: correct, figure: MathQuestionTools.readFigure(`q${id}`) });
     });
 
     if (!valid) {

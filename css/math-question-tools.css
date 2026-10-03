@@ -1,0 +1,98 @@
+.math-toolstrip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 7px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px 8px 0 0;
+}
+
+.math-question-tools .math-btn {
+    min-width: 32px;
+    padding: 4px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: white;
+    color: #1e293b;
+    cursor: pointer;
+}
+
+.math-question-tools .math-btn:hover {
+    border-color: #4f46e5;
+    background: #4f46e5;
+    color: white;
+}
+
+.geometry-editor {
+    margin-top: 9px;
+    border: 1px solid #dbe4ee;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.geometry-editor summary {
+    padding: 9px 11px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.geometry-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 9px;
+    padding: 0 10px 10px;
+    align-items: end;
+}
+
+.geometry-fields label {
+    display: grid;
+    gap: 4px;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.geometry-fields input,
+.geometry-fields select {
+    width: 100%;
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: white;
+    color: #1e293b;
+    font: inherit;
+}
+
+.geometry-preview:empty { display: none; }
+.geometry-preview { padding: 0 10px 10px; }
+
+.math-option-tools { min-width: 0; }
+.math-option-tools .math-toolstrip { border-radius: 7px; }
+
+.geometry-diagram {
+    display: block;
+    width: min(100%, 320px);
+    height: auto;
+    margin: 4px auto;
+    overflow: visible;
+}
+
+.geometry-diagram path,
+.geometry-diagram circle:not(.diagram-dot) {
+    fill: #eff6ff;
+    stroke: #2563eb;
+    stroke-width: 3;
+    stroke-linejoin: round;
+}
+
+.geometry-diagram circle:not(.diagram-dot) { fill: none; }
+.geometry-diagram .diagram-dot { fill: #1d4ed8; }
+.geometry-diagram .diagram-label { fill: #1e293b; font: 700 15px sans-serif; }
+.geometry-diagram .diagram-measure { fill: #b45309; font: 700 14px sans-serif; text-anchor: middle; }
+
+.question-figure { margin: 12px 0 18px; padding: 10px; background: #f8fafc; border-radius: 10px; }
+.question-figure .geometry-diagram { width: min(100%, 290px); }
