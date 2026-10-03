@@ -60,7 +60,7 @@
 }
 
 /* Push all real content above canvas, but keep the navbar stack above hero sections */
-body > *:not(#mathCanvas):not(#pageTransition):not(#scrollTopBtn):not(.modal-overlay):not(.navbar):not(.navbar-inner):not(.navbar-menu):not(.hamburger-btn):not(.navbar-actions):not(.admin-layout):not(.auth-page) {
+body > *:not(#mathCanvas):not(#pageTransition):not(#scrollTopBtn):not(.modal-overlay):not(.navbar):not(.navbar-inner):not(.navbar-menu):not(.hamburger-btn):not(.navbar-actions):not(.admin-layout):not(.auth-page):not(.filters) {
   position: relative;
   z-index: 1;
 }

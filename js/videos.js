@@ -151,7 +151,14 @@ function renderVideos() {
     });
 
     if (!filtered.length) {
-        grid.innerHTML = '<div class="videos-state">Bu mövzu üzrə video tapılmadı.</div>';
+        const hasCatalog = videoCatalog.length > 0;
+        grid.innerHTML = `
+            <div class="videos-state">
+                <span class="videos-state-icon" aria-hidden="true"><i class="fas ${hasCatalog ? 'fa-magnifying-glass' : 'fa-circle-play'}"></i></span>
+                <h2>${hasCatalog ? 'Uyğun video tapılmadı' : 'Hələ video dərs yoxdur'}</h2>
+                <p>${hasCatalog ? 'Axtarış sözünü və ya seçilmiş mövzunu dəyişib yenidən yoxlayın.' : 'Yeni video dərslər əlavə olunduqda burada görünəcək.'}</p>
+                ${hasCatalog ? '<button class="btn btn-secondary btn-sm" type="button" onclick="resetVideoFilters()">Filtrləri təmizlə</button>' : ''}
+            </div>`;
         return;
     }
 
@@ -191,6 +198,15 @@ function renderVideos() {
             image.replaceWith(fallback);
         }, { once: true });
     });
+}
+
+function resetVideoFilters() {
+    currentCategory = 'all';
+    currentSearch = '';
+    const input = document.getElementById('searchInput');
+    if (input) input.value = '';
+    syncFilterButtons();
+    renderVideos();
 }
 
 async function playVideo(id) {
