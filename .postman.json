@@ -1613,7 +1613,7 @@
   "environmentProduction": {
     "name": "Bizim Riyaziyyat - Production",
     "values": [
-      { "key": "base_url", "value": "https://bizimriyaziyyat.work.gd/api", "enabled": true },
+      { "key": "base_url", "value": "https://bizimriyaziyyat.vercel.app/api", "enabled": true },
       { "key": "token",    "value": "",                                      "enabled": true }
     ]
   }

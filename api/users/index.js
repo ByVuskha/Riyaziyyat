@@ -16,16 +16,24 @@ module.exports = async function handler(req, res) {
     const raw   = await redis.get('allUsers');
     const users = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
 
-    const page  = parseInt(req.query?.page)  || 1;
-    const limit = parseInt(req.query?.limit) || 50;
-    const q     = (req.query?.q || '').toLowerCase();
+    const page  = Math.max(1, parseInt(req.query?.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query?.limit, 10) || 50));
+    const q     = String(req.query?.q || '').trim().toLowerCase().slice(0, 100);
+    const role  = String(req.query?.role || '');
+    const userType = String(req.query?.userType || '');
+    const premium = req.query?.premium === 'true' ? true : req.query?.premium === 'false' ? false : null;
     let filtered = users;
     if (q) {
       filtered = users.filter(u =>
-        u.name?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q)
+        String(u.name || '').toLowerCase().includes(q) ||
+        String(u.email || '').toLowerCase().includes(q) ||
+        String(u.phone || '').toLowerCase().includes(q) ||
+        String(u.id || '').toLowerCase().includes(q)
       );
     }
+    if (role) filtered = filtered.filter(user => user.role === role);
+    if (userType) filtered = filtered.filter(user => user.userType === userType);
+    if (premium !== null) filtered = filtered.filter(user => Boolean(user.premium) === premium);
 
     return res.status(200).json(
       paginate(filtered.map(user => sanitizeUser(user)), page, limit)

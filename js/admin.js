@@ -6,6 +6,13 @@
 
 'use strict';
 
+let usersPage = 1;
+let usersQuery = '';
+let usersFilters = {};
+let usersTotalPages = 1;
+let usersRequestId = 0;
+let notificationTargetRequestId = 0;
+
 // ════════════════════════════════════════════════════════
 //  Boot: require admin, then load dashboard
 // ════════════════════════════════════════════════════════
@@ -13,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAdminPage();   // from app.js — redirects if not admin
     if (!user) return;
     initializeAdminNavigation();
+    initializeAdminListFilters();
     renderAdminUser(user);
     await Promise.all([
         loadDashboardStats(),
@@ -30,6 +38,373 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
     _updateTeacherTestsBadge();
 });
+
+function createAdminFilterField(label, control) {
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    const fieldLabel = document.createElement('label');
+    fieldLabel.textContent = label;
+    group.append(fieldLabel, control);
+    return group;
+}
+
+function getAdminTableRows(tbody) {
+    return Array.from(tbody.rows).filter(row =>
+        row.cells.length > 1 && !row.cells[0].hasAttribute('colspan')
+    );
+}
+
+function initializeAdminListFilters() {
+    document.querySelectorAll('.admin-section table').forEach(table => {
+        if (table.id !== 'testResultsTable') initializeAdminTableFilter(table);
+    });
+
+    const devicesContainer = document.getElementById('devicesContainer');
+    if (devicesContainer) {
+        const observer = new MutationObserver(() => {
+            devicesContainer.querySelectorAll('table').forEach(initializeAdminTableFilter);
+        });
+        observer.observe(devicesContainer, { childList: true, subtree: true });
+    }
+
+    [
+        'recentRegistrationsList',
+        'dashboardActiveUsersList',
+        'notificationsList',
+        'activeUsersContainer',
+        'teacherAccessRequestsList',
+        'teacherSubmittedTestsList',
+    ].forEach(initializeAdminCardFilter);
+    initializeNotificationTargetSearch();
+}
+
+function initializeNotificationTargetSearch() {
+    const input = document.getElementById('notificationTargetSearch');
+    if (!input || input.dataset.searchInitialized) return;
+    input.dataset.searchInitialized = 'true';
+
+    let searchTimer;
+    input.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            loadNotificationTargetUsers(input.value.trim()).catch(error => {
+                showNotification(error.message || 'İstifadəçiləri axtarmaq mümkün olmadı.', 'error');
+            });
+        }, 300);
+    });
+}
+
+async function loadNotificationTargetUsers(query = '') {
+    const target = document.getElementById('notificationTarget');
+    if (!target) return;
+    const requestId = ++notificationTargetRequestId;
+    const selectedValue = target.value;
+    const selectedLabel = target.selectedOptions[0]?.textContent || '';
+    const result = await API.users.list({
+        limit: query ? 50 : 200,
+        page: 1,
+        q: query,
+    });
+    if (requestId !== notificationTargetRequestId) return;
+
+    const users = normalizeArray(result);
+    target.replaceChildren();
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'Hamısına';
+    target.appendChild(allOption);
+    users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = `${user.name} (${user.email})`;
+        target.appendChild(option);
+    });
+
+    if (selectedValue && selectedValue !== 'all' && !users.some(user => String(user.id) === selectedValue)) {
+        const selectedOption = document.createElement('option');
+        selectedOption.value = selectedValue;
+        selectedOption.textContent = `${selectedLabel} · seçilmiş`;
+        target.appendChild(selectedOption);
+    }
+    target.value = selectedValue || 'all';
+}
+
+function initializeAdminTableFilter(table) {
+    const tbody = table.tBodies[0];
+    if (!tbody || table.dataset.adminFilterInitialized) return;
+    table.dataset.adminFilterInitialized = 'true';
+
+    const section = table.closest('.admin-section');
+    const sectionTitle = section?.querySelector('h2')?.textContent.trim() || 'Siyahı';
+    const headers = Array.from(table.tHead?.rows[0]?.cells || []);
+    const controls = document.createElement('div');
+    controls.className = 'admin-list-filters';
+    controls.setAttribute('role', 'search');
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'form-control';
+    searchInput.placeholder = 'Ad, email və ya mətn üzrə axtar';
+    searchInput.setAttribute('aria-label', `${sectionTitle} siyahısında axtar`);
+    controls.appendChild(createAdminFilterField('Axtarış', searchInput));
+
+    const columnSelect = document.createElement('select');
+    columnSelect.className = 'form-control';
+    columnSelect.setAttribute('aria-label', `${sectionTitle} siyahısı üçün filtr sütunu`);
+    const allColumnsOption = document.createElement('option');
+    allColumnsOption.value = '';
+    allColumnsOption.textContent = 'Bütün sütunlar';
+    columnSelect.appendChild(allColumnsOption);
+    headers.forEach((header, index) => {
+        const label = header.textContent.trim();
+        if (!label || /əməliyyat/i.test(label)) return;
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = label;
+        columnSelect.appendChild(option);
+    });
+    controls.appendChild(createAdminFilterField('Sütun üzrə filtr', columnSelect));
+
+    const valueSelect = document.createElement('select');
+    valueSelect.className = 'form-control';
+    valueSelect.setAttribute('aria-label', `${sectionTitle} siyahısı üçün filtr dəyəri`);
+    controls.appendChild(createAdminFilterField('Dəyər', valueSelect));
+
+    const count = document.createElement('span');
+    count.className = 'admin-list-filter-meta';
+    count.setAttribute('aria-live', 'polite');
+    controls.appendChild(count);
+    table.before(controls);
+
+    const noMatches = document.createElement('div');
+    noMatches.className = 'admin-list-empty';
+    noMatches.textContent = 'Axtarışa uyğun nəticə tapılmadı.';
+    noMatches.setAttribute('role', 'status');
+    table.after(noMatches);
+
+    const userPagination = table.id === 'usersTable'
+        ? createUsersPagination(table)
+        : null;
+    let searchTimer;
+
+    function updateValueOptions() {
+        const selectedValue = valueSelect.value;
+        valueSelect.replaceChildren();
+        const allValuesOption = document.createElement('option');
+        allValuesOption.value = '';
+        allValuesOption.textContent = 'Hamısı';
+        valueSelect.appendChild(allValuesOption);
+
+        const columnIndex = Number(columnSelect.value);
+        if (!columnSelect.value || !Number.isInteger(columnIndex)) {
+            valueSelect.disabled = true;
+            return;
+        }
+
+        const values = [...new Set(getAdminTableRows(tbody)
+            .map(row => row.cells[columnIndex]?.textContent.trim())
+            .filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'az'));
+        if (table.id === 'usersTable' && selectedValue && !values.includes(selectedValue)) {
+            values.push(selectedValue);
+        }
+        values.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            valueSelect.appendChild(option);
+        });
+        valueSelect.disabled = values.length === 0;
+        if (values.includes(selectedValue)) valueSelect.value = selectedValue;
+    }
+
+    function getUserFilters() {
+        const column = Number(columnSelect.value);
+        const value = valueSelect.value;
+        if (!value) return {};
+        if (column === 3) return { role: value === 'Admin' ? 'admin' : 'user' };
+        if (column === 4) return { userType: value === 'Müəllim' ? 'teacher' : value === 'Admin' ? 'admin' : 'student' };
+        if (column === 6) return { premium: value.includes('Premium') ? 'true' : 'false' };
+        return {};
+    }
+
+    function applyFilter() {
+        const rows = getAdminTableRows(tbody);
+        const query = searchInput.value.trim().toLocaleLowerCase('az');
+        const columnIndex = Number(columnSelect.value);
+        const value = valueSelect.value.toLocaleLowerCase('az');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const searchableText = row.textContent.toLocaleLowerCase('az');
+            const cellText = columnSelect.value
+                ? row.cells[columnIndex]?.textContent.trim().toLocaleLowerCase('az') || ''
+                : '';
+            const matches = (!query || searchableText.includes(query)) &&
+                (!value || cellText === value);
+            row.hidden = !matches;
+            if (matches) visibleCount++;
+        });
+
+        count.textContent = `${visibleCount} / ${rows.length} nəticə`;
+        noMatches.style.display = rows.length > 0 && visibleCount === 0 ? 'block' : 'none';
+    }
+
+    function reloadUserFilters() {
+        if (table.id !== 'usersTable') return;
+        loadUsers({
+            page: 1,
+            query: searchInput.value.trim(),
+            filters: getUserFilters(),
+        });
+    }
+
+    searchInput.addEventListener('input', () => {
+        applyFilter();
+        if (table.id !== 'usersTable') return;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            loadUsers({ page: 1, query: searchInput.value.trim() });
+        }, 300);
+    });
+    columnSelect.addEventListener('change', () => {
+        updateValueOptions();
+        applyFilter();
+        reloadUserFilters();
+    });
+    valueSelect.addEventListener('change', () => {
+        applyFilter();
+        reloadUserFilters();
+    });
+
+    const observer = new MutationObserver(() => {
+        updateValueOptions();
+        applyFilter();
+    });
+    observer.observe(tbody, { childList: true, subtree: true });
+    updateValueOptions();
+    applyFilter();
+
+    if (userPagination) table.after(userPagination);
+}
+
+function createUsersPagination(table) {
+    const pagination = document.createElement('div');
+    pagination.className = 'admin-list-pagination';
+    pagination.id = 'usersPagination';
+    pagination.setAttribute('aria-label', 'İstifadəçilər siyahısının səhifələnməsi');
+    table.after(pagination);
+    return pagination;
+}
+
+function updateUsersPagination(total, pages, page) {
+    const pagination = document.getElementById('usersPagination');
+    if (!pagination) return;
+    const start = total ? (page - 1) * 50 + 1 : 0;
+    const end = Math.min(page * 50, total);
+    pagination.innerHTML = `
+        <span>${start}–${end} / ${total} istifadəçi · Səhifə ${page} / ${pages}</span>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="loadUsers({ page: ${page - 1} })" ${page <= 1 ? 'disabled' : ''} aria-label="Əvvəlki səhifə">
+            <i class="fas fa-chevron-left"></i> Əvvəlki
+        </button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="loadUsers({ page: ${page + 1} })" ${page >= pages ? 'disabled' : ''} aria-label="Növbəti səhifə">
+            Növbəti <i class="fas fa-chevron-right"></i>
+        </button>`;
+}
+
+function adminFilterCategoryLabel(category) {
+    const labels = {
+        free: 'Pulsuz',
+        premium: 'Premium',
+        login: 'Giriş icazəsi',
+        test: 'Test icazəsi',
+        pending: 'Gözləyir',
+        approved: 'Təsdiqlənib',
+        rejected: 'Rədd edilib',
+        warning: 'Xəbərdarlıq',
+        success: 'Uğurlu',
+        info: 'Məlumat',
+    };
+    return labels[category] || category;
+}
+
+function initializeAdminCardFilter(id) {
+    const container = document.getElementById(id);
+    if (!container || container.dataset.adminFilterInitialized) return;
+    container.dataset.adminFilterInitialized = 'true';
+
+    const sectionTitle = container.closest('.admin-section')?.querySelector('h2')?.textContent.trim() || 'Siyahı';
+    const controls = document.createElement('div');
+    controls.className = 'admin-list-filters';
+    controls.setAttribute('role', 'search');
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'form-control';
+    searchInput.placeholder = 'Ad, email və ya mətn üzrə axtar';
+    searchInput.setAttribute('aria-label', `${sectionTitle} siyahısında axtar`);
+    controls.appendChild(createAdminFilterField('Axtarış', searchInput));
+
+    const categorySelect = document.createElement('select');
+    categorySelect.className = 'form-control';
+    categorySelect.setAttribute('aria-label', `${sectionTitle} siyahısı üçün kateqoriya filtri`);
+    controls.appendChild(createAdminFilterField('Kateqoriya', categorySelect));
+    const count = document.createElement('span');
+    count.className = 'admin-list-filter-meta';
+    count.setAttribute('aria-live', 'polite');
+    controls.appendChild(count);
+    container.before(controls);
+
+    const noMatches = document.createElement('div');
+    noMatches.className = 'admin-list-empty';
+    noMatches.textContent = 'Axtarışa uyğun nəticə tapılmadı.';
+    noMatches.setAttribute('role', 'status');
+    container.after(noMatches);
+
+    function applyFilter() {
+        const items = Array.from(container.children);
+        const query = searchInput.value.trim().toLocaleLowerCase('az');
+        const category = categorySelect.value;
+        let visibleCount = 0;
+        items.forEach(item => {
+            const matches = (!query || item.textContent.toLocaleLowerCase('az').includes(query)) &&
+                (!category || item.dataset.filterCategory === category);
+            item.hidden = !matches;
+            if (matches) visibleCount++;
+        });
+        count.textContent = `${visibleCount} nəticə`;
+        noMatches.style.display = items.length > 0 && visibleCount === 0 ? 'block' : 'none';
+    }
+
+    function updateCategories() {
+        const selected = categorySelect.value;
+        const categories = [...new Set(Array.from(container.children)
+            .map(item => item.dataset.filterCategory)
+            .filter(Boolean))]
+            .sort((a, b) => adminFilterCategoryLabel(a).localeCompare(adminFilterCategoryLabel(b), 'az'));
+        categorySelect.replaceChildren();
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = 'Bütün kateqoriyalar';
+        categorySelect.appendChild(allOption);
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = adminFilterCategoryLabel(category);
+            categorySelect.appendChild(option);
+        });
+        if (categories.includes(selected)) categorySelect.value = selected;
+    }
+
+    searchInput.addEventListener('input', applyFilter);
+    categorySelect.addEventListener('change', applyFilter);
+    const observer = new MutationObserver(() => {
+        updateCategories();
+        applyFilter();
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    updateCategories();
+    applyFilter();
+}
 
 function initializeAdminNavigation() {
     document.querySelectorAll('.admin-menu-item').forEach(item => {
@@ -161,7 +536,7 @@ function renderRecentUsers(users) {
     }
 
     container.innerHTML = recent.map(user => `
-        <div class="mini-user-row">
+        <div class="mini-user-row" data-filter-category="${user.premium ? 'premium' : 'free'}">
             <div>
                 <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong>
                 <small>${escapeHtml(user.email || '')}</small>
@@ -185,7 +560,7 @@ function renderDashboardActiveUsers(users) {
     }
 
     container.innerHTML = active.map(user => `
-        <div class="mini-user-row">
+        <div class="mini-user-row" data-filter-category="${user.premium ? 'premium' : 'free'}">
             <div>
                 <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong>
                 <small>${escapeHtml(user.email || '')}</small>
@@ -278,7 +653,7 @@ async function saveNewUser() {
         }
         showNotification('İstifadəçi yaradıldı!', 'success');
         toggleUserForm();
-        loadUsers();
+        loadUsers({ page: 1, query: '', filters: {} });
         loadDashboardStats();
     } catch (error) {
         showNotification(error.message || 'İstifadəçi yaradılmadı.', 'error');
@@ -332,12 +707,34 @@ function showAddVideoModal() {
 // ════════════════════════════════════════════════════════
 //  Users
 // ════════════════════════════════════════════════════════
-async function loadUsers() {
+async function loadUsers(options = {}) {
     const tbody = document.getElementById('usersTable');
     if (!tbody) return;
+    const page = Math.max(1, Number(options.page) || usersPage);
+    const query = options.query === undefined ? usersQuery : String(options.query);
+    const filters = options.filters === undefined ? usersFilters : options.filters;
+    const requestId = ++usersRequestId;
+    usersQuery = query;
+    usersFilters = filters;
     showTableLoading(tbody, 9);
     try {
-        const { data: users } = await API.users.list({ limit: 100 });
+        const result = await API.users.list({
+            limit: 50,
+            page,
+            q: query,
+            ...filters,
+        });
+        if (requestId !== usersRequestId) return;
+        const users = normalizeArray(result);
+        const pages = Math.max(1, Number(result.pages) || 1);
+        if (page > pages) {
+            return loadUsers({ page: pages, query, filters });
+        }
+        usersPage = page;
+        usersTotalPages = pages;
+        const searchInput = document.querySelector('#usersTable')?.previousElementSibling?.querySelector('input[type="search"]');
+        if (searchInput && searchInput.value !== query) searchInput.value = query;
+        updateUsersPagination(Number(result.total ?? users.length), usersTotalPages, usersPage);
         if (!users.length) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">İstifadəçi yoxdur</td></tr>';
             return;
@@ -349,7 +746,7 @@ async function loadUsers() {
                 <td><strong>${escapeHtml(u.name)}</strong></td>
                 <td>${escapeHtml(u.email)}</td>
                 <td><span class="badge badge-${u.role==='admin'?'danger':'primary'}">${u.role==='admin'?'Admin':'İstifadəçi'}</span></td>
-                <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':'Şagird'}</td>
+                <td>${u.userType==='teacher'?'<span style="color:#10b981;font-weight:600;">Müəllim</span>':u.userType==='admin'?'Admin':'Şagird'}</td>
                 <td>${u.balance||0} ₼</td>
                 <td>${u.premium?'<span style="color:#f59e0b;">👑 Premium</span>':'—'}</td>
                 <td>${u.registeredAt ? formatDate(u.registeredAt) : '—'}</td>
@@ -364,7 +761,10 @@ async function loadUsers() {
             </tr>`;
         }).join('');
     } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:20px;">${e.message}</td></tr>`;
+        if (requestId !== usersRequestId) return;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:20px;">${escapeHtml(e.message || 'İstifadəçilər yüklənmədi.')}</td></tr>`;
+        const pagination = document.getElementById('usersPagination');
+        if (pagination) pagination.textContent = 'İstifadəçilər yüklənmədi.';
     }
 }
 
@@ -629,24 +1029,16 @@ async function toggleTeacherAccess(id, grant) {
 // ════════════════════════════════════════════════════════
 async function loadNotificationsSection() {
     const list = document.getElementById('notificationsList');
-    const target = document.getElementById('notificationTarget');
     if (!list) return;
     try {
-        const [{ data: users }, { data: items }] = await Promise.all([
-            API.users.list({ limit: 200 }),
-            API.notifications.list()
-        ]);
-        if (target) {
-            target.innerHTML = '<option value="all">Hamısına</option>' + users.map(user => `
-                <option value="${user.id}">${escapeHtml(user.name)} (${escapeHtml(user.email)})</option>
-            `).join('');
-        }
+        const { data: items } = await API.notifications.list();
+        await loadNotificationTargetUsers(document.getElementById('notificationTargetSearch')?.value.trim() || '');
         if (!items.length) {
             list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray);">Hələ bildiriş yoxdur.</div>';
             return;
         }
         list.innerHTML = items.map(n => `
-            <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:${n.type === 'warning' ? '#fff7ed' : n.type === 'success' ? '#ecfdf5' : '#f8fafc'};">
+            <div data-filter-category="${escapeHtml(n.type || 'info')}" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:${n.type === 'warning' ? '#fff7ed' : n.type === 'success' ? '#ecfdf5' : '#f8fafc'};">
                 <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
                     <strong>${escapeHtml(n.title || 'Yeni bildiriş')}</strong>
                     <span style="font-size:12px;color:#64748b;">${formatDate(n.createdAt)}</span>
@@ -814,7 +1206,7 @@ async function loadTeacherAccessRequests() {
             const isLoginRequest = Boolean(user.loginRequested || user.loginRequestStatus === 'pending' || user.loginApproved === false && user.loginRequested === true);
             const isTeacherAccessRequest = Boolean(user.testAccessRequested);
             return `
-                <div class="teacher-access-request" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <div class="teacher-access-request" data-filter-category="${isLoginRequest ? 'login' : 'test'}" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                     <div>
                         <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong><br>
                         <small>${escapeHtml(user.email || '')}</small><br>
@@ -876,7 +1268,7 @@ async function loadTeacherSubmissions() {
         container.innerHTML = tests.map(t => {
             const [bg, color, label] = statusMap[t.status] || statusMap.pending;
             return `
-            <div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;">
+            <div data-filter-category="${escapeHtml(t.status || 'pending')}" style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div style="font-size:32px;">${t.emoji||'📝'}</div>
                     <div style="flex:1;">
@@ -963,8 +1355,8 @@ async function loadActiveUsers() {
             return;
         }
 
-        container.innerHTML = activeUsers.slice(0, 12).map(user => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
+        container.innerHTML = activeUsers.map(user => `
+            <div data-filter-category="${user.premium ? 'premium' : 'free'}" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">
                 <div>
                     <strong>${escapeHtml(user.name || 'İstifadəçi')}</strong><br>
                     <small style="color:#64748b;">${escapeHtml(user.email || '')}</small>

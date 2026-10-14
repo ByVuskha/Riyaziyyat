@@ -1,5 +1,5 @@
 # RiyazMath - Deployment Guide
-## Domain: bizimriyaziyyat.work.gd
+## Live site: https://bizimriyaziyyat.vercel.app
 
 ## Current Runtime Requirements
 
@@ -37,10 +37,12 @@ After deployment, verify `GET /api/stats`, `GET /api/news`, `GET /api/tests`, `G
 
 The InfinityFree/FTP steps later in this document describe the retired static-only version. They cannot host the current `/api` functions.
 
-### 📋 Deployment Checklist
+> **Legacy instructions below:** InfinityFree/FTP, `config.js`, and MySQL are not used by the current application. Use Vercel project settings and the environment variables above.
+
+### 📋 Legacy Deployment Checklist
 
 #### 1. Domain Configuration
-- ✅ Domain: `bizimriyaziyyat.work.gd`
+- ✅ Live site: `https://bizimriyaziyyat.vercel.app`
 - ✅ Hosting: InfinityFree / 000webhost / Hostinger
 - ✅ SSL: Free SSL (Let's Encrypt)
 
@@ -72,7 +74,7 @@ riyaziyyat-sayt/
 `js/config.js` faylında API URL-i yeniləyin:
 ```javascript
 const CONFIG = {
-    API_URL: 'https://bizimriyaziyyat.work.gd/api',  // Backend hazır olduqda
+    API_URL: 'https://bizimriyaziyyat.vercel.app/api',  // Köhnə nümunə; cari frontend relative /api istifadə edir
     APP_NAME: 'RiyazMath',
     VERSION: '1.0.0'
 };
@@ -87,7 +89,7 @@ const CONFIG = {
 
 ##### B. Hosting Yaradın
 1. "Create Account" düyməsinə klikləyin
-2. Domain seçin: `bizimriyaziyyat.work.gd`
+2. Bu köhnə hosting addımını izləməyin; Vercel istifadə edin.
 3. Hesab yaradılmasını gözləyin (2-5 dəqiqə)
 
 ##### C. File Manager ilə Upload
@@ -127,13 +129,13 @@ Backend hazır olduqda:
 
 #### 7. Testing
 Deployment-dən sonra test edin:
-- ✅ Ana səhifə: https://bizimriyaziyyat.work.gd
-- ✅ Login: https://bizimriyaziyyat.work.gd/login
-- ✅ Register: https://bizimriyaziyyat.work.gd/register
-- ✅ Dashboard: https://bizimriyaziyyat.work.gd/dashboard
-- ✅ Admin Panel: https://bizimriyaziyyat.work.gd/admin
-- ✅ Videos: https://bizimriyaziyyat.work.gd/videos
-- ✅ Tests: https://bizimriyaziyyat.work.gd/tests
+- ✅ Ana səhifə: https://bizimriyaziyyat.vercel.app/
+- ✅ Login: https://bizimriyaziyyat.vercel.app/login.html
+- ✅ Register: https://bizimriyaziyyat.vercel.app/register.html
+- ✅ Dashboard: https://bizimriyaziyyat.vercel.app/dashboard.html
+- ✅ Admin Panel: https://bizimriyaziyyat.vercel.app/admin.html
+- ✅ Videos: https://bizimriyaziyyat.vercel.app/videos.html
+- ✅ Tests: https://bizimriyaziyyat.vercel.app/tests.html
 
 #### 8. Admin Access
 Default admin hesabı:

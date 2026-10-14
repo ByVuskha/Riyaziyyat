@@ -431,6 +431,59 @@
             padding: 11px 12px;
             font-size: 13px;
         }
+        .admin-list-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 10px;
+            margin: 0 0 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            border-radius: 10px;
+        }
+        .admin-list-filters .form-group {
+            flex: 1 1 170px;
+            min-width: 145px;
+            margin: 0;
+        }
+        .admin-list-filters .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .admin-list-filter-meta {
+            flex: 0 0 auto;
+            padding: 10px 2px;
+            color: #64748b;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .admin-list-empty {
+            display: none;
+            margin: 8px 0 14px;
+            padding: 12px;
+            color: #64748b;
+            background: #f8fafc;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+        }
+        .admin-list-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .admin-list-pagination .btn:disabled {
+            cursor: not-allowed;
+            opacity: .5;
+        }
         .admin-section .form-grid {
             gap: 14px;
         }
@@ -1102,6 +1155,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Hədəf</label>
+                        <input type="search" class="form-control" id="notificationTargetSearch" placeholder="İstifadəçi adı, email və ya ID" aria-label="Bildiriş hədəfi üçün istifadəçi axtar" style="margin-bottom:8px;">
                         <select class="form-control" id="notificationTarget">
                             <option value="all">Hamısına</option>
                         </select>
@@ -1357,6 +1411,6 @@
     <script src="js/notifications.js?v=2026092705"></script>
 <script src="js/api-client.js?v=2026092705"></script>
 <script src="js/app.js?v=2026092705"></script>
-<script src="js/admin.js?v=2026092705"></script>
+<script src="js/admin.js?v=2026101501"></script>
 </body>
 </html>

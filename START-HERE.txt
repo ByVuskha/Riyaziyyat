@@ -1,6 +1,10 @@
+QEYD: Bu fayldakı InfinityFree/FTP addımları köhnədir və artıq işləmir.
+Cari sayt https://bizimriyaziyyat.vercel.app ünvanındadır.
+Aktual deploy təlimatı: DEPLOYMENT.md
+
 ═══════════════════════════════════════════════════════════════════
     RIYAZMATH - DEPLOYMENT PAKETI HAZIRDIR!
-    Domain: bizimriyaziyyat.work.gd
+    Live site: https://bizimriyaziyyat.vercel.app
 ═══════════════════════════════════════════════════════════════════
 
 🎉 TƏBRİKLƏR! Admin panel və deployment paketi hazırdır!
@@ -20,7 +24,7 @@ Status: ✅ HAZIR
 1️⃣  InfinityFree-yə daxil ol
     → https://infinityfree.net
     → "Create Account" düyməsi
-    → Domain: bizimriyaziyyat.work.gd
+    → Bu köhnə hosting addımını izləməyin; Vercel istifadə edin.
 
 2️⃣  Control Panel → File Manager
     → htdocs qovluğuna keç
@@ -33,10 +37,10 @@ Status: ✅ HAZIR
     → Install et (5-10 dəqiqə)
 
 4️⃣  Saytı Test Et
-    → https://bizimriyaziyyat.work.gd
+    → https://bizimriyaziyyat.vercel.app
 
 5️⃣  Admin Panel-ə Giriş Et
-    → https://bizimriyaziyyat.work.gd/admin
+    → https://bizimriyaziyyat.vercel.app/admin.html
     → Email: admin@riyazmath.az
     → Şifrə: admin123
     → ⚠️ İLK GİRİŞDƏN SONRA ŞİFRƏNİ DƏYİŞDİR!
@@ -147,7 +151,7 @@ Status: ✅ HAZIR
 ═══════════════════════════════════════════════════════════════════
 
 Email: info@riyazmath.az
-Domain: bizimriyaziyyat.work.gd
+Live site: https://bizimriyaziyyat.vercel.app
 InfinityFree Forum: https://forum.infinityfree.net
 
 ═══════════════════════════════════════════════════════════════════

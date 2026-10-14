@@ -1,7 +1,7 @@
 # 🎓 RiyazMath - Riyaziyyat Təhsil Platforması
 
 ## 🌐 Domain
-**bizimriyaziyyat.work.gd**
+**https://bizimriyaziyyat.vercel.app**
 
 ## 📝 Haqqında
 RiyazMath - Azərbaycan dilində riyaziyyat təhsili üçün müasir onlayn platforma. Video dərslər, interaktiv sınaqlar və peşəkar dəstək.
@@ -33,11 +33,11 @@ RiyazMath - Azərbaycan dilində riyaziyyat təhsili üçün müasir onlayn plat
 
 ## 🚀 Quraşdırma
 
-### 1. Faylları Yüklə
-Bütün faylları hosting-ə yükləyin (InfinityFree, 000webhost, və s.)
+### 1. Vercel-də yerləşdir
+Layihə Vercel serverless API və Upstash Redis istifadə edir; statik hosting-ə yükləmək kifayət etmir. Repo-nu Vercel-ə bağlayın və tələb olunan environment variable-ları [DEPLOYMENT.md](./DEPLOYMENT.md) üzrə konfiqurasiya edin.
 
-### 2. Domain Konfiqurasiyası
-Domain: `bizimriyaziyyat.work.gd`
+### 2. Canlı sayt
+URL: `https://bizimriyaziyyat.vercel.app`
 
 ### 3. Admin Girişi
 ```

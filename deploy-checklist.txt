@@ -1,6 +1,8 @@
+QEYD: Bu InfinityFree/FTP checklist-i köhnədir; Vercel yerləşdirmə üçün DEPLOYMENT.md istifadə edin.
+
 ═══════════════════════════════════════════════════════════
     RIYAZMATH DEPLOYMENT CHECKLIST
-    Domain: bizimriyaziyyat.work.gd
+    Live site: https://bizimriyaziyyat.vercel.app
 ═══════════════════════════════════════════════════════════
 
 📋 PRE-DEPLOYMENT
@@ -14,7 +16,7 @@
 📤 HOSTING SETUP
 ═══════════════════════════════════════════════════════════
 ☐ InfinityFree hesabı yaradıldı
-☐ Domain: bizimriyaziyyat.work.gd seçildi
+☐ Bu köhnə domain addımını keçin; Vercel istifadə edin
 ☐ FTP məlumatları alındı
 ☐ File Manager-ə giriş edildi
 
@@ -115,7 +117,7 @@
 
 📞 SUPPORT:
    Email: info@riyazmath.az
-   Domain: bizimriyaziyyat.work.gd
+   Live site: https://bizimriyaziyyat.vercel.app
 
 ⚠️ IMPORTANT NOTES:
    1. Admin şifrəsini dərhal dəyişdirin!

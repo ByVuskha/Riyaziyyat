@@ -1,5 +1,7 @@
 # 🚀 RiyazMath - Tez Başlanğıc
 
+> **Qeyd:** Köhnə InfinityFree təlimatı artıq tətbiq olunmur. Layihə Vercel serverless API və Upstash Redis istifadə edir. Cari yerləşdirmə qaydaları üçün [DEPLOYMENT.md](./DEPLOYMENT.md)-ə baxın. Canlı sayt: https://bizimriyaziyyat.vercel.app
+
 ## 📦 Deployment - 5 Addımda
 
 ### 1️⃣ Hosting Seç
@@ -18,7 +20,7 @@
 ### 2️⃣ Hesab Yarat
 1. InfinityFree-yə daxil ol
 2. "Create Account" düyməsinə klik et
-3. Domain seç: **bizimriyaziyyat.work.gd**
+3. Bu köhnə hosting addımlarını izləməyin; Vercel istifadə edin.
 4. Email təsdiq et
 5. 2-5 dəqiqə gözlə (hesab aktivləşir)
 
@@ -51,7 +53,7 @@ FileZilla ilə:
 5. 5-10 dəqiqə gözlə
 
 ### 5️⃣ Test Et
-Saytı aç: **https://bizimriyaziyyat.work.gd**
+Saytı aç: **https://bizimriyaziyyat.vercel.app**
 
 ✅ Checklist:
 - [ ] Ana səhifə açılır
@@ -65,7 +67,7 @@ Saytı aç: **https://bizimriyaziyyat.work.gd**
 ## 🔐 Admin Girişi
 
 ```
-URL: https://bizimriyaziyyat.work.gd/admin
+URL: https://bizimriyaziyyat.vercel.app/admin.html
 Email: admin@riyazmath.az
 Şifrə: admin123
 ```
@@ -247,7 +249,7 @@ Deployment tamamlandı?
 
 ## 🎉 Uğurlar!
 
-Saytınız hazırdır: **https://bizimriyaziyyat.work.gd**
+Saytınız hazırdır: **https://bizimriyaziyyat.vercel.app**
 
 İndi istifadəçilərə elan edə və platformanızı inkişaf etdirə bilərsiniz! 🚀
 
