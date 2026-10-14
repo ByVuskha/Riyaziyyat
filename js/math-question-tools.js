@@ -40,6 +40,7 @@
                 <details class="geometry-editor" ${figure?.type === 'svg' ? 'open' : ''}>
                     <summary><i class="fas fa-draw-polygon"></i> Həndəsi fiqur əlavə et</summary>
                     <div class="geometry-fields">
+                        <button type="button" class="btn btn-sm btn-primary geometry-draw-open" data-open-figure-drawing="${id}"><i class="fas fa-paintbrush"></i> Çəkmə lövhəsini aç</button>
                         <label>Fiqur
                             <select id="${id}_shape" data-figure-field="${id}" data-field="type">
                                 <option value="">Fiqur seçin</option>
@@ -57,7 +58,192 @@
                     <input type="hidden" id="${id}_svg" value="${escapeHtml(figure?.svg || '')}">
                     <div class="geometry-preview" id="${id}_figurePreview" aria-live="polite"></div>
                 </details>
+                <div class="figure-drawing-modal" data-figure-drawing="${id}" aria-hidden="true">
+                    <section class="figure-drawing-panel" role="dialog" aria-modal="true" aria-labelledby="${id}_drawingTitle">
+                        <header class="figure-drawing-header">
+                            <div><h3 id="${id}_drawingTitle">Həndəsi fiqur çəkmə lövhəsi</h3><p>Fiquru çəkin, ölçüləri və nöqtə adlarını yazın.</p></div>
+                            <button type="button" class="btn btn-sm btn-secondary" data-close-figure-drawing="${id}" aria-label="Lövhəni bağla">✕</button>
+                        </header>
+                        <div class="figure-drawing-meta">
+                            <label>Fiqurun adı<input type="text" maxlength="60" data-drawing-title="${id}" placeholder="Məs: ABC üçbucağı"></label>
+                            <label>Nöqtə adı / ölçü<input type="text" maxlength="40" data-drawing-label="${id}" placeholder="Məs: A, 5 sm, 60°"></label>
+                            <label>Xətt rəngi<input type="color" value="#2563eb" data-drawing-color="${id}"></label>
+                            <label>Xətt qalınlığı<select data-drawing-width="${id}"><option value="2">Nazik</option><option value="4" selected>Orta</option><option value="7">Qalın</option></select></label>
+                        </div>
+                        <div class="figure-drawing-tools" role="toolbar" aria-label="Çəkmə alətləri">
+                            <button type="button" class="btn btn-sm btn-secondary active" data-drawing-tool="${id}" data-tool="freehand"><i class="fas fa-pencil"></i> Qələm</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-tool="${id}" data-tool="line"><i class="fas fa-minus"></i> Xətt</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-tool="${id}" data-tool="rect"><i class="far fa-square"></i> Dördbucaq</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-tool="${id}" data-tool="ellipse"><i class="far fa-circle"></i> Dairə</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-tool="${id}" data-tool="triangle"><i class="fas fa-draw-polygon"></i> Üçbucaq</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-tool="${id}" data-tool="text"><i class="fas fa-font"></i> Yazı / ölçü</button>
+                            <span class="figure-drawing-spacer"></span>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-undo="${id}"><i class="fas fa-rotate-left"></i> Geri al</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-drawing-clear="${id}"><i class="fas fa-trash"></i> Təmizlə</button>
+                        </div>
+                        <div class="figure-drawing-canvas-wrap"><canvas class="figure-drawing-canvas" data-drawing-canvas="${id}" width="640" height="360" aria-label="Fiqur çəkmə sahəsi"></canvas></div>
+                        <p class="figure-drawing-hint">“Yazı / ölçü” alətini seçin, yuxarıya mətni yazın və lövhədə yerləşdirmək istədiyiniz nöqtəyə toxunun. Barmaqla da çəkmək mümkündür.</p>
+                        <footer class="figure-drawing-footer">
+                            <button type="button" class="btn btn-secondary" data-close-figure-drawing="${id}">Ləğv et</button>
+                            <button type="button" class="btn btn-primary" data-apply-figure-drawing="${id}"><i class="fas fa-check"></i> Fiquru əlavə et</button>
+                        </footer>
+                    </section>
+                </div>
             </div>`;
+    }
+
+    const drawingStates = new Map();
+    const drawingWidth = 640;
+    const drawingHeight = 360;
+
+    function drawingState(id) {
+        if (!drawingStates.has(id)) drawingStates.set(id, { items: [], draft: null, tool: 'freehand', title: '', baseSvg: '', baseImage: null, dirty: false });
+        return drawingStates.get(id);
+    }
+
+    function drawingPoint(canvas, event) {
+        const bounds = canvas.getBoundingClientRect();
+        return {
+            x: Math.max(0, Math.min(drawingWidth, (event.clientX - bounds.left) * drawingWidth / bounds.width)),
+            y: Math.max(0, Math.min(drawingHeight, (event.clientY - bounds.top) * drawingHeight / bounds.height)),
+        };
+    }
+
+    function drawItem(context, item, preview = false) {
+        context.save();
+        context.strokeStyle = item.color || '#2563eb';
+        context.fillStyle = item.color || '#2563eb';
+        context.lineWidth = item.width || 4;
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+        if (preview) context.setLineDash([6, 5]);
+        if (item.type === 'text') {
+            context.font = `600 ${item.width * 4 + 10}px Arial, sans-serif`;
+            context.fillText(item.text, item.x, item.y);
+        } else if (item.type === 'freehand' || item.type === 'line') {
+            const points = item.points || [item.start, item.end].filter(Boolean);
+            if (points.length) {
+                context.beginPath();
+                context.moveTo(points[0].x, points[0].y);
+                points.slice(1).forEach(point => context.lineTo(point.x, point.y));
+                context.stroke();
+            }
+        } else if (item.type === 'rect') {
+            const x = Math.min(item.start.x, item.end.x);
+            const y = Math.min(item.start.y, item.end.y);
+            context.strokeRect(x, y, Math.abs(item.end.x - item.start.x), Math.abs(item.end.y - item.start.y));
+        } else if (item.type === 'ellipse') {
+            const x = (item.start.x + item.end.x) / 2;
+            const y = (item.start.y + item.end.y) / 2;
+            context.beginPath();
+            context.ellipse(x, y, Math.abs(item.end.x - item.start.x) / 2, Math.abs(item.end.y - item.start.y) / 2, 0, 0, Math.PI * 2);
+            context.stroke();
+        } else if (item.type === 'triangle') {
+            const left = Math.min(item.start.x, item.end.x);
+            const right = Math.max(item.start.x, item.end.x);
+            const top = Math.min(item.start.y, item.end.y);
+            const bottom = Math.max(item.start.y, item.end.y);
+            context.beginPath();
+            context.moveTo((left + right) / 2, top);
+            context.lineTo(left, bottom);
+            context.lineTo(right, bottom);
+            context.closePath();
+            context.stroke();
+        }
+        context.restore();
+    }
+
+    function drawCanvas(id) {
+        const canvas = document.querySelector(`[data-drawing-canvas="${id}"]`);
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        const state = drawingState(id);
+        context.clearRect(0, 0, drawingWidth, drawingHeight);
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, drawingWidth, drawingHeight);
+        if (state.baseImage?.complete && state.baseImage.naturalWidth) {
+            const scale = Math.min(drawingWidth / state.baseImage.naturalWidth, drawingHeight / state.baseImage.naturalHeight);
+            const width = state.baseImage.naturalWidth * scale;
+            const height = state.baseImage.naturalHeight * scale;
+            context.drawImage(state.baseImage, (drawingWidth - width) / 2, (drawingHeight - height) / 2, width, height);
+        }
+        context.strokeStyle = '#e2e8f0';
+        context.lineWidth = 1;
+        context.setLineDash([4, 6]);
+        context.strokeRect(12, 12, drawingWidth - 24, drawingHeight - 24);
+        context.setLineDash([]);
+        state.items.forEach(item => drawItem(context, item));
+        if (state.draft) drawItem(context, state.draft, true);
+    }
+
+    function openDrawingEditor(id) {
+        const modal = document.querySelector(`[data-figure-drawing="${id}"]`);
+        if (!modal) return;
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        const state = drawingState(id);
+        if (!state.dirty) {
+            const current = readFigure(id);
+            state.baseSvg = current?.type === 'svg' ? current.svg : current ? renderFigure(current) : '';
+            state.baseImage = null;
+            if (state.baseSvg) {
+                const image = new Image();
+                image.onload = () => {
+                    state.baseImage = image;
+                    drawCanvas(id);
+                };
+                image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(state.baseSvg)}`;
+            }
+        }
+        state.title = modal.querySelector(`[data-drawing-title="${id}"]`)?.value || '';
+        drawCanvas(id);
+        modal.querySelector(`[data-drawing-title="${id}"]`)?.focus();
+    }
+
+    function closeDrawingEditor(id) {
+        const modal = document.querySelector(`[data-figure-drawing="${id}"]`);
+        if (!modal) return;
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function drawingSvg(id) {
+        const state = drawingState(id);
+        const title = document.querySelector(`[data-drawing-title="${id}"]`)?.value.trim() || '';
+        const escapeXml = value => escapeHtml(value);
+        const elements = state.items.map(item => {
+            const color = item.color || '#2563eb';
+            const width = Math.max(1, Math.min(20, Number(item.width) || 4));
+            if (item.type === 'text') {
+                return `<text x="${item.x}" y="${item.y}" fill="${color}" font-size="${width * 4 + 10}" font-weight="bold">${escapeXml(item.text)}</text>`;
+            }
+            if (item.type === 'freehand') {
+                const points = item.points || [];
+                if (points.length < 2) return '';
+                const path = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+                return `<path d="${path}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
+            }
+            if (item.type === 'line') {
+                return `<line x1="${item.start.x.toFixed(1)}" y1="${item.start.y.toFixed(1)}" x2="${item.end.x.toFixed(1)}" y2="${item.end.y.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+            }
+            const left = Math.min(item.start.x, item.end.x);
+            const right = Math.max(item.start.x, item.end.x);
+            const top = Math.min(item.start.y, item.end.y);
+            const bottom = Math.max(item.start.y, item.end.y);
+            if (item.type === 'rect') return `<rect x="${left.toFixed(1)}" y="${top.toFixed(1)}" width="${(right - left).toFixed(1)}" height="${(bottom - top).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+            if (item.type === 'ellipse') return `<ellipse cx="${((left + right) / 2).toFixed(1)}" cy="${((top + bottom) / 2).toFixed(1)}" rx="${((right - left) / 2).toFixed(1)}" ry="${((bottom - top) / 2).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+            if (item.type === 'triangle') return `<polygon points="${((left + right) / 2).toFixed(1)},${top.toFixed(1)} ${left.toFixed(1)},${bottom.toFixed(1)} ${right.toFixed(1)},${bottom.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+            return '';
+        }).filter(Boolean);
+        if (title) elements.unshift(`<text x="320" y="28" fill="#1e293b" font-size="20" font-weight="bold" text-anchor="middle">${escapeXml(title)}</text>`);
+        if (state.baseSvg) {
+            const document = new DOMParser().parseFromString(state.baseSvg, 'image/svg+xml');
+            if (document.documentElement.localName === 'svg' && !document.querySelector('parsererror')) {
+                const baseViewBox = document.documentElement.getAttribute('viewBox') || `0 0 ${drawingWidth} ${drawingHeight}`;
+                elements.unshift(`<svg x="0" y="0" width="${drawingWidth}" height="${drawingHeight}" viewBox="${escapeXml(baseViewBox)}">${document.documentElement.innerHTML}</svg>`);
+            }
+        }
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${drawingWidth}" height="${drawingHeight}" viewBox="0 0 ${drawingWidth} ${drawingHeight}">${elements.join('')}</svg>`;
     }
 
     function sanitizeSvgMarkup(markup) {
@@ -187,6 +373,7 @@
 
     function setImportedFigure(id, rawFigure) {
         const figure = normalizeFigure(rawFigure);
+        drawingStates.set(id, { items: [], draft: null, tool: 'freehand', title: '', baseSvg: '', baseImage: null, dirty: false });
         const shape = document.getElementById(`${id}_shape`);
         const svg = document.getElementById(`${id}_svg`);
         if (shape) shape.value = figure && figure.type !== 'svg' ? figure.type : '';
@@ -486,6 +673,74 @@
     }
 
     document.addEventListener('click', event => {
+        const openDrawing = event.target.closest('[data-open-figure-drawing]');
+        if (openDrawing) {
+            openDrawingEditor(openDrawing.dataset.openFigureDrawing);
+            return;
+        }
+        const closeDrawing = event.target.closest('[data-close-figure-drawing]');
+        if (closeDrawing) {
+            closeDrawingEditor(closeDrawing.dataset.closeFigureDrawing);
+            return;
+        }
+        const toolButton = event.target.closest('[data-drawing-tool]');
+        if (toolButton) {
+            const id = toolButton.dataset.drawingTool;
+            const state = drawingState(id);
+            state.tool = toolButton.dataset.tool;
+            document.querySelectorAll(`[data-drawing-tool="${id}"]`).forEach(button => button.classList.toggle('active', button === toolButton));
+            return;
+        }
+        const undoDrawing = event.target.closest('[data-drawing-undo]');
+        if (undoDrawing) {
+            const state = drawingState(undoDrawing.dataset.drawingUndo);
+            state.items.pop();
+            state.dirty = true;
+            drawCanvas(undoDrawing.dataset.drawingUndo);
+            return;
+        }
+        const clearDrawing = event.target.closest('[data-drawing-clear]');
+        if (clearDrawing) {
+            const id = clearDrawing.dataset.drawingClear;
+            const state = drawingState(id);
+            state.items = [];
+            state.draft = null;
+            state.baseSvg = '';
+            state.baseImage = null;
+            state.dirty = true;
+            drawCanvas(id);
+            return;
+        }
+        const applyDrawing = event.target.closest('[data-apply-figure-drawing]');
+        if (applyDrawing) {
+            const id = applyDrawing.dataset.applyFigureDrawing;
+            const state = drawingState(id);
+            if (!state.items.length && !state.baseSvg) {
+                window.showNotification?.('Əvvəlcə lövhədə fiqur çəkin və ya ən azı bir yazı yerləşdirin.', 'warning');
+                return;
+            }
+            const svg = normalizeFigure({ type: 'svg', svg: drawingSvg(id) })?.svg;
+            if (!svg) {
+                window.showNotification?.('Fiquru yadda saxlamaq mümkün olmadı. Yenidən cəhd edin.', 'error');
+                return;
+            }
+            if (svg.length > 200000) {
+                window.showNotification?.('Fiqur çox böyükdür. Daha az xətt və yazı ilə yenidən çəkin.', 'warning');
+                return;
+            }
+            const shape = document.getElementById(`${id}_shape`);
+            const hidden = document.getElementById(`${id}_svg`);
+            if (shape) shape.value = '';
+            if (hidden) hidden.value = svg;
+            refreshPreview(id);
+            closeDrawingEditor(id);
+            return;
+        }
+        const drawingModal = event.target.closest('.figure-drawing-modal.active');
+        if (drawingModal && event.target === drawingModal) {
+            closeDrawingEditor(drawingModal.dataset.figureDrawing);
+            return;
+        }
         const symbolButton = event.target.closest('[data-math-target][data-math-symbol]');
         if (symbolButton) {
             insertSymbol(symbolButton.dataset.mathTarget, symbolButton.dataset.mathSymbol);
@@ -526,6 +781,63 @@
             editor.outerHTML = answerEditorMarkup(id, { ...answer, options, correctAnswer });
         }
     });
+    document.addEventListener('pointerdown', event => {
+        const canvas = event.target.closest('[data-drawing-canvas]');
+        if (!canvas) return;
+        const id = canvas.dataset.drawingCanvas;
+        const state = drawingState(id);
+        const point = drawingPoint(canvas, event);
+        state.dirty = true;
+        if (state.tool === 'text') {
+            if (state.items.length >= 100) {
+                window.showNotification?.('Lövhədə maksimum 100 element yerləşdirmək olar.', 'warning');
+                return;
+            }
+            const input = document.querySelector(`[data-drawing-label="${id}"]`);
+            const text = input?.value.trim() || window.prompt('Fiqurun nöqtə adını və ya ölçüsünü daxil edin:') || '';
+            if (!text) return;
+            state.items.push({ type: 'text', x: point.x, y: point.y, text: text.slice(0, 40), color: document.querySelector(`[data-drawing-color="${id}"]`)?.value || '#2563eb', width: Number(document.querySelector(`[data-drawing-width="${id}"]`)?.value) || 4 });
+            if (input) input.value = '';
+            drawCanvas(id);
+            return;
+        }
+        if (state.items.length >= 100) {
+            window.showNotification?.('Lövhədə maksimum 100 element yerləşdirmək olar.', 'warning');
+            return;
+        }
+        const color = document.querySelector(`[data-drawing-color="${id}"]`)?.value || '#2563eb';
+        const width = Number(document.querySelector(`[data-drawing-width="${id}"]`)?.value) || 4;
+        state.draft = state.tool === 'freehand'
+            ? { type: 'freehand', points: [point], color, width }
+            : { type: state.tool, start: point, end: point, color, width };
+        canvas.setPointerCapture(event.pointerId);
+    });
+    document.addEventListener('pointermove', event => {
+        const canvas = event.target.closest('[data-drawing-canvas]');
+        if (!canvas) return;
+        const state = drawingState(canvas.dataset.drawingCanvas);
+        if (!state.draft) return;
+        const point = drawingPoint(canvas, event);
+        if (state.draft.type === 'freehand' && state.draft.points.length < 500) state.draft.points.push(point);
+        else state.draft.end = point;
+        drawCanvas(canvas.dataset.drawingCanvas);
+    });
+    document.addEventListener('pointerup', event => {
+        const canvas = event.target.closest('[data-drawing-canvas]');
+        if (!canvas) return;
+        const state = drawingState(canvas.dataset.drawingCanvas);
+        if (!state.draft) return;
+        if (state.draft.type === 'freehand' && state.draft.points.length === 1) {
+            state.draft.points.push({ ...state.draft.points[0], x: state.draft.points[0].x + 0.1 });
+        }
+        state.items.push(state.draft);
+        state.draft = null;
+        drawCanvas(canvas.dataset.drawingCanvas);
+    });
+    document.addEventListener('input', event => {
+        const title = event.target.closest('[data-drawing-title]');
+        if (title) drawingState(title.dataset.drawingTitle).title = title.value;
+    });
     document.addEventListener('input', event => {
         const field = event.target.closest('[data-figure-field]');
         if (field) refreshPreview(field.dataset.figureField);
@@ -535,6 +847,9 @@
         if (field) {
             const svg = document.getElementById(`${field.dataset.figureField}_svg`);
             if (svg) svg.value = '';
+            if (field.dataset.field === 'type') {
+                drawingStates.set(field.dataset.figureField, { items: [], draft: null, tool: 'freehand', title: '', baseSvg: '', baseImage: null, dirty: false });
+            }
             refreshPreview(field.dataset.figureField);
         }
         const typeSelect = event.target.closest('[data-question-type]');
