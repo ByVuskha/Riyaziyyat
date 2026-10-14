@@ -97,59 +97,132 @@ const API = (() => {
   }
 
   function ensureDemoData() {
-    const demoRecords = {
-      localUsers: item => item.id === 'admin-demo' && item.email === 'admin@riyazmath.az',
-      localTests: item => ['t-1', 't-2'].includes(String(item.id)) &&
-        ['Cəbr Əsasları', 'Həndəsə Praktikası'].includes(item.title),
-      localNews: item => ['n-1', 'n-2'].includes(String(item.id)) &&
-        ['Yeni riyaziyyat dərsləri', 'Yazılışlara hazırlıq'].includes(item.title),
-      localTeachers: item => ['teacher-1', 'teacher-2'].includes(String(item.id)) &&
-        ['nermin@riyazmath.az', 'rasad@riyazmath.az'].includes(item.email),
-      localVideos: item => ['v-1', 'v-2', 'v-3', 'v-4'].includes(String(item.id)) &&
-        ['Cəbr tənlikləri', 'Həndəsə əsasları', 'Analiz: limit', 'Ehtimal nəzəriyyəsi'].includes(item.title) &&
-        String(item.youtubeUrl || '').startsWith('https://www.youtube.com/watch?v='),
+    const seededUsers = [
+      {
+        id: 'admin-001',
+        name: 'Admin',
+        email: 'admin@riyazmath.az',
+        password: 'admin123',
+        role: 'admin',
+        userType: 'admin',
+        premium: true,
+        balance: 0,
+        points: 0,
+        deviceId: 'admin-device-default',
+        deviceStatus: 'approved',
+        knownDevices: [{ deviceId: 'admin-device-default', browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }],
+        registeredAt: '2024-01-15T09:00:00.000Z',
+      },
+      {
+        id: 'user-101',
+        name: 'Aysel Nuriyeva',
+        email: 'aysel@example.com',
+        password: 'pass123',
+        role: 'user',
+        userType: 'student',
+        premium: false,
+        balance: 25,
+        points: 280,
+        deviceId: 'student-device-default',
+        deviceStatus: 'approved',
+        knownDevices: [{ deviceId: 'student-device-default', browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }],
+        registeredAt: '2024-02-10T10:20:00.000Z',
+      }
+    ];
+
+    const seededTeachers = [
+      {
+        id: 'teacher-1',
+        name: 'Nermin Əliyeva',
+        email: 'nermin@riyazmath.az',
+        title: 'Riyaziyyat müəllimi',
+        subjects: ['Cəbr', 'Həndəsə'],
+        experience: 8,
+        rating: 4.9,
+        profilePicture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80',
+        bio: 'Tənliklər və həndəsə mövzularında dərsləri sadə və tətbiqetməyə uyğun izah edir.',
+        publicProfile: true,
+        canAddTests: true,
+      },
+      {
+        id: 'teacher-2',
+        name: 'Rasim Qasımov',
+        email: 'rasim@riyazmath.az',
+        title: 'Analiz müəllimi',
+        subjects: ['Analiz', 'Trigonometriya'],
+        experience: 10,
+        rating: 4.8,
+        profilePicture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
+        bio: 'Limit, törəmə və inteqral mövzularında praktiki yanaşma tətbiq edir.',
+        publicProfile: true,
+        canAddTests: true,
+      },
+      {
+        id: 'teacher-3',
+        name: 'Leyla Məmmədova',
+        email: 'leyla@riyazmath.az',
+        title: 'Dərs planlaşdırma müəllimi',
+        subjects: ['Məntiq', 'Hesablama'],
+        experience: 7,
+        rating: 4.7,
+        profilePicture: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=80',
+        bio: 'Məntiqi düşünmə bacarıqlarını inkişaf etdirən interaktiv dərslər keçirir.',
+        publicProfile: true,
+        canAddTests: true,
+      }
+    ];
+
+    const seededVideos = [
+      { id: 'v-1', title: 'Cəbr: Tənliklər və dəyişənlər', category: 'cebr', teacherId: 'teacher-1', teacherName: 'Nermin Əliyeva', description: 'Tənliklərin həlli metodları və sadə nümunələr.', youtubeUrl: 'https://www.youtube.com/watch?v=2Vv-6vN_Kmc', duration: '12:35', views: 1840, isActive: true },
+      { id: 'v-2', title: 'Həndəsə: Üçbucaq və bucaqlar', category: 'hendese', teacherId: 'teacher-1', teacherName: 'Nermin Əliyeva', description: 'Üçbucağın xassələri və bucaqların hesablanması.', youtubeUrl: 'https://www.youtube.com/watch?v=4f4N1xlgx0o', duration: '15:12', views: 1560, isActive: true },
+      { id: 'v-3', title: 'Analiz: Limit anlayışı', category: 'analiz', teacherId: 'teacher-2', teacherName: 'Rasim Qasımov', description: 'Limitin fiziki və riyazi mənası.', youtubeUrl: 'https://www.youtube.com/watch?v=Qf9U4Ff7mQ0', duration: '18:08', views: 2230, isActive: true },
+      { id: 'v-4', title: 'Ehtimal nəzəriyyəsi: əsas anlayışlar', category: 'ehtimal', teacherId: 'teacher-2', teacherName: 'Rasim Qasımov', description: 'Hadisələrin ehtimalı və statistik hesablamalar.', youtubeUrl: 'https://www.youtube.com/watch?v=1Aiy2JzF9kQ', duration: '10:42', views: 1330, isActive: true }
+    ];
+
+    const seededNews = [
+      { id: 'n-1', title: 'Yeni riyaziyyat proqramı istifadəyə verildi', summary: 'Yeni mövzular və praktiki sınaqlar platformaya əlavə edildi.', content: 'Platformada əlavə olunan yeni riyaziyyat blokları ilə tələbələr daha strukturlaşdırılmış şəkildə öyrənməyə başlayacaqlar.', publishedAt: '2025-03-01T10:00:00.000Z', views: 1200 },
+      { id: 'n-2', title: 'Yazılışlara hazırlıq kampaniyası başladı', summary: 'İmtahan hazırlığı üçün xüsusi dərs paketi açıldı.', content: 'Hər həftə yeni tapşırıqlar və testlər yayımlanacaq.', publishedAt: '2025-03-12T12:30:00.000Z', views: 980 }
+    ];
+
+    const seededTests = [
+      { id: 't-1', title: 'Cəbr Əsasları', category: 'cebr', questionCount: 8, difficulty: 'Asan', duration: 20, createdAt: '2025-02-15T09:00:00.000Z' },
+      { id: 't-2', title: 'Həndəsə Praktikası', category: 'hendese', questionCount: 10, difficulty: 'Orta', duration: 25, createdAt: '2025-02-20T09:00:00.000Z' },
+      { id: 't-3', title: 'Analiz üzrə mini sınaq', category: 'analiz', questionCount: 6, difficulty: 'Çətin', duration: 18, createdAt: '2025-03-05T09:00:00.000Z' }
+    ];
+
+    const baseSecrets = {
+      localUsers: { items: seededUsers, predicate: item => item.email === 'admin@riyazmath.az' || item.email === 'aysel@example.com' },
+      localTeachers: { items: seededTeachers, predicate: item => item.email === 'nermin@riyazmath.az' || item.email === 'rasim@riyazmath.az' || item.email === 'leyla@riyazmath.az' },
+      localVideos: { items: seededVideos, predicate: item => ['v-1', 'v-2', 'v-3', 'v-4'].includes(String(item.id)) },
+      localNews: { items: seededNews, predicate: item => ['n-1', 'n-2'].includes(String(item.id)) },
+      localTests: { items: seededTests, predicate: item => ['t-1', 't-2', 't-3'].includes(String(item.id)) },
+      localTeacherTests: { items: [], predicate: () => false },
+      localPremium: { items: [], predicate: () => false },
+      localPayments: { items: [], predicate: () => false },
     };
-    Object.entries(demoRecords).forEach(([key, isDemo]) => {
-      const items = readLocalList(key);
-      const retained = items.filter(item => !isDemo(item));
-      if (retained.length !== items.length || !localStorage.getItem(key)) {
-        writeLocalList(key, retained);
+
+    Object.entries(baseSecrets).forEach(([key, config]) => {
+      const current = readLocalList(key, []);
+      if (!current.length) {
+        writeLocalList(key, config.items);
+        return;
+      }
+      const cleaned = current.filter(item => !config.predicate(item));
+      if (cleaned.length !== current.length) {
+        writeLocalList(key, [...config.items, ...cleaned]);
       }
     });
-    if (getCurrentLocalUser()?.id === 'admin-demo') localStorage.removeItem('currentUser');
-    try {
-      const points = JSON.parse(localStorage.getItem('localPoints') || '{}');
-      if (points && typeof points === 'object' && Object.prototype.hasOwnProperty.call(points, 'admin-demo')) {
-        delete points['admin-demo'];
-        localStorage.setItem('localPoints', JSON.stringify(points));
-      }
-    } catch (error) {
-      console.warn('Demo hesabının xalları təmizlənmədi:', error);
+
+    const loadedUsers = readLocalList('localUsers', []);
+    if (!loadedUsers.some(item => item.email === 'admin@riyazmath.az')) {
+      loadedUsers.unshift(seededUsers[0]);
+      writeLocalList('localUsers', loadedUsers);
     }
-    const localTests = readLocalList('localTests');
-    if (!localStorage.getItem('localTeacherTests')) writeLocalList('localTeacherTests', []);
-    const approvedTeacherTests = readLocalList('localTeacherTests')
-      .filter(test => test.status === 'approved' && Array.isArray(test.questions) && test.questions.length);
-    let publishedTeacherTest = false;
-    approvedTeacherTests.forEach(test => {
-      if (localTests.some(item => String(item.teacherTestId) === String(test.id))) return;
-      const published = {
-        ...test,
-        id: `t-${test.id}`,
-        teacherTestId: test.id,
-        category: test.topic || test.category || 'Ümumi',
-        questionCount: test.questions.length,
-        createdAt: test.approvedAt || test.createdAt || new Date().toISOString(),
-      };
-      delete published.status;
-      delete published.adminNote;
-      localTests.unshift(published);
-      publishedTeacherTest = true;
-    });
-    if (publishedTeacherTest) writeLocalList('localTests', localTests);
-    if (!localStorage.getItem('localPremium')) writeLocalList('localPremium', []);
-    if (!localStorage.getItem('localPayments')) writeLocalList('localPayments', []);
+
     if (!localStorage.getItem('currentUser')) setCurrentLocalUser(null);
+    const points = JSON.parse(localStorage.getItem('localPoints') || '{}');
+    if (!points['admin-001']) points['admin-001'] = { userId: 'admin-001', userName: 'Admin', total: 0, history: [], watchedVideos: [], completedTests: [], testScores: {}, dailyTasks: {}, lastLoginDate: null };
+    localStorage.setItem('localPoints', JSON.stringify(points));
   }
 
   ensureDemoData();
@@ -220,30 +293,41 @@ const API = (() => {
       if (second === 'login') {
         const users = readLocalList('localUsers');
         const { email, password, deviceInfo } = body || {};
-        const user = users.find(u => u.email === email && u.password === password);
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const user = users.find(u => String(u.email || '').trim().toLowerCase() === normalizedEmail && String(u.password || '') === String(password || ''));
         if (!user) throw new Error('E-poçt və ya şifrə yanlışdır');
         if (user.frozen) throw new Error('Hesabınız bloklanıb. Admin təsdiqi tələb olunur.');
 
         const deviceId = String((deviceInfo && deviceInfo.deviceId) || localStorage.getItem('deviceFingerprint') || `${Date.now()}`);
         const knownDevices = Array.isArray(user.knownDevices) ? user.knownDevices : [];
-        if (user.deviceId && user.deviceId !== deviceId && !knownDevices.some(device => String(device.deviceId) === String(deviceId))) {
-          const nextCount = Number(user.deviceMismatchCount || 0) + 1;
-          user.deviceMismatchCount = nextCount;
-          user.deviceStatus = 'pending_review';
-          user.pendingDeviceId = deviceId;
-          user.pendingDeviceInfo = { deviceId, browser: 'Local browser', platform: 'Browser', ...deviceInfo, requestedAt: new Date().toISOString() };
-          user.frozen = nextCount >= 2;
-          writeLocalList('localUsers', users);
-          if (user.frozen) {
-            throw Object.assign(new Error('Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.'), {
+        const hasKnownDevice = knownDevices.some(device => String(device.deviceId) === String(deviceId));
+        if (user.deviceId && user.deviceId !== deviceId && !hasKnownDevice) {
+          if (user.role === 'admin') {
+            user.deviceId = deviceId;
+            user.deviceStatus = 'approved';
+            user.pendingDeviceId = null;
+            user.pendingDeviceInfo = null;
+            user.deviceMismatchCount = 0;
+            user.frozen = false;
+          } else {
+            const nextCount = Number(user.deviceMismatchCount || 0) + 1;
+            user.deviceMismatchCount = nextCount;
+            user.deviceStatus = 'pending_review';
+            user.pendingDeviceId = deviceId;
+            user.pendingDeviceInfo = { deviceId, browser: 'Local browser', platform: 'Browser', ...deviceInfo, requestedAt: new Date().toISOString() };
+            user.frozen = nextCount >= 2;
+            writeLocalList('localUsers', users);
+            if (user.frozen) {
+              throw Object.assign(new Error('Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.'), {
+                status: 403,
+                data: { error: 'Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.', deviceBlocked: true },
+              });
+            }
+            throw Object.assign(new Error('Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.'), {
               status: 403,
-              data: { error: 'Başqa cihazdan giriş cəhd edildi. Hesab bloklandı. Yalnız admin icazə verə bilər.', deviceBlocked: true },
+              data: { error: 'Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.', warning: true },
             });
           }
-          throw Object.assign(new Error('Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.'), {
-            status: 403,
-            data: { error: 'Başqa cihazdan giriş cəhdi qeydə alındı. Admin icazəsi tələb olunur.', warning: true },
-          });
         }
 
         if (user.loginApproved === false || user.loginRequestStatus === 'pending' || user.loginRequestStatus === 'rejected') {
@@ -269,6 +353,14 @@ const API = (() => {
         const loggedInUser = { ...user, sessionId, password: undefined };
         setCurrentLocalUser(loggedInUser);
         return { user: loggedInUser };
+      }
+      if (second === 'register-code') {
+        const payload = body || {};
+        const email = String(payload.email || '').trim().toLowerCase();
+        if (!email || !payload.password) throw new Error('Email və şifrə tələb olunur');
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        localStorage.setItem(`localRegisterCode:${email}`, JSON.stringify({ code, name: payload.name || 'Yeni istifadəçi', password: payload.password, userType: payload.userType || 'student', createdAt: Date.now() }));
+        return { ok: true, message: `Təsdiq kodu ${email} ünvanına göndərildi.`, code };
       }
       if (second === 'approve-device') {
         const admin = getCurrentLocalUser();
@@ -304,17 +396,27 @@ const API = (() => {
       if (second === 'register') {
         const users = readLocalList('localUsers');
         const payload = body || {};
-        if (users.some(u => u.email === payload.email)) throw new Error('Bu e-poçt artıq qeydiyyatdan keçib');
+        const normalizedEmail = String(payload.email || '').trim().toLowerCase();
+        const pendingKey = `localRegisterCode:${normalizedEmail}`;
+        const pending = JSON.parse(localStorage.getItem(pendingKey) || 'null');
+        const finalName = String(payload.name || pending?.name || 'Yeni İstifadəçi').trim();
+        const finalPassword = payload.password || pending?.password;
+        const finalUserType = payload.userType || pending?.userType || 'student';
+        if (!normalizedEmail || !finalPassword) throw new Error('Email və şifrə tələb olunur');
+        if (pending && String(payload.verificationCode || '').trim() !== String(pending.code || '').trim()) {
+          throw new Error('Email təsdiq kodu yanlışdır');
+        }
+        if (users.some(u => String(u.email || '').trim().toLowerCase() === normalizedEmail)) throw new Error('Bu e-poçt artıq qeydiyyatdan keçib');
 
         const deviceInfo = payload.deviceInfo || { deviceId: localStorage.getItem('deviceFingerprint') || `local-${Date.now()}` };
         const finalDeviceId = String(deviceInfo.deviceId || localStorage.getItem('deviceFingerprint') || `local-${Date.now()}`);
         const user = {
           id: `user-${Date.now()}`,
-          name: payload.name || 'Yeni İstifadəçi',
-          email: payload.email,
-          password: payload.password,
+          name: finalName,
+          email: normalizedEmail,
+          password: finalPassword,
           role: 'user',
-          userType: payload.userType || 'student',
+          userType: finalUserType,
           premium: false,
           balance: 0,
           points: 0,
@@ -328,6 +430,7 @@ const API = (() => {
         };
         users.push(user);
         writeLocalList('localUsers', users);
+        localStorage.removeItem(pendingKey);
         setCurrentLocalUser({ ...user, password: undefined });
         return { user: { ...user, password: undefined } };
       }
@@ -497,6 +600,32 @@ const API = (() => {
           return { data: item || null, user: item || null };
         }
         return { data: items };
+      }
+      if (method === 'POST') {
+        const payload = body || {};
+        if (items.some(u => String(u.email || '').trim().toLowerCase() === String(payload.email || '').trim().toLowerCase())) {
+          throw new Error('Bu e-poçt artıq qeydiyyatdan keçib');
+        }
+        const user = {
+          id: `user-${Date.now()}`,
+          name: payload.name || 'Yeni İstifadəçi',
+          email: String(payload.email || '').trim(),
+          password: payload.password || 'pass123',
+          role: payload.role || 'user',
+          userType: payload.userType || 'student',
+          premium: Boolean(payload.premium),
+          balance: Number(payload.balance || 0),
+          points: Number(payload.points || 0),
+          deviceId: payload.deviceId || `user-${Date.now()}`,
+          deviceStatus: 'approved',
+          knownDevices: [{ deviceId: payload.deviceId || `user-${Date.now()}`, browser: 'Local browser', platform: 'Browser', lastSeenAt: new Date().toISOString() }],
+          registeredAt: new Date().toISOString(),
+          ...payload,
+        };
+        items.unshift(user);
+        writeLocalList('localUsers', items);
+        setCurrentLocalUser({ ...user, password: undefined });
+        return { data: user, user };
       }
       if (method === 'PUT') {
         const item = items.find(u => u.id === second);
@@ -793,9 +922,10 @@ const API = (() => {
     async sendRegistrationCode(name, email, password, userType) {
       return req('POST', '/api/auth/register-code', { name, email, password, userType, deviceInfo: getDeviceInfo() });
     },
-    async register(email, verificationCode) {
-      const result = await req('POST', '/api/auth/register', { email, verificationCode });
-      setCachedUser(result.user);
+    async register(email, verificationCode, extra = {}) {
+      const payload = typeof email === 'object' ? email : { email, verificationCode, ...extra };
+      const result = await req('POST', '/api/auth/register', payload);
+      if (result.user) setCachedUser(result.user);
       return result;
     },
     async approveDevice(userId, deviceId) {
@@ -850,6 +980,15 @@ const API = (() => {
   const users = {
     async list(params = {}) { return req('GET', '/api/users?' + new URLSearchParams(params)); },
     async get(id) { return req('GET', `/api/users/${id}`); },
+    async create(data = {}) {
+      const payload = { ...data, password: data.password || 'pass123' };
+      const result = await req('POST', '/api/users', payload);
+      const nextUser = normalizeUserRecord(result) || result;
+      if (nextUser && nextUser.id) {
+        setCachedUser(nextUser);
+      }
+      return nextUser || result;
+    },
     async update(id, data) {
       const result = await req('PUT', `/api/users/${id}`, data);
       const nextUser = normalizeUserRecord(result) || result;

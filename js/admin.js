@@ -261,9 +261,21 @@ async function saveNewUser() {
         return;
     }
     try {
-        const result = await API.auth.register(name, email, password, 'student');
-        if (role === 'admin') await API.users.update(result.user.id, { role: 'admin' });
-        if (!Number.isNaN(balance)) await API.users.update(result.user.id, { balance });
+        const result = await API.users.create({
+            name,
+            email,
+            password,
+            role,
+            userType: role === 'admin' ? 'admin' : 'student',
+            balance: Number.isFinite(balance) ? balance : 0,
+            premium: false,
+            points: 0,
+        });
+        const createdUser = result?.user || result?.data || result;
+        if (createdUser?.id) {
+            if (role === 'admin') await API.users.update(createdUser.id, { role: 'admin' });
+            if (!Number.isNaN(balance)) await API.users.update(createdUser.id, { balance: Number.isFinite(balance) ? balance : 0 });
+        }
         showNotification('İstifadəçi yaradıldı!', 'success');
         toggleUserForm();
         loadUsers();
